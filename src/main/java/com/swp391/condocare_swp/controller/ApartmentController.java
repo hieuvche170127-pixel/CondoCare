@@ -1,6 +1,5 @@
 package com.swp391.condocare_swp.controller;
 
-import com.swp391.condocare_swp.dto.ApartmentDto;
 import com.swp391.condocare_swp.entity.Apartment;
 import com.swp391.condocare_swp.service.ApartmentService;
 import org.springframework.beans.factory.annotation.Autowired;

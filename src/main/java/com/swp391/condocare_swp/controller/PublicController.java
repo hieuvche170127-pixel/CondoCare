@@ -1,6 +1,5 @@
 package com.swp391.condocare_swp.controller;
 
-import com.swp391.condocare_swp.dto.ApartmentDto;
 import com.swp391.condocare_swp.entity.Building;
 import com.swp391.condocare_swp.service.ApartmentService;
 import com.swp391.condocare_swp.service.BuildingService;
