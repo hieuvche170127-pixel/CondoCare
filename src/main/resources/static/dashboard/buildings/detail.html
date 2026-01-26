@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Building Detail - ApartmentPro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="../css/globals.css" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-light">
+<div id="sidebar-placeholder"></div>
+
+<main style="padding-left: 260px;" class="p-4">
+    <a href="index.html" class="btn btn-outline-secondary mb-4"><i data-lucide="arrow-left"></i> Back to Buildings</a>
+
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div class="d-flex align-items-start gap-3">
+            <div class="bg-primary-subtle rounded p-3">
+                <i data-lucide="building-2" class="text-primary fs-1"></i>
+            </div>
+            <div>
+                <h1 class="h3" id="name"></h1>
+                <p class="text-muted"><i data-lucide="map-pin"></i> <span id="address"></span></p>
+                <div class="d-flex gap-3 small text-muted">
+                    <span id="floors"></span>
+                    <span id="units"></span>
+                    <span id="added"></span>
+                </div>
+            </div>
+        </div>
+        <span id="occupancyBadge" class="badge bg-success-subtle text-success-emphasis fs-5"></span>
+    </div>
+
+    <!-- Stats -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3"><div class="card"><div class="card-body"><h5>Total Apartments</h5><h3 id="totalApts"></h3></div></div></div>
+        <div class="col-md-3"><div class="card"><div class="card-body"><h5>Occupied</h5><h3 id="occupied"></h3></div></div></div>
+        <div class="col-md-3"><div class="card"><div class="card-body"><h5>Available</h5><h3 id="available"></h3></div></div></div>
+        <div class="col-md-3"><div class="card"><div class="card-body"><h5>Monthly Revenue</h5><h3 id="revenue"></h3></div></div></div>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="apartments-tab" data-bs-toggle="tab" data-bs-target="#apartments" type="button" role="tab">Apartments</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="info-tab" data-bs-toggle="tab" data-bs-target="#info" type="button" role="tab">Building Info</button>
+        </li>
+    </ul>
+    <div class="tab-content" id="myTabContent">
+        <div class="tab-pane fade show active" id="apartments" role="tabpanel">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between">
+                    <h5>Apartments</h5>
+                    <a href="../apartments/index.html" class="btn btn-outline-primary btn-sm">View All Apartments</a>
+                </div>
+                <div class="card-body">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th>Unit</th>
+                            <th>Floor</th>
+                            <th>Area</th>
+                            <th>Bedrooms</th>
+                            <th>Rent Price</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody id="aptsTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="tab-pane fade" id="info" role="tabpanel">
+            <div class="card">
+                <div class="card-header">Building Information</div>
+                <div class="card-body" id="bldInfo"></div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../data.js"></script>
+<script>
+    lucide.createIcons();
+    fetch('../sidebar.html').then(r => r.text()).then(html => document.getElementById('sidebar-placeholder').innerHTML = html);
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const id = urlParams.get('id');
+    const bld = getBuildingById(id);
+    if (!bld) {
+      document.querySelector('main').innerHTML = '<h3>Building not found</h3>';
+      return;
+    }
+
+    document.getElementById('name').textContent = bld.name;
+    document.getElementById('address').textContent = bld.address;
+    document.getElementById('floors').innerHTML = `<i data-lucide="layers"></i> ${bld.totalFloors} Floors`;
+    document.getElementById('units').innerHTML = `<i data-lucide="home"></i> ${bld.totalApartments} Units`;
+    document.getElementById('added').innerHTML = `<i data-lucide="calendar"></i> Added ${bld.createdAt}`;
+
+    const apts = getApartmentsByBuildingId(id);
+    const occupied = apts.filter(a => a.status === 'OCCUPIED').length;
+    const available = apts.filter(a => a.status === 'AVAILABLE').length;
+    const maint = apts.filter(a => a.status === 'MAINTENANCE').length;
+    const occupancy = apts.length > 0 ? Math.round(occupied / apts.length * 100) : 0;
+    const revenue = apts.filter(a => a.status === 'OCCUPIED').reduce((sum, a) => sum + a.rentPrice, 0);
+
+    document.getElementById('occupancyBadge').textContent = `${occupancy}% Occupancy`;
+    document.getElementById('occupancyBadge').className = `badge fs-5 ${occupancy >= 80 ? 'bg-success-subtle text-success-emphasis' : occupancy >= 50 ? 'bg-warning-subtle text-warning-emphasis' : 'bg-secondary-subtle text-secondary-emphasis'}`;
+    document.getElementById('totalApts').textContent = apts.length;
+    document.getElementById('occupied').textContent = occupied;
+    document.getElementById('available').textContent = available;
+    document.getElementById('revenue').textContent = formatCurrency(revenue);
+
+    // Render apartments tab
+    const aptsTbody = document.getElementById('aptsTable');
+    apts.forEach(a => {
+      aptsTbody.innerHTML += `
+        <tr>
+          <td>${a.unitNumber}</td>
+          <td>${a.floor}</td>
+          <td>${a.area} m²</td>
+          <td>${a.bedrooms} BR</td>
+          <td>${formatCurrency(a.rentPrice)}</td>
+          <td>${getStatusBadge(a.status)}</td>
+          <td><a href="../apartments/detail.html?id=${a.id}" class="btn btn-sm btn-outline-info">View</a></td>
+        </tr>
+      `;
+    });
+
+    // Render info tab
+    document.getElementById('bldInfo').innerHTML = `
+      <div class="row">
+        <div class="col-md-6">
+          <p><strong>Building Name:</strong> ${bld.name}</p>
+          <p><strong>Address:</strong> ${bld.address}</p>
+          <p><strong>Description:</strong> ${bld.description || 'N/A'}</p>
+        </div>
+        <div class="col-md-6">
+          <p><strong>Total Floors:</strong> ${bld.totalFloors}</p>
+          <p><strong>Total Apartments:</strong> ${bld.totalApartments}</p>
+          <p><strong>Created At:</strong> ${bld.createdAt}</p>
+          <p><strong>Last Updated:</strong> ${bld.updatedAt}</p>
+        </div>
+      </div>
+    `;
+</script>
+</body>
+</html>
