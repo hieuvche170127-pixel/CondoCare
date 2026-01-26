@@ -1,5 +1,6 @@
 package com.swp391.condocare_swp.service;
 
+import com.swp391.condocare_swp.dto.ApartmentDto;
 import com.swp391.condocare_swp.entity.Apartment;
 import com.swp391.condocare_swp.repository.ApartmentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,9 +35,13 @@ public class ApartmentService {
             existing.setNumber(updated.getNumber());
             existing.setFloor(updated.getFloor());
             existing.setArea(updated.getArea());
-            // ... other fields
+            existing.setBuilding(updated.getBuilding());
+            existing.setImages(updated.getImages());
+            existing.setDescription(updated.getDescription());
+            existing.setTotalResident(updated.getTotalResident());
+            existing.setTotalVehicle(updated.getTotalVehicle());
         }
-        // Luôn update status/rentalStatus
+        // Always update status/rentalStatus
         existing.setStatus(updated.getStatus());
         existing.setRentalStatus(updated.getRentalStatus());
 
@@ -53,10 +58,14 @@ public class ApartmentService {
         dto.setNumber(apt.getNumber());
         dto.setFloor(apt.getFloor());
         dto.setArea(apt.getArea());
-        dto.setStatus(apt.getStatus().name());
-        dto.setRentalStatus(apt.getRentalStatus().name());
-        dto.setTotalResident(apt.getTotalResident());
         dto.setBuildingId(apt.getBuilding().getId());
+        dto.setBuildingName(apt.getBuilding().getName());
+        dto.setStatus(apt.getStatus());
+        dto.setRentalStatus(apt.getRentalStatus());
+        dto.setImages(apt.getImages());
+        dto.setDescription(apt.getDescription());
+        dto.setTotalResident(apt.getTotalResident());
+        dto.setTotalVehicle(apt.getTotalVehicle());
         return dto;
     }
 }

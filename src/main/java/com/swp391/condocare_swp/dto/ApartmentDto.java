@@ -1,5 +1,8 @@
 package com.swp391.condocare_swp.dto;
 
+import lombok.Data;
+
+@Data
 public class ApartmentDto {
     private String id;
     private String number;
