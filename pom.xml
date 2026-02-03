@@ -1,69 +1,110 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.swp391</groupId>
-    <artifactId>ams</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-    <name>Apartment Management System</name>
-    <description>SWP391 Project - CondoCare</description>
-
-    <properties>
-        <java.version>21</java.version>
-        <lombok.version>1.18.42</lombok.version>
-        <maven.compiler.version>3.13.0</maven.compiler.version>
-    </properties>
-
+    <!-- Spring Boot Parent -->
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.0</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <version>3.2.1</version>
+        <relativePath/>
     </parent>
 
+    <!-- Thông tin project -->
+    <groupId>com.swp391</groupId>
+    <artifactId>apartment-management</artifactId>
+    <version>1.0.0</version>
+    <name>Apartment Management System</name>
+    <description>Hệ thống quản lý chung cư</description>
+
+    <properties>
+        <java.version>17</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <lombok.version>1.18.34</lombok.version> <!-- Phiên bản mới nhất ổn định -->
+    </properties>
+
     <dependencies>
-        <!-- Spring Boot Web Starter -->
+        <!-- Spring Boot Web - Để tạo REST API và xử lý HTTP -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- Spring Data JPA + Hibernate -->
+        <!-- Spring Boot Data JPA - Để làm việc với database -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
 
-        <!-- MySQL Driver -->
+        <!-- Spring Boot Security - Để xác thực và phân quyền -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!-- Spring Boot Validation - Để validate dữ liệu -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- Thymeleaf - Template engine cho HTML -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+
+        <!-- Thymeleaf Spring Security - Tích hợp security với Thymeleaf -->
+        <dependency>
+            <groupId>org.thymeleaf.extras</groupId>
+            <artifactId>thymeleaf-extras-springsecurity6</artifactId>
+        </dependency>
+
+        <!-- MySQL Driver - Để kết nối MySQL database -->
         <dependency>
             <groupId>com.mysql</groupId>
             <artifactId>mysql-connector-j</artifactId>
             <scope>runtime</scope>
         </dependency>
 
-        <!-- Spring Security -->
+        <!-- JWT - Để tạo và validate JSON Web Token -->
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>0.12.3</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>0.12.3</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>0.12.3</version>
+            <scope>runtime</scope>
         </dependency>
 
-        <!-- Lombok -->
+        <!-- Lombok - Giảm boilerplate code -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>${lombok.version}</version>
-            <scope>provided</scope>
+            <scope>provided</scope> <!-- Chỉ cần compile-time -->
         </dependency>
 
-        <!-- Bean Validation (nếu dùng @Valid, @NotBlank, v.v. trong DTO/Entity) -->
+        <!-- Spring Boot Mail - Để gửi email reset password -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-validation</artifactId>
+            <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
 
-        <!-- DevTools (tùy chọn - auto restart khi code thay đổi) -->
+        <!-- Spring Boot DevTools - Hot reload khi development -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-devtools</artifactId>
@@ -71,12 +112,14 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- Test -->
+        <!-- Spring Boot Test - Để viết unit test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- Spring Security Test -->
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-test</artifactId>
@@ -86,23 +129,18 @@
 
     <build>
         <plugins>
+            <!-- Spring Boot Maven Plugin - Xóa exclude Lombok để repackage đúng -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <excludes>
-                        <exclude>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                        </exclude>
-                    </excludes>
-                </configuration>
+                <!-- Không cần exclude Lombok nữa -->
             </plugin>
 
+            <!-- Maven Compiler Plugin: Bắt buộc thêm để Lombok hoạt động khi compile Maven -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>${maven.compiler.version}</version>
+                <version>3.13.0</version> <!-- Phiên bản mới, ổn định -->
                 <configuration>
                     <source>${java.version}</source>
                     <target>${java.version}</target>
@@ -117,5 +155,4 @@
             </plugin>
         </plugins>
     </build>
-
 </project>

@@ -1,76 +1,57 @@
 package com.swp391.condocare_swp.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
+/**
+ * Entity đại diện cho bảng Building trong database
+ * Quản lý bởi Staff có Role Manager
+ */
 @Entity
-@Table(name = "building", schema = "swp391")
+@Table(name = "Building")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class Building {
+    
+    /**
+     * ID của Building (Primary Key)
+     */
     @Id
-    @Column(name = "ID", nullable = false, length = 10)
+    @Column(name = "ID", length = 10, nullable = false)
     private String id;
-
-    @Column(name = "name", nullable = false)
+    
+    /**
+     * Tên tòa nhà
+     */
+    @Column(name = "name", length = 255, nullable = false)
     private String name;
-
-    @Column(name = "address", nullable = false)
+    
+    /**
+     * Địa chỉ tòa nhà
+     */
+    @Column(name = "address", length = 255, nullable = false)
     private String address;
-
+    
+    /**
+     * Tổng số tầng
+     */
     @Column(name = "total_floors", nullable = false)
     private Integer totalFloors;
-
+    
+    /**
+     * Tổng số căn hộ
+     */
     @Column(name = "total_apartments", nullable = false)
     private Integer totalApartments;
-
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    
+    /**
+     * Manager quản lý tòa nhà
+     * Many-to-One: Một Manager có thể quản lý nhiều Building
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "manager_id", nullable = false)
-    private User manager;
-
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getAddress() {
-        return address;
-    }
-
-    public void setAddress(String address) {
-        this.address = address;
-    }
-
-    public Integer getTotalFloors() {
-        return totalFloors;
-    }
-
-    public void setTotalFloors(Integer totalFloors) {
-        this.totalFloors = totalFloors;
-    }
-
-    public Integer getTotalApartments() {
-        return totalApartments;
-    }
-
-    public void setTotalApartments(Integer totalApartments) {
-        this.totalApartments = totalApartments;
-    }
-
-    public User getManager() {
-        return manager;
-    }
-
-    public void setManager(User manager) {
-        this.manager = manager;
-    }
-
+    private Staff manager;
 }

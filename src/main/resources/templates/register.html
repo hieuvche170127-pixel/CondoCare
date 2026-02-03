@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng ký - Apartment Manager</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div id="loading" class="loading"><div class="spinner"></div></div>
+
+<div class="auth-container">
+    <div class="auth-card card shadow-lg" style="max-width: 700px;">
+        <div class="card-body p-5">
+            <div class="auth-header">
+                <h1><i class="fas fa-building text-primary"></i></h1>
+                <h2>Đăng ký tài khoản</h2>
+                <p>Tạo tài khoản mới cho cư dân</p>
+            </div>
+
+            <!-- Alert Container -->
+            <div id="alertContainer"></div>
+
+            <form id="registerForm">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="username" class="form-label">Username *</label>
+                        <input type="text" class="form-control" id="username" required
+                               pattern="[a-zA-Z0-9_]{4,50}"
+                               title="Username phải từ 4-50 ký tự, chỉ chứa chữ cái, số và dấu gạch dưới">
+                        <div class="invalid-feedback">Username không hợp lệ</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="fullName" class="form-label">Họ và tên *</label>
+                        <input type="text" class="form-control" id="fullName" required>
+                        <div class="invalid-feedback">Vui lòng nhập họ tên</div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="email" class="form-label">Email *</label>
+                        <input type="email" class="form-control" id="email" required>
+                        <div class="invalid-feedback">Email không hợp lệ</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="phone" class="form-label">Số điện thoại *</label>
+                        <input type="text" class="form-control" id="phone" required
+                               pattern="[0-9]{10,11}"
+                               title="Số điện thoại phải có 10-11 chữ số">
+                        <div class="invalid-feedback">Số điện thoại không hợp lệ</div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="password" class="form-label">Password *</label>
+                        <input type="password" class="form-control" id="password" required minlength="6">
+                        <div class="invalid-feedback">Password phải có ít nhất 6 ký tự</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="confirmPassword" class="form-label">Xác nhận Password *</label>
+                        <input type="password" class="form-control" id="confirmPassword" required minlength="6">
+                        <div class="invalid-feedback">Password không khớp</div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="idNumber" class="form-label">Số CMND/CCCD *</label>
+                        <input type="text" class="form-control" id="idNumber" required
+                               pattern="[0-9]{9,12}"
+                               title="Số CMND/CCCD phải có 9-12 chữ số">
+                        <div class="invalid-feedback">Số CMND/CCCD không hợp lệ</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="apartmentId" class="form-label">ID Căn hộ *</label>
+                        <input type="text" class="form-control" id="apartmentId" required
+                               placeholder="VD: A101, B202"
+                               title="Nhập ID căn hộ (VD: A101)">
+                        <div class="invalid-feedback">Vui lòng nhập ID căn hộ</div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="residentType" class="form-label">Loại cư dân *</label>
+                        <select class="form-select" id="residentType" required>
+                            <option value="">Chọn loại cư dân</option>
+                            <option value="OWNER">Chủ sở hữu</option>
+                            <option value="TENANT">Người thuê</option>
+                            <option value="GUEST">Khách</option>
+                        </select>
+                        <div class="invalid-feedback">Vui lòng chọn loại cư dân</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="gender" class="form-label">Giới tính *</label>
+                        <select class="form-select" id="gender" required>
+                            <option value="">Chọn giới tính</option>
+                            <option value="M">Nam</option>
+                            <option value="F">Nữ</option>
+                        </select>
+                        <div class="invalid-feedback">Vui lòng chọn giới tính</div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 mb-3">
+                    <i class="fas fa-user-plus"></i> Đăng ký
+                </button>
+
+                <div class="text-center">
+                    <p class="text-muted">Đã có tài khoản?
+                        <a href="/login" class="text-primary fw-bold">Đăng nhập</a>
+                    </p>
+                    <a href="/" class="text-muted"><i class="fas fa-arrow-left"></i> Về trang chủ</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/common.js"></script>
+<script src="/js/register.js"></script>
+</body>
+</html>
