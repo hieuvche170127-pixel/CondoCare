@@ -1,63 +1,102 @@
 package com.swp391.condocare_swp.config;
 
-import com.swp391.condocare_swp.security.CustomUserDetailsService;
+import com.swp391.condocare_swp.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+/**
+ * Configuration class cho Spring Security
+ */
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity(prePostEnabled = true)  // Cho @PreAuthorize
+@EnableMethodSecurity // Cho phép dùng @PreAuthorize, @Secured...
 public class SecurityConfig {
 
-    @Bean
-    public UserDetailsService userDetailsService() {
-        return new CustomUserDetailsService();
-    }
-
+    /**
+     * Bean để mã hóa password
+     * Sử dụng BCrypt - thuật toán mã hóa một chiều an toàn
+     */
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return NoOpPasswordEncoder.getInstance();  // Plain text for test, thay bằng BCryptPasswordEncoder sau
+//        return new BCryptPasswordEncoder();
+        return NoOpPasswordEncoder.getInstance();
     }
 
+    /**
+     * Bean để tạo JWT Authentication Filter
+     */
     @Bean
-    public DaoAuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(userDetailsService());
-        authProvider.setPasswordEncoder(passwordEncoder());
-        return authProvider;
+    public JwtAuthenticationFilter jwtAuthenticationFilter() {
+        return new JwtAuthenticationFilter();
     }
 
+    /**
+     * Bean AuthenticationManager
+     * Dùng để authenticate user
+     */
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration authenticationConfiguration) throws Exception {
+        return authenticationConfiguration.getAuthenticationManager();
+    }
+
+    /**
+     * Cấu hình Security Filter Chain
+     * Định nghĩa các rule authorization và authentication
+     */
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())  // Disable CSRF cho test, enable sau nếu cần
+                // Disable CSRF vì dùng JWT (stateless)
+                .csrf(csrf -> csrf.disable())
+
+                // Cấu hình session management
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+
+                // Cấu hình CORS
+                .cors(cors -> cors.disable())
+
+                // Cấu hình authorization
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/public/**", "/index.html", "/login.html", "/js/**", "/css/**").permitAll()
-                        .requestMatchers("/api/admin/**").authenticated()
-                        .requestMatchers("/admin/**").authenticated()
+                        // Cho phép truy cập public (không cần đăng nhập)
+                        .requestMatchers(
+                                "/",
+                                "/api/auth/**",
+                                "/login",
+                                "/register",
+                                "/forgot-password",
+                                "/reset-password",
+                                "/css/**",
+                                "/js/**",
+                                "/images/**"
+                        ).permitAll()
+
+                        // Dashboard chỉ cho Staff
+                        .requestMatchers("/dashboard/**", "/api/dashboard/**").permitAll()
+
+                        // Tất cả request khác cần authenticate
                         .anyRequest().authenticated()
                 )
-                .formLogin(form -> form
-                        .loginPage("/login.html")
-                        .loginProcessingUrl("/api/auth/login")
-                        .successHandler((request, response, authentication) -> response.setStatus(200))  // JS handle redirect
-                        .failureHandler((request, response, exception) -> response.setStatus(401))
-                        .permitAll()
-                )
-                .logout(logout -> logout
-                        .logoutUrl("/api/auth/logout")
-                        .logoutSuccessHandler((request, response, authentication) -> response.setStatus(200))
-                        .permitAll()
-                )
-                .sessionManagement(session -> session.maximumSessions(1));  // Session-based
+
+                // Disable form login và http basic
+                .formLogin(form -> form.disable())
+                .httpBasic(basic -> basic.disable())
+
+                // Thêm JWT filter trước UsernamePasswordAuthenticationFilter
+                .addFilterBefore(jwtAuthenticationFilter(),
+                        UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

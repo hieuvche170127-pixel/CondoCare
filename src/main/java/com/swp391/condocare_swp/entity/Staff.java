@@ -1,138 +1,158 @@
 package com.swp391.condocare_swp.entity;
 
 import jakarta.persistence.*;
-import org.hibernate.annotations.ColumnDefault;
-
-import java.time.Instant;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
+/**
+ * Entity đại diện cho bảng Staff trong database
+ * Gộp thông tin Account và Staff vào một bảng
+ */
 @Entity
-@Table(name = "staff", schema = "swp391")
+@Table(name = "Staff")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class Staff {
+
+    /**
+     * ID của Staff (Primary Key)
+     */
     @Id
-    @Column(name = "ID", nullable = false, length = 10)
+    @Column(name = "ID", length = 10, nullable = false)
     private String id;
 
-    @Column(name = "position", nullable = false)
+    /**
+     * Username để đăng nhập
+     * Phải unique (không trùng lặp)
+     */
+    @Column(name = "username", length = 255, nullable = false, unique = true)
+    private String username;
+
+    /**
+     * Password đã được mã hóa (sẽ dùng BCrypt)
+     */
+    @Column(name = "password", length = 255, nullable = false)
+    private String password;
+
+    /**
+     * Họ và tên đầy đủ
+     */
+    @Column(name = "full_name", length = 255, nullable = false)
+    private String fullName;
+
+    /**
+     * Email - có thể dùng để đăng nhập hoặc reset password
+     */
+    @Column(name = "email", length = 255)
+    private String email;
+
+    /**
+     * Số điện thoại
+     */
+    @Column(name = "phone", length = 20, nullable = false)
+    private String phone;
+
+    /**
+     * Vị trí công việc
+     */
+    @Column(name = "position", length = 255, nullable = false)
     private String position;
 
-    @Column(name = "department", nullable = false)
+    /**
+     * Phòng ban
+     */
+    @Column(name = "department", length = 255, nullable = false)
     private String department;
 
+    /**
+     * Ngày sinh
+     */
     @Column(name = "dob")
     private LocalDate dob;
 
-    @Lob
-    @Column(name = "gender", nullable = false)
-    private String gender;
+    /**
+     * Giới tính: M (Male) hoặc F (Female)
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "gender", nullable = false, columnDefinition = "ENUM('M', 'F')")
+    private Gender gender;
 
-    @Column(name = "phone", nullable = false, length = 20)
-    private String phone;
+    /**
+     * Trạng thái: ACTIVE, RESIGNED, ON_LEAVE
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, columnDefinition = "ENUM('ACTIVE', 'RESIGNED', 'ON_LEAVE')")
+    private StaffStatus status = StaffStatus.ACTIVE;
 
-    @Column(name = "email", length = 100)
-    private String email;
+    /**
+     * Role của Staff (liên kết với bảng Role)
+     * Many-to-One: Nhiều Staff có thể có cùng một Role
+     */
+    @ManyToOne(fetch = FetchType.EAGER) // EAGER: Load role cùng với staff
+    @JoinColumn(name = "role_id", nullable = false)
+    private Role role;
 
-    @ColumnDefault("'ACTIVE'")
-    @Lob
-    @Column(name = "status", nullable = false)
-    private String status;
-
+    /**
+     * Ngày được tuyển dụng
+     */
     @Column(name = "hired_at")
-    private Instant hiredAt;
+    private LocalDateTime hiredAt;
 
-    @Column(name = "terminated_at")
-    private Instant terminatedAt;
+    /**
+     * Lần đăng nhập cuối cùng
+     */
+    @Column(name = "last_login")
+    private LocalDateTime lastLogin;
 
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    /**
+     * Ngày tạo account
+     * Tự động set khi tạo mới
+     */
+    @Column(name = "create_at", nullable = false, updatable = false)
+    private LocalDateTime createAt;
 
-    public String getId() {
-        return id;
+    /**
+     * Token để reset password
+     * Không lưu trong database ban đầu, sẽ thêm khi cần
+     */
+    @Transient // Không map với column trong database
+    private String resetPasswordToken;
+
+    /**
+     * Thời gian hết hạn của reset token
+     */
+    @Transient
+    private LocalDateTime resetPasswordTokenExpiry;
+
+    /**
+     * Hàm tự động chạy trước khi persist (save) entity
+     */
+    @PrePersist
+    protected void onCreate() {
+        createAt = LocalDateTime.now();
+        if (status == null) {
+            status = StaffStatus.ACTIVE;
+        }
     }
 
-    public void setId(String id) {
-        this.id = id;
+    /**
+     * Enum cho Gender
+     */
+    public enum Gender {
+        M, // Male
+        F  // Female
     }
 
-    public String getPosition() {
-        return position;
+    /**
+     * Enum cho Staff Status
+     */
+    public enum StaffStatus {
+        ACTIVE,      // Đang làm việc
+        RESIGNED,    // Đã nghỉ việc
+        ON_LEAVE     // Đang nghỉ phép
     }
-
-    public void setPosition(String position) {
-        this.position = position;
-    }
-
-    public String getDepartment() {
-        return department;
-    }
-
-    public void setDepartment(String department) {
-        this.department = department;
-    }
-
-    public LocalDate getDob() {
-        return dob;
-    }
-
-    public void setDob(LocalDate dob) {
-        this.dob = dob;
-    }
-
-    public String getGender() {
-        return gender;
-    }
-
-    public void setGender(String gender) {
-        this.gender = gender;
-    }
-
-    public String getPhone() {
-        return phone;
-    }
-
-    public void setPhone(String phone) {
-        this.phone = phone;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public Instant getHiredAt() {
-        return hiredAt;
-    }
-
-    public void setHiredAt(Instant hiredAt) {
-        this.hiredAt = hiredAt;
-    }
-
-    public Instant getTerminatedAt() {
-        return terminatedAt;
-    }
-
-    public void setTerminatedAt(Instant terminatedAt) {
-        this.terminatedAt = terminatedAt;
-    }
-
-    public User getUser() {
-        return user;
-    }
-
-    public void setUser(User user) {
-        this.user = user;
-    }
-
 }
