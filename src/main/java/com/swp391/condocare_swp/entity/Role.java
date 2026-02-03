@@ -1,6 +1,9 @@
 package com.swp391.condocare_swp.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -15,7 +18,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor // Constructor không tham số
 @AllArgsConstructor // Constructor với tất cả tham số
 public class Role {
-
+    
     /**
      * ID của Role (Primary Key)
      * Độ dài tối đa: 10 ký tự
@@ -23,14 +26,14 @@ public class Role {
     @Id
     @Column(name = "ID", length = 10, nullable = false)
     private String id;
-
+    
     /**
      * Tên của Role
      * Ví dụ: ADMIN, MANAGER, STAFF
      */
     @Column(name = "name", length = 100, nullable = false)
     private String name;
-
+    
     /**
      * Mô tả về Role
      */
