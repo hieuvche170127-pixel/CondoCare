@@ -31,7 +31,7 @@ public class Vehicle {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "resident_id", nullable = false)
-    private Resident resident;
+    private Residents resident;
 
     public String getId() {
         return id;
@@ -81,11 +81,11 @@ public class Vehicle {
         this.status = status;
     }
 
-    public Resident getResident() {
+    public Residents getResident() {
         return resident;
     }
 
-    public void setResident(Resident resident) {
+    public void setResident(Residents resident) {
         this.resident = resident;
     }
 

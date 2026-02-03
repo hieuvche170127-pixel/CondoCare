@@ -1,138 +1,106 @@
 package com.swp391.condocare_swp.entity;
 
 import jakarta.persistence.*;
-import org.hibernate.annotations.ColumnDefault;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
+/**
+ * Entity đại diện cho bảng Apartment trong database
+ */
 @Entity
-@Table(name = "apartment", schema = "swp391")
+@Table(name = "Apartment")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class Apartment {
+    
+    /**
+     * ID của Apartment (Primary Key)
+     */
     @Id
-    @Column(name = "ID", nullable = false, length = 4)
+    @Column(name = "ID", length = 4, nullable = false)
     private String id;
-
-    @Column(name = "number", nullable = false, length = 4)
+    
+    /**
+     * Số căn hộ (VD: A101, B205)
+     */
+    @Column(name = "number", length = 4, nullable = false)
     private String number;
-
+    
+    /**
+     * Tầng của căn hộ
+     */
     @Column(name = "floor", nullable = false)
     private Integer floor;
-
+    
+    /**
+     * Diện tích (m²)
+     */
     @Column(name = "area", nullable = false)
     private Float area;
-
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    
+    /**
+     * Tòa nhà chứa căn hộ
+     * Many-to-One: Một Building có nhiều Apartment
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "building_id", nullable = false)
     private Building building;
-
-    @ColumnDefault("'EMPTY'")
-    @Lob
-    @Column(name = "status")
-    private String status;
-
-    @ColumnDefault("'AVAILABLE'")
-    @Lob
-    @Column(name = "rental_status")
-    private String rentalStatus;
-
-    @Column(name = "images")
+    
+    /**
+     * Trạng thái căn hộ: EMPTY, OCCUPIED, MAINTENANCE
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", columnDefinition = "ENUM('EMPTY', 'OCCUPIED', 'MAINTENANCE')")
+    private ApartmentStatus status = ApartmentStatus.EMPTY;
+    
+    /**
+     * Trạng thái cho thuê: AVAILABLE, RENTED, OWNER
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "rental_status", columnDefinition = "ENUM('AVAILABLE', 'RENTED', 'OWNER')")
+    private RentalStatus rentalStatus = RentalStatus.AVAILABLE;
+    
+    /**
+     * Đường dẫn ảnh căn hộ (có thể nhiều ảnh, phân cách bằng dấu phẩy)
+     */
+    @Column(name = "images", length = 255)
     private String images;
-
-    @Column(name = "description")
+    
+    /**
+     * Mô tả về căn hộ
+     */
+    @Column(name = "description", length = 255)
     private String description;
-
-    @ColumnDefault("0")
+    
+    /**
+     * Tổng số cư dân đang ở
+     */
     @Column(name = "total_resident")
-    private Integer totalResident;
-
-    @ColumnDefault("0")
+    private Integer totalResident = 0;
+    
+    /**
+     * Tổng số phương tiện đã đăng ký
+     */
     @Column(name = "total_vehicle")
-    private Integer totalVehicle;
-
-    public String getId() {
-        return id;
+    private Integer totalVehicle = 0;
+    
+    /**
+     * Enum cho Apartment Status
+     */
+    public enum ApartmentStatus {
+        EMPTY,        // Trống
+        OCCUPIED,     // Đang ở
+        MAINTENANCE   // Đang bảo trì
     }
-
-    public void setId(String id) {
-        this.id = id;
+    
+    /**
+     * Enum cho Rental Status
+     */
+    public enum RentalStatus {
+        AVAILABLE,    // Có thể thuê
+        RENTED,       // Đang cho thuê
+        OWNER         // Chủ sở hữu đang ở
     }
-
-    public String getNumber() {
-        return number;
-    }
-
-    public void setNumber(String number) {
-        this.number = number;
-    }
-
-    public Integer getFloor() {
-        return floor;
-    }
-
-    public void setFloor(Integer floor) {
-        this.floor = floor;
-    }
-
-    public Float getArea() {
-        return area;
-    }
-
-    public void setArea(Float area) {
-        this.area = area;
-    }
-
-    public Building getBuilding() {
-        return building;
-    }
-
-    public void setBuilding(Building building) {
-        this.building = building;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public String getRentalStatus() {
-        return rentalStatus;
-    }
-
-    public void setRentalStatus(String rentalStatus) {
-        this.rentalStatus = rentalStatus;
-    }
-
-    public String getImages() {
-        return images;
-    }
-
-    public void setImages(String images) {
-        this.images = images;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public Integer getTotalResident() {
-        return totalResident;
-    }
-
-    public void setTotalResident(Integer totalResident) {
-        this.totalResident = totalResident;
-    }
-
-    public Integer getTotalVehicle() {
-        return totalVehicle;
-    }
-
-    public void setTotalVehicle(Integer totalVehicle) {
-        this.totalVehicle = totalVehicle;
-    }
-
 }
