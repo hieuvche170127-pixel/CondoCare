@@ -1,6 +1,8 @@
 package com.swp391.condocare_swp.repository;
 
 import com.swp391.condocare_swp.entity.Apartment;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -26,4 +28,6 @@ public interface ApartmentRepository extends JpaRepository<Apartment, String> {
      * Đếm số Apartment theo rental status
      */
     Long countByRentalStatus(Apartment.RentalStatus rentalStatus);
+
+    Page<Apartment> findByBuildingId(String buildingId, Pageable pageable);
 }
