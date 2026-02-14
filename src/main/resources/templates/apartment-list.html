@@ -14,7 +14,7 @@
 
 <div class="container-fluid">
     <div class="row">
-        <!-- Sidebar: copy từ dashboard.html -->
+        <!-- Sidebar -->
         <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse">
             <div class="position-sticky pt-3">
                 <div class="text-center mb-4">
@@ -29,8 +29,7 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <!-- Đánh dấu mục căn hộ đang active -->
-                        <a class="nav-link active" th:href="@{/dashboard/apartments}">
+                        <a class="nav-link active" href="/dashboard/apartments">
                             <i class="fas fa-home"></i> Căn hộ
                         </a>
                     </li>
@@ -70,193 +69,149 @@
 
         <!-- Main content -->
         <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
-            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center
-                        pt-3 pb-2 mb-3 border-bottom">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                 <div>
                     <h1 class="h2">Danh sách căn hộ</h1>
-                    <small class="text-muted" th:text="'Tòa nhà: ' + ${buildingId}"></small>
+                    <small class="text-muted" th:if="${building != null}" th:text="'Tòa nhà: ' + ${building.name}"></small>
+                    <small class="text-muted" th:if="${building == null}">Chưa có tòa nhà</small>
                 </div>
                 <div class="btn-toolbar mb-2 mb-md-0">
-                    <button type="button" class="btn btn-sm btn-primary">
-                        <i class="fas fa-plus"></i> Thêm căn hộ
-                    </button>
+                    <div class="btn-group me-2">
+                        <button type="button" class="btn btn-sm btn-primary" th:if="${buildingId != null}">
+                            <i class="fas fa-plus"></i> Thêm căn hộ
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <!-- Bộ lọc -->
-            <div class="card shadow mb-4">
-                <div class="card-header">
-                    <h6 class="m-0 font-weight-bold">Bộ lọc</h6>
+            <!-- Thông báo khi chưa có building -->
+            <div class="alert alert-info" th:if="${message != null}" role="alert">
+                <i class="fas fa-info-circle"></i>
+                <span th:text="${message}"></span>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="row mb-4" th:if="${building != null}">
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card stat-card primary shadow h-100">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="stat-label mb-1">Tổng căn hộ</div>
+                                    <div class="stat-number" th:text="${totalElements}">0</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-home fa-2x text-primary"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <form class="row g-3"
-                          method="get"
-                          th:action="@{|/buildings/${buildingId}/apartments|}">
-                        <!-- Giữ page về 0 khi filter -->
-                        <input type="hidden" name="page" value="0"/>
-                        <input type="hidden" name="size" value="10"/>
 
-                        <div class="col-md-4">
-                            <label class="form-label">Số căn hộ</label>
-                            <input type="text" class="form-control" name="number"
-                                   placeholder="VD: A101"
-                                   th:value="${param.number}">
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card stat-card success shadow h-100">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="stat-label mb-1">Trang hiện tại</div>
+                                    <div class="stat-number" th:text="|${currentPage + 1}/${totalPages}|">1</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-list fa-2x text-success"></i>
+                                </div>
+                            </div>
                         </div>
-
-                        <div class="col-md-4">
-                            <label class="form-label">Trạng thái</label>
-                            <select class="form-select" name="status">
-                                <option th:value="" th:selected="${param.status == null}">Tất cả</option>
-                                <option th:value="EMPTY" th:selected="${param.status == 'EMPTY'}">Trống</option>
-                                <option th:value="OCCUPIED" th:selected="${param.status == 'OCCUPIED'}">Đang ở</option>
-                                <option th:value="MAINTENANCE" th:selected="${param.status == 'MAINTENANCE'}">
-                                    Bảo trì
-                                </option>
-                            </select>
-                        </div>
-
-                        <div class="col-md-4">
-                            <label class="form-label">Trạng thái cho thuê</label>
-                            <select class="form-select" name="rentalStatus">
-                                <option th:value="" th:selected="${param.rentalStatus == null}">Tất cả</option>
-                                <option th:value="AVAILABLE" th:selected="${param.rentalStatus == 'AVAILABLE'}">
-                                    Có thể thuê
-                                </option>
-                                <option th:value="RENTED" th:selected="${param.rentalStatus == 'RENTED'}">
-                                    Đang cho thuê
-                                </option>
-                                <option th:value="OWNER" th:selected="${param.rentalStatus == 'OWNER'}">
-                                    Chủ sở hữu
-                                </option>
-                            </select>
-                        </div>
-
-                        <div class="col-12 d-flex justify-content-end">
-                            <button type="submit" class="btn btn-primary me-2">
-                                <i class="fas fa-filter"></i> Lọc
-                            </button>
-                            <a class="btn btn-outline-secondary"
-                               th:href="@{|/buildings/${buildingId}/apartments?page=0&size=10|}">
-                                Xóa lọc
-                            </a>
-                        </div>
-                    </form>
-                    <!-- Lưu ý: hiện tại controller/service mới chỉ dùng buildingId, page, size.
-                         Sau này bạn thêm xử lý filter theo number/status/rentalStatus ở backend. -->
+                    </div>
                 </div>
             </div>
 
             <!-- Bảng danh sách căn hộ -->
-            <div class="card shadow mb-4">
-                <div class="card-header">
-                    <h6 class="m-0 font-weight-bold">Danh sách căn hộ</h6>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle">
-                            <thead>
-                            <tr>
-                                <th>Mã</th>
-                                <th>Số căn</th>
-                                <th>Tầng</th>
-                                <th>Diện tích (m²)</th>
-                                <th>Tòa</th>
-                                <th>Trạng thái</th>
-                                <th>Cho thuê</th>
-                                <th>Cư dân</th>
-                                <th>Phương tiện</th>
-                                <th>Thao tác</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            <tr th:if="${#lists.isEmpty(apartments)}">
-                                <td colspan="10" class="text-center text-muted">
-                                    Chưa có căn hộ nào trong tòa này.
-                                </td>
-                            </tr>
-                            <tr th:each="apartment : ${apartments}">
-                                <td th:text="${apartment.id}">A001</td>
-                                <td th:text="${apartment.number}">A101</td>
-                                <td th:text="${apartment.floor}">1</td>
-                                <td th:text="${apartment.area}">75</td>
-                                <td th:text="${apartment.building != null ? apartment.building.name : buildingId}">
-                                    Tòa A
-                                </td>
-                                <td>
-                                    <span class="badge"
-                                          th:classappend="${
-                                            apartment.status == T(com.swp391.condocare_swp.entity.Apartment.ApartmentStatus).EMPTY
-                                            ? ' bg-warning text-dark'
-                                            : (apartment.status == T(com.swp391.condocare_swp.entity.Apartment.ApartmentStatus).OCCUPIED
-                                                ? ' bg-success'
-                                                : ' bg-secondary')
-                                          }"
-                                          th:text="${apartment.status}">
-                                        EMPTY
-                                    </span>
-                                </td>
-                                <td>
-                                    <span class="badge"
-                                          th:classappend="${
-                                            apartment.rentalStatus == T(com.swp391.condocare_swp.entity.Apartment.RentalStatus).AVAILABLE
-                                            ? ' bg-primary'
-                                            : (apartment.rentalStatus == T(com.swp391.condocare_swp.entity.Apartment.RentalStatus).RENTED
-                                                ? ' bg-info text-dark'
-                                                : ' bg-dark')
-                                          }"
-                                          th:text="${apartment.rentalStatus}">
-                                        AVAILABLE
-                                    </span>
-                                </td>
-                                <td th:text="${apartment.totalResident}">0</td>
-                                <td th:text="${apartment.totalVehicle}">0</td>
-                                <td>
-                                    <div class="btn-group btn-group-sm" role="group">
-                                        <button type="button" class="btn btn-outline-primary">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-outline-secondary">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-outline-danger">
-                                            <i class="fas fa-trash-alt"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                            </tbody>
-                        </table>
+            <div class="row" th:if="${building != null}">
+                <div class="col-12 mb-4">
+                    <div class="card shadow">
+                        <div class="card-header">
+                            <h6 class="m-0 font-weight-bold">Danh sách căn hộ</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle">
+                                    <thead>
+                                    <tr>
+                                        <th>Mã</th>
+                                        <th>Số căn</th>
+                                        <th>Tầng</th>
+                                        <th>Diện tích (m²)</th>
+                                        <th>Trạng thái</th>
+                                        <th>Cho thuê</th>
+                                        <th>Cư dân</th>
+                                        <th>Phương tiện</th>
+                                        <th>Thao tác</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr th:if="${#lists.isEmpty(apartments)}">
+                                        <td colspan="9" class="text-center text-muted py-4">
+                                            <i class="fas fa-inbox fa-2x mb-2"></i>
+                                            <p class="mb-0">Chưa có căn hộ nào trong tòa này.</p>
+                                        </td>
+                                    </tr>
+                                    <tr th:each="apt : ${apartments}">
+                                        <td th:text="${apt.id}">-</td>
+                                        <td th:text="${apt.number}">-</td>
+                                        <td th:text="${apt.floor}">-</td>
+                                        <td th:text="${apt.area}">-</td>
+                                        <td>
+                                                    <span class="badge"
+                                                          th:classappend="${apt.status.name() == 'EMPTY' ? 'bg-warning text-dark' : (apt.status.name() == 'OCCUPIED' ? 'bg-success' : 'bg-secondary')}"
+                                                          th:text="${apt.status.name() == 'EMPTY' ? 'Trống' : (apt.status.name() == 'OCCUPIED' ? 'Đang ở' : 'Bảo trì')}">-</span>
+                                        </td>
+                                        <td>
+                                                    <span class="badge"
+                                                          th:classappend="${apt.rentalStatus.name() == 'AVAILABLE' ? 'bg-primary' : (apt.rentalStatus.name() == 'RENTED' ? 'bg-info text-dark' : 'bg-dark')}"
+                                                          th:text="${apt.rentalStatus.name() == 'AVAILABLE' ? 'Có thể thuê' : (apt.rentalStatus.name() == 'RENTED' ? 'Đang thuê' : 'Chủ ở')}">-</span>
+                                        </td>
+                                        <td th:text="${apt.totalResident != null ? apt.totalResident : 0}">0</td>
+                                        <td th:text="${apt.totalVehicle != null ? apt.totalVehicle : 0}">0</td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <button type="button" class="btn btn-outline-primary" title="Xem chi tiết">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-outline-secondary" title="Chỉnh sửa">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Phân trang -->
+                            <nav th:if="${totalPages > 1}">
+                                <ul class="pagination justify-content-end mb-0">
+                                    <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
+                                        <a class="page-link" th:href="@{/buildings/{id}/apartments(id=${buildingId}, page=${currentPage - 1}, size=10)}">
+                                            <i class="fas fa-chevron-left"></i> Trước
+                                        </a>
+                                    </li>
+                                    <li class="page-item" th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
+                                        th:classappend="${i == currentPage} ? 'active'">
+                                        <a class="page-link" th:href="@{/buildings/{id}/apartments(id=${buildingId}, page=${i}, size=10)}"
+                                           th:text="${i + 1}">1</a>
+                                    </li>
+                                    <li class="page-item" th:classappend="${currentPage + 1 >= totalPages} ? 'disabled'">
+                                        <a class="page-link" th:href="@{/buildings/{id}/apartments(id=${buildingId}, page=${currentPage + 1}, size=10)}">
+                                            Sau <i class="fas fa-chevron-right"></i>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </div>
                     </div>
-
-                    <!-- Phân trang -->
-                    <nav th:if="${totalPages > 1}">
-                        <ul class="pagination justify-content-end mb-0">
-                            <li class="page-item" th:classappend="${currentPage == 0} ? ' disabled'">
-                                <a class="page-link"
-                                   th:href="@{|/buildings/${buildingId}/apartments?page=${currentPage - 1}&size=10|}">
-                                    Trước
-                                </a>
-                            </li>
-
-                            <li class="page-item"
-                                th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
-                                th:classappend="${i} == ${currentPage} ? ' active'">
-                                <a class="page-link"
-                                   th:href="@{|/buildings/${buildingId}/apartments?page=${i}&size=10|}"
-                                   th:text="${i + 1}">
-                                    1
-                                </a>
-                            </li>
-
-                            <li class="page-item"
-                                th:classappend="${currentPage + 1 >= totalPages} ? ' disabled'">
-                                <a class="page-link"
-                                   th:href="@{|/buildings/${buildingId}/apartments?page=${currentPage + 1}&size=10|}">
-                                    Sau
-                                </a>
-                            </li>
-                        </ul>
-                    </nav>
                 </div>
             </div>
         </main>
