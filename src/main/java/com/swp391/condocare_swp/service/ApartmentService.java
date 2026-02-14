@@ -17,6 +17,9 @@ public class ApartmentService
 
     public Page<Apartment> getApartmentsByBuilding(String buildingId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("number").ascending());
+
+        // Tìm căn hộ theo ID tòa nhà và phân trang
+        // Đảm bảo ApartmentRepository đã có hàm: Page<Apartment> findByBuildingId(String bId, Pageable p);
         return apartmentRepository.findByBuildingId(buildingId, pageable);
     }
 
