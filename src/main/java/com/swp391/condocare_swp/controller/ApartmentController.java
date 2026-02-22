@@ -27,7 +27,7 @@ public class ApartmentController {
             @RequestParam(defaultValue = "10") int size,
             Model model) {
 
-        String hardcodedBuildingId = "B001";
+        String hardcodedBuildingId = "A";
 
         Page<Apartment> apartmentPage = apartmentService.getApartmentsByBuilding(hardcodedBuildingId, page, size);
         Building dummyBuilding = new Building();
