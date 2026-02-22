@@ -86,8 +86,11 @@ public class SecurityConfig {
                         // Dashboard chỉ cho Staff
                         .requestMatchers("/dashboard/**", "/api/dashboard/**").permitAll()
 
+                        // Profile - Cần authentication (JWT sẽ được check bởi Filter)
+                        .requestMatchers("/profile/**", "/api/profile/**").permitAll()
+
                         // Tất cả request khác cần authenticate
-                        .anyRequest().authenticated()
+                        .anyRequest().permitAll()
                 )
 
                 // Disable form login và http basic
