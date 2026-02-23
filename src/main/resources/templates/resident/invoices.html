@@ -36,7 +36,12 @@
 
         <!-- Bảng hóa đơn -->
         <div class="content-card">
-            <div class="card-title"><i class="fas fa-list me-2"></i>Danh sách hóa đơn</div>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="card-title mb-0"><i class="fas fa-list me-2"></i>Danh sách hóa đơn</div>
+                <button class="btn btn-success btn-sm" onclick="exportInvoicesToPDF()">
+                    <i class="fas fa-file-pdf me-1"></i> Xuất PDF
+                </button>
+            </div>
             <div class="table-responsive">
                 <table class="table table-hover invoice-table align-middle" id="invoiceTable">
                     <thead>
@@ -183,6 +188,60 @@
     }
 
     loadInvoices();
+
+    // Export PDF function
+    function exportInvoicesToPDF() {
+        if (!invoices.length) {
+            alert('Không có hóa đơn để xuất!');
+            return;
+        }
+        
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const userInfo = getUserInfo();
+        
+        // Header
+        doc.setFontSize(18);
+        doc.text('DANH SÁCH HÓA ĐƠN', 105, 20, { align: 'center' });
+        doc.setFontSize(12);
+        doc.text(`Cư dân: ${userInfo.fullName}`, 20, 30);
+        doc.text(`Ngày xuất: ${new Date().toLocaleDateString('vi-VN')}`, 20, 37);
+        
+        // Table
+        let y = 50;
+        invoices.forEach((inv, idx) => {
+            if (y > 270) { doc.addPage(); y = 20; }
+            
+            doc.setFontSize(11);
+            doc.setFont(undefined, 'bold');
+            doc.text(`${idx+1}. Tháng ${inv.month}/${inv.year}`, 20, y);
+            doc.setFont(undefined, 'normal');
+            doc.setFontSize(10);
+            y += 7;
+            
+            doc.text(`Điện: ${inv.electricKwh} kWh × 2,500đ = ${formatVND(inv.electricAmt)}`, 25, y);
+            y += 6;
+            doc.text(`Nước: ${inv.waterM3} m³ × 15,000đ = ${formatVND(inv.waterAmt)}`, 25, y);
+            y += 6;
+            doc.text(`Phí dịch vụ: ${formatVND(inv.serviceAmt)}`, 25, y);
+            y += 6;
+            doc.text(`Phí gửi xe: ${formatVND(inv.parkingAmt)}`, 25, y);
+            y += 6;
+            
+            doc.setFont(undefined, 'bold');
+            doc.text(`TỔNG: ${formatVND(inv.totalAmt)}`, 25, y);
+            doc.setFont(undefined, 'normal');
+            
+            const s = INV_STATUS[inv.status] || INV_STATUS.UNPAID;
+            doc.text(`Trạng thái: ${s.label}`, 120, y);
+            y += 10;
+        });
+        
+        doc.save(`hoa-don-${new Date().getTime()}.pdf`);
+    }
 </script>
+
+<!-- jsPDF CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </body>
 </html>
