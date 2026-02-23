@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trang chủ - Cư dân</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/resident.css">
+</head>
+<body>
+<div id="loading" class="loading"><div class="spinner"></div></div>
+
+<div class="resident-wrapper">
+    <!-- Sidebar -->
+    <nav class="resident-sidebar" id="residentSidebar"></nav>
+
+    <!-- Mobile toggle -->
+    <button class="mobile-toggle" id="mobileToggle">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Main -->
+    <main class="resident-main">
+        <!-- Page header -->
+        <div class="page-header">
+            <div>
+                <h4><i class="fas fa-home"></i> Trang chủ</h4>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item active">Tổng quan</li>
+                    </ol>
+                </nav>
+            </div>
+            <span id="welcomeName" class="text-muted"></span>
+        </div>
+
+        <!-- Alert -->
+        <div id="alertContainer"></div>
+
+        <!-- Stat cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon icon-blue"><i class="fas fa-building"></i></div>
+                    <div>
+                        <div class="stat-value" id="statApartment">—</div>
+                        <div class="stat-label">Căn hộ</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon icon-red"><i class="fas fa-file-invoice-dollar"></i></div>
+                    <div>
+                        <div class="stat-value" id="statUnpaid">0</div>
+                        <div class="stat-label">Hóa đơn chưa đóng</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon icon-orange"><i class="fas fa-bell"></i></div>
+                    <div>
+                        <div class="stat-value" id="statUnread">0</div>
+                        <div class="stat-label">Thông báo chưa đọc</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon icon-purple"><i class="fas fa-tools"></i></div>
+                    <div>
+                        <div class="stat-value" id="statRequests">0</div>
+                        <div class="stat-label">Yêu cầu đang xử lý</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Thông tin căn hộ + Shortcut -->
+        <div class="row g-3">
+            <!-- Thông tin căn hộ -->
+            <div class="col-md-6">
+                <div class="content-card h-100">
+                    <div class="card-title"><i class="fas fa-building me-2"></i>Thông tin căn hộ</div>
+                    <div id="aptSummary">
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-spinner fa-spin"></i> Đang tải...
+                        </div>
+                    </div>
+                    <a href="/resident/apartment" class="btn btn-outline-primary btn-sm mt-2">
+                        <i class="fas fa-arrow-right"></i> Xem chi tiết
+                    </a>
+                </div>
+            </div>
+
+            <!-- Thao tác nhanh -->
+            <div class="col-md-6">
+                <div class="content-card h-100">
+                    <div class="card-title"><i class="fas fa-bolt me-2"></i>Thao tác nhanh</div>
+                    <div class="d-grid gap-2">
+                        <a href="/resident/invoices" class="btn btn-outline-danger">
+                            <i class="fas fa-file-invoice-dollar me-2"></i> Xem hóa đơn của tôi
+                        </a>
+                        <a href="/resident/notifications" class="btn btn-outline-warning">
+                            <i class="fas fa-bell me-2"></i> Xem thông báo
+                        </a>
+                        <a href="/resident/requests" class="btn btn-outline-info">
+                            <i class="fas fa-tools me-2"></i> Gửi yêu cầu hỗ trợ
+                        </a>
+                        <a href="/profile" class="btn btn-outline-secondary">
+                            <i class="fas fa-user me-2"></i> Thông tin cá nhân
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<link rel="stylesheet" href="/css/style.css">
+<script src="/js/common.js"></script>
+<script src="/js/resident-common.js"></script>
+<script>
+    // ── Check quyền ──────────────────────────────────────────
+    requireResidentLogin();
+    renderResidentSidebar('home');
+
+    // Mobile sidebar
+    document.getElementById('mobileToggle').addEventListener('click', () =>
+        document.getElementById('residentSidebar').classList.toggle('open'));
+
+    // ── Load data ─────────────────────────────────────────────
+    async function loadHome() {
+        showLoading();
+        try {
+            const res  = await apiRequest(`${API_BASE_URL}/resident/home`);
+            const data = await res.json();
+
+            // Stat cards
+            document.getElementById('statApartment').textContent = data.apartmentNumber || '—';
+            document.getElementById('statUnpaid').textContent    = data.unpaidInvoices || 0;
+            document.getElementById('statUnread').textContent    = data.unreadNotifications || 0;
+            document.getElementById('statRequests').textContent  = data.pendingRequests || 0;
+
+            // Lưu unread count cho sidebar badge
+            localStorage.setItem('unreadCount', data.unreadNotifications || 0);
+
+            // Welcome
+            document.getElementById('welcomeName').textContent = `Xin chào, ${data.fullName}!`;
+
+            // Căn hộ summary
+            if (data.apartmentId) {
+                document.getElementById('aptSummary').innerHTML = `
+                    <div class="apt-info-row">
+                        <span class="label">Căn hộ</span>
+                        <span class="value">${data.apartmentNumber}</span>
+                    </div>
+                    <div class="apt-info-row">
+                        <span class="label">Tòa nhà</span>
+                        <span class="value">${data.buildingName}</span>
+                    </div>
+                    <div class="apt-info-row">
+                        <span class="label">Tầng</span>
+                        <span class="value">${data.floor}</span>
+                    </div>
+                    <div class="apt-info-row">
+                        <span class="label">Diện tích</span>
+                        <span class="value">${data.area} m²</span>
+                    </div>`;
+            } else {
+                document.getElementById('aptSummary').innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-building d-block mb-2"></i>
+                        <p>Chưa được gán căn hộ.<br>Vui lòng liên hệ Ban quản lý.</p>
+                    </div>`;
+            }
+        } catch(e) {
+            showResidentAlert('alertContainer', 'Không thể tải dữ liệu. ' + e.message);
+        } finally { hideLoading(); }
+    }
+
+    loadHome();
+</script>
+</body>
+</html>

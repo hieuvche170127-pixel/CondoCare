@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
  */
 @Controller
 public class PageController {
-
+    
     /**
      * Trang chủ (HomePage)
      * GET /
@@ -17,7 +17,7 @@ public class PageController {
     public String homePage() {
         return "index";
     }
-
+    
     /**
      * Trang đăng nhập
      * GET /login
@@ -26,7 +26,7 @@ public class PageController {
     public String loginPage() {
         return "login";
     }
-
+    
     /**
      * Trang đăng ký
      * GET /register
@@ -35,7 +35,7 @@ public class PageController {
     public String registerPage() {
         return "register";
     }
-
+    
     /**
      * Trang quên mật khẩu
      * GET /forgot-password
@@ -44,7 +44,7 @@ public class PageController {
     public String forgotPasswordPage() {
         return "forgot-password";
     }
-
+    
     /**
      * Trang reset mật khẩu
      * GET /reset-password
@@ -53,7 +53,7 @@ public class PageController {
     public String resetPasswordPage() {
         return "reset-password";
     }
-
+    
     /**
      * Trang Dashboard (Staff)
      * GET /dashboard
@@ -62,7 +62,7 @@ public class PageController {
     public String dashboardPage() {
         return "dashboard";
     }
-
+    
     /**
      * Trang Profile (Thông tin cá nhân)
      * GET /profile
@@ -71,4 +71,26 @@ public class PageController {
     public String profilePage() {
         return "profile";
     }
+
+    // ─── RESIDENT DASHBOARD PAGES ───────────────────────────
+
+    /** GET /resident → Trang chủ cư dân */
+    @GetMapping("/resident")
+    public String residentHome()          { return "resident/home"; }
+
+    /** GET /resident/notifications → Thông báo */
+    @GetMapping("/resident/notifications")
+    public String residentNotifications() { return "resident/notifications"; }
+
+    /** GET /resident/invoices → Hóa đơn */
+    @GetMapping("/resident/invoices")
+    public String residentInvoices()      { return "resident/invoices"; }
+
+    /** GET /resident/apartment → Thông tin căn hộ */
+    @GetMapping("/resident/apartment")
+    public String residentApartment()     { return "resident/apartment"; }
+
+    /** GET /resident/requests → Yêu cầu hỗ trợ */
+    @GetMapping("/resident/requests")
+    public String residentRequests()      { return "resident/requests"; }
 }

@@ -86,8 +86,11 @@ public class SecurityConfig {
                         // Dashboard chỉ cho Staff
                         .requestMatchers("/dashboard/**", "/api/dashboard/**").permitAll()
 
-                        // Profile - Cần authentication (JWT sẽ được check bởi Filter)
-                        .requestMatchers("/profile/**", "/api/profile/**").permitAll()
+                        // Profile -
+                        .requestMatchers("/profile", "/profile/**", "/api/profile/**").permitAll()
+
+                        // Resident Dashboard -
+                        .requestMatchers("/resident", "/resident/**", "/api/resident/**").permitAll()
 
                         // Tất cả request khác cần authenticate
                         .anyRequest().permitAll()
