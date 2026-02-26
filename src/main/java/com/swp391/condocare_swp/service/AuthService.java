@@ -8,8 +8,9 @@ import com.swp391.condocare_swp.repository.ResidentsRepository;
 import com.swp391.condocare_swp.repository.StaffRepository;
 import com.swp391.condocare_swp.security.CustomUserDetailsService;
 import com.swp391.condocare_swp.security.JwtTokenProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -19,12 +20,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
 /**
  * Service xử lý authentication và authorization
  */
 @Service
 public class AuthService {
+
+    private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
+
+    private static final Set<String> VALID_STAFF_ROLE_IDS = Set.of("R001", "R002", "R003");
     
     @Autowired
     private AuthenticationManager authenticationManager;
@@ -49,41 +55,57 @@ public class AuthService {
     
     @Autowired
     private EmailService emailService;
-    
-    @Value("${password.reset.token.expiration}")
-    private long resetTokenExpiration;
+
+//    @Value("${password.reset.token.expiration}")
+//    private long resetTokenExpiration;
     
     /**
      * Đăng nhập
      */
     @Transactional
     public AuthResponse login(LoginRequest loginRequest) {
-        // Authenticate user
+        logger.info("Login attempt - username: {}, userType: {}",
+                loginRequest.getUsernameOrEmail(),
+                loginRequest.getUserType());
+
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         loginRequest.getUsernameOrEmail(),
                         loginRequest.getPassword()
                 )
         );
-        
-        // Set authentication vào SecurityContext
+
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        
-        // Tạo JWT token
         String jwt = tokenProvider.generateToken(authentication);
-        
-        // Lấy thông tin user
         String username = authentication.getName();
-        
-        // Kiểm tra user type và lấy thông tin tương ứng
-        if ("staff".equalsIgnoreCase(loginRequest.getUserType())) {
-            Staff staff = staffRepository.findByUsernameOrEmail(username, username)
-                    .orElseThrow(() -> new RuntimeException("Staff not found"));
-            
+
+        logger.info("Authentication successful for: {}", username);
+
+        if ("staff".equals(loginRequest.getUserType())) {
+            // Nếu User chọn Login vào staff
+            logger.info("Validating Staff access for: {}", username);
+
+            Staff staff = staffRepository.findByUsernameOrEmail(username, username).orElse(null);
+            if (staff == null) {
+                // User hợp lệ nhưng không tồn tại trong staff table
+                // -> Resident đang cố gắng truy cập staff
+                logger.warn("SECURITY: Resident '{}' attempted to access Staff portal", username);
+                throw new RuntimeException("Tài khoản này không có quyền truy cập vào hệ thống quản lý. Vui lòng chọn 'Cư dân' để đăng nhập.");
+            }
+
+            // Validate Role (chỉ cho phép ADMIN, MANAGER, STAFF)
+            String roleId = staff.getRole().getId();
+            if (!VALID_STAFF_ROLE_IDS.contains(roleId)) {
+                logger.warn("SECURITY: Invalid role_id '{}' for {}", roleId, username);
+                throw new RuntimeException("Vai trò không hợp lệ. Vui lòng liên hệ admin.");
+            }
+
             // Update last login
             staff.setLastLogin(LocalDateTime.now());
             staffRepository.save(staff);
-            
+
+            logger.info("Staff login successful - ID: {}, Role ID: {}", staff.getId(), roleId);
+
             return new AuthResponse(
                     jwt,
                     staff.getId(),
@@ -93,14 +115,26 @@ public class AuthService {
                     staff.getRole().getName(),
                     "staff"
             );
-        } else {
-            Residents resident = residentsRepository.findByUsernameOrEmail(username, username)
-                    .orElseThrow(() -> new RuntimeException("Resident not found"));
-            
+        } else if ("resident".equalsIgnoreCase(loginRequest.getUserType())) {
+            // Nếu User chọn Login vào resident
+            logger.info("Validating Resident access for: {}", username);
+
+            Residents resident = residentsRepository.findByUsernameOrEmail(username, username).orElse(null);
+
+            if (resident == null) {
+                // Username hợp lệ NHƯNG không tồn tại trong Residents table
+                // → Đây là Staff cố gắng truy cập Resident portal
+                logger.warn("SECURITY: Staff '{}' attempted to access Resident portal", username);
+                throw new RuntimeException("Tài khoản này không phải tài khoản cư dân. Vui lòng chọn 'Nhân viên' để đăng nhập.");
+            }
+
             // Update last login
             resident.setLastLogin(LocalDateTime.now());
             residentsRepository.save(resident);
-            
+
+            logger.info("Resident login successful - ID: {}, Type: {}",
+                    resident.getId(), resident.getType());
+
             return new AuthResponse(
                     jwt,
                     resident.getId(),
@@ -110,6 +144,10 @@ public class AuthService {
                     resident.getType().name(),
                     "resident"
             );
+
+        } else {
+            logger.error("Invalid userType: {}", loginRequest.getUserType());
+            throw new RuntimeException("Loại người dùng không hợp lệ. Vui lòng chọn 'Nhân viên' hoặc 'Cư dân'.");
         }
     }
     
