@@ -22,13 +22,13 @@ import java.util.List;
  */
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
-    
+
     @Autowired
     private StaffRepository staffRepository;
-    
+
     @Autowired
     private ResidentsRepository residentsRepository;
-    
+
     /**
      * Load user by username
      * Tìm trong cả Staff và Residents
@@ -37,21 +37,21 @@ public class CustomUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         // Thử tìm trong Staff trước
         Staff staff = staffRepository.findByUsername(username).orElse(null);
-        
+
         if (staff != null) {
             // Nếu tìm thấy Staff, tạo UserDetails cho Staff
             return buildUserDetailsFromStaff(staff);
         }
-        
+
         // Nếu không tìm thấy Staff, tìm trong Residents
         Residents resident = residentsRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException(
                         "User not found with username: " + username));
-        
+
         // Tạo UserDetails cho Resident
         return buildUserDetailsFromResident(resident);
     }
-    
+
     /**
      * Load user by username hoặc email
      */
@@ -59,19 +59,19 @@ public class CustomUserDetailsService implements UserDetailsService {
         // Thử tìm trong Staff
         Staff staff = staffRepository.findByUsernameOrEmail(usernameOrEmail, usernameOrEmail)
                 .orElse(null);
-        
+
         if (staff != null) {
             return buildUserDetailsFromStaff(staff);
         }
-        
+
         // Tìm trong Residents
         Residents resident = residentsRepository.findByUsernameOrEmail(usernameOrEmail, usernameOrEmail)
                 .orElseThrow(() -> new UsernameNotFoundException(
                         "User not found with username or email: " + usernameOrEmail));
-        
+
         return buildUserDetailsFromResident(resident);
     }
-    
+
     /**
      * Tạo UserDetails từ Staff
      */
@@ -79,7 +79,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         // Tạo list authorities từ Role
         List<GrantedAuthority> authorities = new ArrayList<>();
         authorities.add(new SimpleGrantedAuthority("ROLE_" + staff.getRole().getName()));
-        
+
         // Return Spring Security User object
         return User.builder()
                 .username(staff.getUsername())
@@ -91,7 +91,7 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .disabled(staff.getStatus() != Staff.StaffStatus.ACTIVE)
                 .build();
     }
-    
+
     /**
      * Tạo UserDetails từ Resident
      */
@@ -99,7 +99,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         // Tạo list authorities từ Type
         List<GrantedAuthority> authorities = new ArrayList<>();
         authorities.add(new SimpleGrantedAuthority("ROLE_" + resident.getType().name()));
-        
+
         return User.builder()
                 .username(resident.getUsername())
                 .password(resident.getPassword())
