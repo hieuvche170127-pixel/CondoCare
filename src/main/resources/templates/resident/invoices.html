@@ -31,7 +31,73 @@
 
         <div id="alertContainer"></div>
 
-        <!-- Tóm tắt nhanh -->
+        <!-- ── Filter Bar ─────────────────────────────────── -->
+        <div class="content-card mb-3">
+            <div class="d-flex flex-wrap gap-2 align-items-end">
+                <div>
+                    <label class="form-label small mb-1 fw-semibold">🔍 Tìm kiếm</label>
+                    <input type="text" id="filterKeyword" class="form-control form-control-sm"
+                           placeholder="Tên hóa đơn..." style="width:180px"
+                           onkeydown="if(event.key==='Enter') applyFilter()">
+                </div>
+                <div>
+                    <label class="form-label small mb-1 fw-semibold">📅 Lọc theo</label>
+                    <select id="filterType" class="form-select form-select-sm" style="width:130px"
+                            onchange="toggleFilterInputs()">
+                        <option value="all">Tất cả</option>
+                        <option value="month">Tháng</option>
+                        <option value="quarter">Quý</option>
+                        <option value="year">Năm</option>
+                    </select>
+                </div>
+                <div id="monthGroup" style="display:none">
+                    <label class="form-label small mb-1 fw-semibold">Tháng</label>
+                    <select id="filterMonth" class="form-select form-select-sm" style="width:110px">
+                        <option value="1">Tháng 1</option><option value="2">Tháng 2</option>
+                        <option value="3">Tháng 3</option><option value="4">Tháng 4</option>
+                        <option value="5">Tháng 5</option><option value="6">Tháng 6</option>
+                        <option value="7">Tháng 7</option><option value="8">Tháng 8</option>
+                        <option value="9">Tháng 9</option><option value="10">Tháng 10</option>
+                        <option value="11">Tháng 11</option><option value="12">Tháng 12</option>
+                    </select>
+                </div>
+                <div id="quarterGroup" style="display:none">
+                    <label class="form-label small mb-1 fw-semibold">Quý</label>
+                    <select id="filterQuarter" class="form-select form-select-sm" style="width:150px">
+                        <option value="1">Quý 1 (T1–T3)</option>
+                        <option value="2">Quý 2 (T4–T6)</option>
+                        <option value="3">Quý 3 (T7–T9)</option>
+                        <option value="4">Quý 4 (T10–T12)</option>
+                    </select>
+                </div>
+                <div id="yearGroup" style="display:none">
+                    <label class="form-label small mb-1 fw-semibold">Năm</label>
+                    <select id="filterYear" class="form-select form-select-sm" style="width:100px">
+                        <option value="2023">2023</option>
+                        <option value="2024">2024</option>
+                        <option value="2025">2025</option>
+                        <option value="2026" selected>2026</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label small mb-1 fw-semibold">Trạng thái</label>
+                    <select id="filterStatus" class="form-select form-select-sm" style="width:170px">
+                        <option value="ALL">Tất cả</option>
+                        <option value="UNPAID">🔴 Chưa thanh toán</option>
+                        <option value="PAID">✅ Đã thanh toán</option>
+                        <option value="OVERDUE">⚫ Quá hạn</option>
+                    </select>
+                </div>
+                <div class="d-flex gap-2 mt-3">
+                    <button class="btn btn-primary btn-sm" onclick="applyFilter()">
+                        <i class="fas fa-filter me-1"></i>Lọc
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="resetFilter()">
+                        <i class="fas fa-redo me-1"></i>Đặt lại
+                    </button>
+                </div>
+            </div>
+        </div>
         <div class="row g-3 mb-4" id="invoiceSummary"></div>
 
         <!-- Bảng hóa đơn -->
@@ -45,21 +111,21 @@
             <div class="table-responsive">
                 <table class="table table-hover invoice-table align-middle" id="invoiceTable">
                     <thead>
-                        <tr>
-                            <th>Tháng</th>
-                            <th>Điện (kWh)</th>
-                            <th>Nước (m³)</th>
-                            <th class="text-end">Tiền điện</th>
-                            <th class="text-end">Tiền nước</th>
-                            <th class="text-end">Phí DV</th>
-                            <th class="text-end">Phí xe</th>
-                            <th class="text-end">Tổng cộng</th>
-                            <th class="text-center">Trạng thái</th>
-                            <th class="text-center">Hạn đóng</th>
-                        </tr>
+                    <tr>
+                        <th>Tháng</th>
+                        <th>Điện (kWh)</th>
+                        <th>Nước (m³)</th>
+                        <th class="text-end">Tiền điện</th>
+                        <th class="text-end">Tiền nước</th>
+                        <th class="text-end">Phí DV</th>
+                        <th class="text-end">Phí xe</th>
+                        <th class="text-end">Tổng cộng</th>
+                        <th class="text-center">Trạng thái</th>
+                        <th class="text-center">Hạn đóng</th>
+                    </tr>
                     </thead>
                     <tbody id="invoiceBody">
-                        <tr><td colspan="10" class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Đang tải...</td></tr>
+                    <tr><td colspan="10" class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Đang tải...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -76,8 +142,8 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="invModalBody"></div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+            <div class="modal-footer" id="invModalFooter">
+                <!-- Nút được render động -->
             </div>
         </div>
     </div>
@@ -96,15 +162,61 @@
     let invoices = [];
     const invModal = new bootstrap.Modal(document.getElementById('invModal'));
 
-    async function loadInvoices() {
+    // Khởi tạo tháng hiện tại
+    document.getElementById('filterMonth').value = String(new Date().getMonth() + 1);
+
+    // ── Toggle filter inputs ────────────────────────────────────
+    function toggleFilterInputs() {
+        const type = document.getElementById('filterType').value;
+        document.getElementById('monthGroup').style.display   = type === 'month'   ? '' : 'none';
+        document.getElementById('quarterGroup').style.display = type === 'quarter' ? '' : 'none';
+        document.getElementById('yearGroup').style.display    = type !== 'all'     ? '' : 'none';
+    }
+
+    // ── Apply filter ────────────────────────────────────────────
+    function applyFilter() {
+        const params = new URLSearchParams();
+        const filterType = document.getElementById('filterType').value;
+        const keyword    = document.getElementById('filterKeyword').value.trim();
+        const status     = document.getElementById('filterStatus').value;
+
+        if (keyword) {
+            params.set('keyword', keyword);
+        } else {
+            params.set('filterType', filterType);
+            if (filterType === 'month') {
+                params.set('month', document.getElementById('filterMonth').value);
+                params.set('year',  document.getElementById('filterYear').value);
+            } else if (filterType === 'quarter') {
+                params.set('quarter', document.getElementById('filterQuarter').value);
+                params.set('year',    document.getElementById('filterYear').value);
+            } else if (filterType === 'year') {
+                params.set('year', document.getElementById('filterYear').value);
+            }
+        }
+        if (status !== 'ALL') params.set('status', status);
+
+        loadInvoices(params);
+    }
+
+    function resetFilter() {
+        document.getElementById('filterType').value    = 'all';
+        document.getElementById('filterStatus').value  = 'ALL';
+        document.getElementById('filterKeyword').value = '';
+        toggleFilterInputs();
+        loadInvoices();
+    }
+
+    async function loadInvoices(params) {
         showLoading();
         try {
-            const res = await apiRequest(`${API_BASE_URL}/resident/invoices`);
-            invoices  = await res.json();
+            const qs  = params ? '?' + params.toString() : '';
+            const res = await apiRequest(`${API_BASE_URL}/resident/invoices${qs}`);
+            invoices = await res.json();
             renderSummary();
             renderTable();
         } catch(e) {
-            showResidentAlert('alertContainer', 'Không thể tải hóa đơn.');
+            showResidentAlert('alertContainer', 'Không thể tải hóa đơn.', 'danger');
         } finally { hideLoading(); }
     }
 
@@ -172,53 +284,94 @@
         const s = INV_STATUS[inv.status] || INV_STATUS.UNPAID;
 
         document.getElementById('invModalTitle').textContent = `Hóa đơn Tháng ${inv.month}/${inv.year}`;
-        document.getElementById('invModalBody').innerHTML = `
+
+        let bodyHTML = `
             <table class="table table-borderless table-sm">
                 <tr><td class="text-muted">Trạng thái</td><td><span class="badge ${s.cls}">${s.label}</span></td></tr>
                 <tr><td class="text-muted">Hạn thanh toán</td><td>${formatDate(inv.dueDate)}</td></tr>
                 ${inv.paidAt ? `<tr><td class="text-muted">Ngày đã thanh toán</td><td>${formatDateTime(inv.paidAt)}</td></tr>` : ''}
                 <tr><td colspan="2"><hr class="my-2"></td></tr>
-                <tr><td>Điện (${inv.electricKwh} kWh)</td><td class="text-end">${formatVND(inv.electricAmt)}</td></tr>
-                <tr><td>Nước (${inv.waterM3} m³)</td><td class="text-end">${formatVND(inv.waterAmt)}</td></tr>
+                <tr><td>Điện (${inv.electricKwh || 0} kWh)</td><td class="text-end">${formatVND(inv.electricAmt)}</td></tr>
+                <tr><td>Nước (${inv.waterM3 || 0} m³)</td><td class="text-end">${formatVND(inv.waterAmt)}</td></tr>
                 <tr><td>Phí dịch vụ</td><td class="text-end">${formatVND(inv.serviceAmt)}</td></tr>
                 <tr><td>Phí gửi xe</td><td class="text-end">${formatVND(inv.parkingAmt)}</td></tr>
                 <tr class="fw-bold"><td>TỔNG CỘNG</td><td class="text-end text-danger">${formatVND(inv.totalAmt)}</td></tr>
             </table>`;
+
+        document.getElementById('invModalBody').innerHTML = bodyHTML;
+
+        // Render footer động với nút thanh toán
+        let footerHTML = `
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>`;
+
+        if (inv.status === 'UNPAID' || inv.status === 'OVERDUE') {
+            footerHTML += `
+            <button type="button" class="btn btn-success" onclick="payInvoice('${inv.id}')">
+                <i class="fas fa-credit-card"></i> Thanh toán ngay
+            </button>`;
+        }
+
+        document.getElementById('invModalFooter').innerHTML = footerHTML;
+
         invModal.show();
     }
 
-    loadInvoices();
+    async function payInvoice(invoiceId) {
+        if (!confirm('Xác nhận thanh toán hóa đơn này?')) return;
 
-    // Export PDF function
+        showLoading();
+        try {
+            const res = await apiRequest(`${API_BASE_URL}/resident/invoices/${invoiceId}/pay`, {
+                method: 'PUT'
+            });
+
+            if (res.ok) {
+                const message = await res.text();
+                showResidentAlert('alertContainer', message, 'success');
+
+                invModal.hide();
+                loadInvoices();
+            } else {
+                const error = await res.text();
+                showResidentAlert('alertContainer', 'Lỗi: ' + error, 'danger');
+            }
+        } catch (error) {
+            showResidentAlert('alertContainer', 'Có lỗi xảy ra: ' + error.message, 'danger');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    loadInvoices();
     function exportInvoicesToPDF() {
         if (!invoices.length) {
-            alert('Không có hóa đơn để xuất!');
+            showResidentAlert('alertContainer', 'Không có hóa đơn để xuất!', 'warning');
             return;
         }
-        
+
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
         const userInfo = getUserInfo();
-        
+
         // Header
         doc.setFontSize(18);
         doc.text('DANH SÁCH HÓA ĐƠN', 105, 20, { align: 'center' });
         doc.setFontSize(12);
         doc.text(`Cư dân: ${userInfo.fullName}`, 20, 30);
         doc.text(`Ngày xuất: ${new Date().toLocaleDateString('vi-VN')}`, 20, 37);
-        
+
         // Table
         let y = 50;
         invoices.forEach((inv, idx) => {
             if (y > 270) { doc.addPage(); y = 20; }
-            
+
             doc.setFontSize(11);
             doc.setFont(undefined, 'bold');
             doc.text(`${idx+1}. Tháng ${inv.month}/${inv.year}`, 20, y);
             doc.setFont(undefined, 'normal');
             doc.setFontSize(10);
             y += 7;
-            
+
             doc.text(`Điện: ${inv.electricKwh} kWh × 2,500đ = ${formatVND(inv.electricAmt)}`, 25, y);
             y += 6;
             doc.text(`Nước: ${inv.waterM3} m³ × 15,000đ = ${formatVND(inv.waterAmt)}`, 25, y);
@@ -227,16 +380,16 @@
             y += 6;
             doc.text(`Phí gửi xe: ${formatVND(inv.parkingAmt)}`, 25, y);
             y += 6;
-            
+
             doc.setFont(undefined, 'bold');
             doc.text(`TỔNG: ${formatVND(inv.totalAmt)}`, 25, y);
             doc.setFont(undefined, 'normal');
-            
+
             const s = INV_STATUS[inv.status] || INV_STATUS.UNPAID;
             doc.text(`Trạng thái: ${s.label}`, 120, y);
             y += 10;
         });
-        
+
         doc.save(`hoa-don-${new Date().getTime()}.pdf`);
     }
 </script>

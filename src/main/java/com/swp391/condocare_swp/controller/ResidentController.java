@@ -4,7 +4,8 @@ import com.swp391.condocare_swp.service.ResidentDashboardService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.Map;
 
 /**
@@ -18,6 +19,8 @@ import java.util.Map;
 @RequestMapping("/api/resident")
 @CrossOrigin(origins = "*", maxAge = 3600)
 public class ResidentController {
+
+    private static final Logger logger = LoggerFactory.getLogger(ResidentController.class);
 
     @Autowired
     private ResidentDashboardService service;
@@ -56,11 +59,26 @@ public class ResidentController {
 
     /* ─── INVOICES ──────────────────────────────────── */
 
-    /** GET /api/resident/invoices → danh sách hóa đơn */
+    /**
+     * GET /api/resident/invoices → danh sách hóa đơn
+     * Query params (tùy chọn):
+     *   filterType = all | month | quarter | year
+     *   month, quarter, year, status (UNPAID|PAID|OVERDUE|ALL), keyword
+     */
     @GetMapping("/invoices")
-    public ResponseEntity<?> getInvoices() {
-        try   { return ResponseEntity.ok(service.getInvoices()); }
-        catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
+    public ResponseEntity<?> getInvoices(
+            @RequestParam(defaultValue = "all") String filterType,
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) Integer quarter,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String keyword) {
+        try {
+            return ResponseEntity.ok(
+                    service.getInvoices(filterType, month, quarter, year, status, keyword));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     /* ─── APARTMENT ─────────────────────────────────── */
@@ -74,11 +92,30 @@ public class ResidentController {
 
     /* ─── SERVICE REQUESTS ──────────────────────────── */
 
-    /** GET /api/resident/requests → danh sách yêu cầu hỗ trợ */
+    /**
+     * GET /api/resident/requests → danh sách yêu cầu hỗ trợ
+     * Query params (tùy chọn):
+     *   filterType = all | month | quarter | year
+     *   month      = 1-12
+     *   quarter    = 1-4
+     *   year       = 2024, 2025, ...
+     *   status     = PENDING | IN_PROGRESS | DONE | REJECTED | ALL
+     *   keyword    = chuỗi tìm kiếm
+     */
     @GetMapping("/requests")
-    public ResponseEntity<?> getRequests() {
-        try   { return ResponseEntity.ok(service.getServiceRequests()); }
-        catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
+    public ResponseEntity<?> getRequests(
+            @RequestParam(defaultValue = "all") String filterType,
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) Integer quarter,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String keyword) {
+        try {
+            return ResponseEntity.ok(
+                    service.getServiceRequests(filterType, month, quarter, year, status, keyword));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     /**
@@ -87,14 +124,44 @@ public class ResidentController {
      */
     @PostMapping("/requests")
     public ResponseEntity<?> createRequest(@RequestBody Map<String, String> body) {
+        logger.info("POST /api/resident/requests — body received: {}", body);
         try {
-            String msg = service.createServiceRequest(
-                body.get("title"),
-                body.get("description"),
-                body.getOrDefault("category", "OTHER"),
-                body.getOrDefault("priority", "MEDIUM")
-            );
+            String title    = body.get("title");
+            String desc     = body.get("description");
+            String category = body.getOrDefault("category", "OTHER");
+            String priority = body.getOrDefault("priority", "MEDIUM");
+
+            // Log để debug — xác nhận controller nhận đúng data
+            logger.info("  title=[{}], desc=[{}], category=[{}], priority=[{}]",
+                    title, desc, category, priority);
+
+            String msg = service.createServiceRequest(title, desc, category, priority);
             return ResponseEntity.ok(msg);
-        } catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
+
+        } catch (IllegalArgumentException e) {
+            logger.warn("Validation error creating request: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            // Log full stack trace để thấy root cause
+            logger.error("Unexpected error creating service request", e);
+            return ResponseEntity.internalServerError()
+                    .body("Lỗi server: " + e.getMessage() +
+                            " | Cause: " + (e.getCause() != null ? e.getCause().getMessage() : "unknown"));
+        }
+    }
+
+    /**
+     * Đánh dấu hóa đơn đã thanh toán
+     * PUT /api/resident/invoices/{id}/pay
+     */
+    @PutMapping("/invoices/{id}/pay")
+    public ResponseEntity<?> markInvoiceAsPaid(@PathVariable String id) {
+        try {
+            String message = service.markInvoiceAsPaid(id);
+            return ResponseEntity.ok(message);
+        } catch (Exception e) {
+            logger.error("Error marking invoice as paid", e);
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 }

@@ -169,8 +169,8 @@
                 const data = await response.json();
 
                 // Lưu token và user info
-                saveToken(data.token);
-                saveUserInfo({
+                const remember = document.getElementById('rememberMe')?.checked || false;
+                saveLoginSession({
                     id: data.id,
                     username: data.username,
                     email: data.email,

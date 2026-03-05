@@ -10,7 +10,9 @@
     <link rel="stylesheet" href="/css/resident.css">
 </head>
 <body>
-<div id="loading" class="loading"><div class="spinner"></div></div>
+<div id="loading" class="loading">
+    <div class="spinner"></div>
+</div>
 
 <div class="resident-wrapper">
     <nav class="resident-sidebar" id="residentSidebar"></nav>
@@ -34,11 +36,86 @@
 
         <div id="alertContainer"></div>
 
-        <!-- Danh sách yêu cầu -->
+        <!-- ── Filter Bar ─────────────────────────────────── -->
+        <div class="content-card mb-3">
+            <div class="d-flex flex-wrap gap-2 align-items-end">
+                <!-- Tìm kiếm -->
+                <div>
+                    <label class="form-label small mb-1 fw-semibold">🔍 Tìm kiếm</label>
+                    <input type="text" id="filterKeyword" class="form-control form-control-sm"
+                           placeholder="Tiêu đề, mô tả..." style="width:200px"
+                           onkeydown="if(event.key==='Enter') applyFilter()">
+                </div>
+                <!-- Loại filter -->
+                <div>
+                    <label class="form-label small mb-1 fw-semibold">📅 Lọc theo</label>
+                    <select id="filterType" class="form-select form-select-sm" style="width:130px"
+                            onchange="toggleFilterInputs()">
+                        <option value="all">Tất cả</option>
+                        <option value="month">Tháng</option>
+                        <option value="quarter">Quý</option>
+                        <option value="year">Năm</option>
+                    </select>
+                </div>
+                <!-- Tháng -->
+                <div id="monthGroup" style="display:none">
+                    <label class="form-label small mb-1 fw-semibold">Tháng</label>
+                    <select id="filterMonth" class="form-select form-select-sm" style="width:110px">
+                        <option value="1">Tháng 1</option><option value="2">Tháng 2</option>
+                        <option value="3">Tháng 3</option><option value="4">Tháng 4</option>
+                        <option value="5">Tháng 5</option><option value="6">Tháng 6</option>
+                        <option value="7">Tháng 7</option><option value="8">Tháng 8</option>
+                        <option value="9">Tháng 9</option><option value="10">Tháng 10</option>
+                        <option value="11">Tháng 11</option><option value="12">Tháng 12</option>
+                    </select>
+                </div>
+                <!-- Quý -->
+                <div id="quarterGroup" style="display:none">
+                    <label class="form-label small mb-1 fw-semibold">Quý</label>
+                    <select id="filterQuarter" class="form-select form-select-sm" style="width:150px">
+                        <option value="1">Quý 1 (T1–T3)</option>
+                        <option value="2">Quý 2 (T4–T6)</option>
+                        <option value="3">Quý 3 (T7–T9)</option>
+                        <option value="4">Quý 4 (T10–T12)</option>
+                    </select>
+                </div>
+                <!-- Năm -->
+                <div id="yearGroup" style="display:none">
+                    <label class="form-label small mb-1 fw-semibold">Năm</label>
+                    <select id="filterYear" class="form-select form-select-sm" style="width:100px">
+                        <option value="2023">2023</option>
+                        <option value="2024">2024</option>
+                        <option value="2025">2025</option>
+                        <option value="2026" selected>2026</option>
+                    </select>
+                </div>
+                <!-- Trạng thái -->
+                <div>
+                    <label class="form-label small mb-1 fw-semibold">Trạng thái</label>
+                    <select id="filterStatus" class="form-select form-select-sm" style="width:150px">
+                        <option value="ALL">Tất cả</option>
+                        <option value="PENDING">⏳ Chờ xử lý</option>
+                        <option value="IN_PROGRESS">🔧 Đang xử lý</option>
+                        <option value="DONE">✅ Hoàn thành</option>
+                        <option value="REJECTED">❌ Từ chối</option>
+                    </select>
+                </div>
+                <!-- Nút -->
+                <div class="d-flex gap-2 mt-3">
+                    <button class="btn btn-primary btn-sm" onclick="applyFilter()">
+                        <i class="fas fa-filter me-1"></i>Lọc
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="resetFilter()">
+                        <i class="fas fa-redo me-1"></i>Đặt lại
+                    </button>
+                </div>
+            </div>
+        </div>
         <div class="content-card">
             <div class="card-title"><i class="fas fa-list me-2"></i>Lịch sử yêu cầu của tôi</div>
             <div id="requestList">
-                <div class="empty-state"><i class="fas fa-spinner fa-spin d-block"></i><p>Đang tải...</p></div>
+                <div class="empty-state"><i class="fas fa-spinner fa-spin d-block"></i>
+                    <p>Đang tải...</p></div>
             </div>
         </div>
     </main>
@@ -54,37 +131,39 @@
             </div>
             <div class="modal-body">
                 <div id="formAlert"></div>
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Tiêu đề *</label>
-                    <input type="text" class="form-control" id="reqTitle"
-                           placeholder="Mô tả ngắn gọn vấn đề, ví dụ: Bóng đèn hành lang hỏng" maxlength="255">
-                </div>
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label fw-bold">Danh mục *</label>
-                        <select class="form-select" id="reqCategory">
-                            <option value="ELECTRIC">⚡ Điện</option>
-                            <option value="WATER">💧 Nước</option>
-                            <option value="INTERNET">🌐 Internet</option>
-                            <option value="HVAC">❄️ Điều hòa / Thông gió</option>
-                            <option value="STRUCTURE">🏗️ Kết cấu tòa nhà</option>
-                            <option value="OTHER" selected>🔧 Khác</option>
-                        </select>
+                <form id="requestForm">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Tiêu đề *</label>
+                        <input type="text" class="form-control" id="reqTitle"
+                               placeholder="Mô tả ngắn gọn vấn đề, ví dụ: Bóng đèn hành lang hỏng" maxlength="255">
                     </div>
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label fw-bold">Mức độ ưu tiên</label>
-                        <select class="form-select" id="reqPriority">
-                            <option value="LOW">🟢 Thấp - Không gấp</option>
-                            <option value="MEDIUM" selected>🟡 Trung bình</option>
-                            <option value="HIGH">🔴 Cao - Cần xử lý sớm</option>
-                        </select>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Danh mục *</label>
+                            <select class="form-select" id="reqCategory">
+                                <option value="ELECTRIC">⚡ Điện</option>
+                                <option value="WATER">💧 Nước</option>
+                                <option value="INTERNET">🌐 Internet</option>
+                                <option value="HVAC">❄️ Điều hòa / Thông gió</option>
+                                <option value="STRUCTURE">🏗️ Kết cấu tòa nhà</option>
+                                <option value="OTHER" selected>🔧 Khác</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Mức độ ưu tiên</label>
+                            <select class="form-select" id="reqPriority">
+                                <option value="LOW">🟢 Thấp - Không gấp</option>
+                                <option value="MEDIUM" selected>🟡 Trung bình</option>
+                                <option value="HIGH">🔴 Cao - Cần xử lý sớm</option>
+                            </select>
+                        </div>
                     </div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Mô tả chi tiết *</label>
-                    <textarea class="form-control" id="reqDescription" rows="5"
-                              placeholder="Mô tả chi tiết vấn đề: xảy ra khi nào, ảnh hưởng như thế nào, đã thử khắc phục chưa..."></textarea>
-                </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Mô tả chi tiết *</label>
+                        <textarea class="form-control" id="reqDescription" rows="5"
+                                  placeholder="Mô tả chi tiết vấn đề: xảy ra khi nào, ảnh hưởng như thế nào, đã thử khắc phục chưa..."></textarea>
+                    </div>
+                </form>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
@@ -108,11 +187,57 @@
 
     const newModal = new bootstrap.Modal(document.getElementById('newRequestModal'));
 
+    // Khởi tạo tháng hiện tại
+    document.getElementById('filterMonth').value = String(new Date().getMonth() + 1);
+
+    // ── Toggle filter inputs ────────────────────────────────────
+    function toggleFilterInputs() {
+        const type = document.getElementById('filterType').value;
+        document.getElementById('monthGroup').style.display   = type === 'month'   ? '' : 'none';
+        document.getElementById('quarterGroup').style.display = type === 'quarter' ? '' : 'none';
+        document.getElementById('yearGroup').style.display    = type !== 'all'     ? '' : 'none';
+    }
+
+    // ── Apply filter ────────────────────────────────────────────
+    function applyFilter() {
+        const params = new URLSearchParams();
+        const filterType = document.getElementById('filterType').value;
+        const keyword    = document.getElementById('filterKeyword').value.trim();
+        const status     = document.getElementById('filterStatus').value;
+
+        if (keyword) {
+            params.set('keyword', keyword);
+        } else {
+            params.set('filterType', filterType);
+            if (filterType === 'month') {
+                params.set('month', document.getElementById('filterMonth').value);
+                params.set('year',  document.getElementById('filterYear').value);
+            } else if (filterType === 'quarter') {
+                params.set('quarter', document.getElementById('filterQuarter').value);
+                params.set('year',    document.getElementById('filterYear').value);
+            } else if (filterType === 'year') {
+                params.set('year', document.getElementById('filterYear').value);
+            }
+        }
+        if (status !== 'ALL') params.set('status', status);
+
+        loadRequests(params);
+    }
+
+    function resetFilter() {
+        document.getElementById('filterType').value    = 'all';
+        document.getElementById('filterStatus').value  = 'ALL';
+        document.getElementById('filterKeyword').value = '';
+        toggleFilterInputs();
+        loadRequests();
+    }
+
     // ── Load danh sách ────────────────────────────────────────
-    async function loadRequests() {
+    async function loadRequests(params) {
         showLoading();
         try {
-            const res  = await apiRequest(`${API_BASE_URL}/resident/requests`);
+            const qs  = params ? '?' + params.toString() : '';
+            const res  = await apiRequest(`${API_BASE_URL}/resident/requests${qs}`);
             const data = await res.json();
             renderRequests(data);
         } catch(e) {
@@ -149,14 +274,11 @@
                     </div>
                     <span class="badge ${s.cls}">${s.label}</span>
                 </div>
-
                 <p class="text-muted small mt-2 mb-2">${sr.description.substring(0,150)}${sr.description.length>150?'...':''}</p>
-
                 ${sr.note ? `
                 <div class="alert alert-info py-2 px-3 mb-2 small">
                     <i class="fas fa-comment-alt me-1"></i><strong>Phản hồi từ Ban quản lý:</strong> ${sr.note}
                 </div>` : ''}
-
                 <div class="request-meta d-flex gap-3 flex-wrap">
                     <span><i class="fas fa-calendar me-1"></i>${formatDate(sr.createdAt)}</span>
                     ${sr.assignedTo ? `<span><i class="fas fa-user-cog me-1"></i>Phụ trách: ${sr.assignedTo}</span>` : ''}
@@ -166,46 +288,50 @@
         }).join('');
     }
 
-    // ── Submit yêu cầu mới ────────────────────────────────────
-    document.getElementById('btnSubmitRequest').addEventListener('click', async () => {
+    // ── Submit yêu cầu mới ──────────────────────────────────────
+    document.getElementById('btnSubmitRequest').addEventListener('click', async function(e) {
+        e.preventDefault();
+
         const title       = document.getElementById('reqTitle').value.trim();
         const description = document.getElementById('reqDescription').value.trim();
         const category    = document.getElementById('reqCategory').value;
         const priority    = document.getElementById('reqPriority').value;
 
         if (!title || !description) {
-            document.getElementById('formAlert').innerHTML =
-                `<div class="alert alert-danger py-2">Vui lòng điền đầy đủ Tiêu đề và Mô tả!</div>`;
+            document.getElementById('formAlert').innerHTML = `
+                <div class="alert alert-warning">Vui lòng điền đầy đủ Tiêu đề và Mô tả!</div>`;
             return;
         }
 
-        const btn = document.getElementById('btnSubmitRequest');
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Đang gửi...';
+        document.getElementById('formAlert').innerHTML = '';
+        this.disabled = true;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang gửi...';
 
+        showLoading();
         try {
-            const res = await apiRequest(`${API_BASE_URL}/resident/requests`, {
+            const response = await apiRequest(`${API_BASE_URL}/resident/requests`, {
                 method: 'POST',
                 body: JSON.stringify({ title, description, category, priority })
             });
-            const msg = await res.text();
-            if (res.ok) {
+
+            if (response.ok) {
+                const message = await response.text();
+                showResidentAlert('alertContainer', message, 'success');
                 newModal.hide();
-                document.getElementById('reqTitle').value       = '';
-                document.getElementById('reqDescription').value = '';
-                document.getElementById('formAlert').innerHTML  = '';
-                showResidentAlert('alertContainer', msg, 'success');
-                loadRequests(); // Reload danh sách
+                document.getElementById('requestForm').reset();
+                loadRequests(); // Reload list
             } else {
+                const error = await response.text();
                 document.getElementById('formAlert').innerHTML =
-                    `<div class="alert alert-danger py-2">${msg}</div>`;
+                    `<div class="alert alert-danger">Lỗi: ${error}</div>`;
             }
-        } catch(e) {
+        } catch (error) {
             document.getElementById('formAlert').innerHTML =
-                `<div class="alert alert-danger py-2">Có lỗi xảy ra, vui lòng thử lại.</div>`;
+                `<div class="alert alert-danger">Có lỗi xảy ra: ${error.message}</div>`;
         } finally {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-paper-plane me-1"></i> Gửi yêu cầu';
+            hideLoading();
+            this.disabled = false;
+            this.innerHTML = '<i class="fas fa-paper-plane me-1"></i> Gửi yêu cầu';
         }
     });
 
