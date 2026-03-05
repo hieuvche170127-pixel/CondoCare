@@ -11,17 +11,51 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-public class ApartmentService
-{
+public class ApartmentService {
+
     private final ApartmentRepository apartmentRepository;
 
-    public Page<Apartment> getApartmentsByBuilding(String buildingId, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("number").ascending());
+    // Lấy danh sách TẤT CẢ căn hộ (Có tìm kiếm theo số phòng và phân trang)
+    public Page<Apartment> getApartmentsPaginated(String keyword, int pageNo, int pageSize) {
+        Pageable pageable = PageRequest.of(pageNo, pageSize, Sort.by("building.name").ascending().and(Sort.by("number").ascending()));
 
-        // Tìm căn hộ theo ID tòa nhà và phân trang
-        // Đảm bảo ApartmentRepository đã có hàm: Page<Apartment> findByBuildingId(String bId, Pageable p);
-        return apartmentRepository.findByBuildingId(buildingId, pageable);
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            return apartmentRepository.findByNumberContainingIgnoreCase(keyword.trim(), pageable);
+        }
+        return apartmentRepository.findAll(pageable);
     }
 
+    // Lấy 1 căn hộ theo ID
+    public Apartment getApartmentById(String id) {
+        return apartmentRepository.findById(id).orElse(null);
+    }
 
+    // Lưu căn hộ
+    public void saveApartment(Apartment apartment) {
+        apartmentRepository.save(apartment);
+    }
+
+    // Xóa căn hộ (Xóa vật lý)
+    public void deleteApartment(String id) {
+        apartmentRepository.deleteById(id);
+    }
+
+    // Thêm hàm này vào trong ApartmentService.java
+
+    // Kiểm tra xem căn hộ đã tồn tại chưa
+    public boolean checkDuplicateApartment(String buildingId, Integer floor, String number) {
+        return apartmentRepository.existsByBuildingIdAndFloorAndNumber(buildingId, floor, number);
+    }
+
+    public Page<Apartment> filterApartments(String keyword, String buildingId,
+                                            Apartment.ApartmentStatus status,
+                                            Apartment.RentalStatus rentalStatus,
+                                            int pageNo, int pageSize) {
+
+        Pageable pageable = PageRequest.of(pageNo, pageSize,
+                Sort.by("building.name").ascending().and(Sort.by("number").ascending()));
+
+        // Gọi hàm Filter thông minh từ Repository
+        return apartmentRepository.filterApartments(keyword, buildingId, status, rentalStatus, pageable);
+    }
 }

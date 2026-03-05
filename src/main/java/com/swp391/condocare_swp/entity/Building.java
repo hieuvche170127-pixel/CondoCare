@@ -54,4 +54,25 @@ public class Building {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "manager_id", nullable = false)
     private Staff manager;
+
+    // --- PHẦN BỔ SUNG ---
+    // Khai báo biến status để lưu vào Database
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, columnDefinition = "ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE'")
+    private BuildingStatus status = BuildingStatus.ACTIVE;
+
+    // Tự động gán giá trị mặc định nếu người dùng quên truyền vào khi tạo mới
+    @PrePersist
+    protected void onCreate() {
+        if (this.status == null) {
+            this.status = BuildingStatus.ACTIVE;
+        }
+    }
+
+    // Định nghĩa Enum
+    public enum BuildingStatus { ACTIVE, INACTIVE }
+
+
 }
+
+
