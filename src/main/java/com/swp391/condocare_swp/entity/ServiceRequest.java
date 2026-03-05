@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
 public class ServiceRequest {
 
     @Id
-    @Column(name = "ID", length = 15, nullable = false)
+    @Column(name = "ID", length = 20, nullable = false)
     private String id;
 
     /** Tiêu đề ngắn mô tả vấn đề */

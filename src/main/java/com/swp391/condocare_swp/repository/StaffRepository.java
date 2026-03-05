@@ -2,6 +2,7 @@ package com.swp391.condocare_swp.repository;
 
 import com.swp391.condocare_swp.entity.Staff;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -10,7 +11,8 @@ import java.util.Optional;
  * Repository cho Staff entity
  */
 @Repository
-public interface StaffRepository extends JpaRepository<Staff, String> {
+public interface StaffRepository extends JpaRepository<Staff, String>,
+        JpaSpecificationExecutor<Staff> {
     
     /**
      * Tìm Staff theo username

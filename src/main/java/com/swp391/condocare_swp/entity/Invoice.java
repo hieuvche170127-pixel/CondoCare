@@ -15,87 +15,56 @@ import java.time.LocalDateTime;
  * Mỗi căn hộ chỉ có duy nhất 1 hóa đơn cho mỗi tháng/năm (unique key).
  */
 @Entity
-@Table(name = "Invoice_Monthly",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"apartment_id","month","year"}))
+@Table(name = "Invoice")
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class Invoice {
-
     @Id
-    @Column(name = "ID", length = 15, nullable = false)
     private String id;
 
-    /** Căn hộ được lập hóa đơn */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "apartment_id", nullable = false)
+    @ManyToOne
+    @JoinColumn(name = "apartment_id")
     private Apartment apartment;
 
-    /** Tháng (1-12) */
-    @Column(name = "month", nullable = false)
     private Integer month;
-
-    /** Năm */
-    @Column(name = "year", nullable = false)
     private Integer year;
 
-    /** Số kWh điện tiêu thụ */
-    @Column(name = "electric_kwh")
-    private Float electricKwh = 0f;
+    // Liên kết với MeterReading
+    @ManyToOne
+    @JoinColumn(name = "electric_reading_id")
+    private MeterReading electricReading;
 
-    /** Số m³ nước tiêu thụ */
-    @Column(name = "water_m3")
-    private Float waterM3 = 0f;
+    @ManyToOne
+    @JoinColumn(name = "water_reading_id")
+    private MeterReading waterReading;
 
-    /** Tiền điện */
-    @Column(name = "electric_amt", precision = 15, scale = 2)
-    private BigDecimal electricAmt = BigDecimal.ZERO;
+    // Liên kết với Fees
+    @ManyToOne
+    @JoinColumn(name = "service_fee_id")
+    private Fees serviceFee;
 
-    /** Tiền nước */
-    @Column(name = "water_amt", precision = 15, scale = 2)
-    private BigDecimal waterAmt = BigDecimal.ZERO;
+    @ManyToOne
+    @JoinColumn(name = "parking_fee_id")
+    private Fees parkingFee;
 
-    /** Phí dịch vụ / quản lý */
-    @Column(name = "service_amt", precision = 15, scale = 2)
-    private BigDecimal serviceAmt = BigDecimal.ZERO;
+    // Các số tiền
+    private BigDecimal electricAmount;
+    private BigDecimal waterAmount;
+    private BigDecimal serviceAmount;
+    private BigDecimal parkingAmount;
+    private BigDecimal totalAmount;
 
-    /** Phí gửi xe */
-    @Column(name = "parking_amt", precision = 15, scale = 2)
-    private BigDecimal parkingAmt = BigDecimal.ZERO;
-
-    /** Tổng cộng */
-    @Column(name = "total_amt", precision = 15, scale = 2, nullable = false)
-    private BigDecimal totalAmt = BigDecimal.ZERO;
-
-    /** Trạng thái thanh toán */
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
-    private InvoiceStatus status = InvoiceStatus.UNPAID;
+    private InvoiceStatus status;  // UNPAID, PAID, OVERDUE
 
-    /** Hạn thanh toán */
-    @Column(name = "due_date")
+    private LocalDateTime issuedAt;
     private LocalDate dueDate;
-
-    /** Thời điểm thanh toán thực tế */
-    @Column(name = "paid_at")
     private LocalDateTime paidAt;
 
-    /** Staff tạo hóa đơn */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by", nullable = false)
+    @ManyToOne
+    @JoinColumn(name = "create_by")
     private Staff createdBy;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
-
     public enum InvoiceStatus {
-        UNPAID,  // Chưa thanh toán
-        PAID,    // Đã thanh toán
-        OVERDUE  // Quá hạn
+        UNPAID, PAID, OVERDUE
     }
 }

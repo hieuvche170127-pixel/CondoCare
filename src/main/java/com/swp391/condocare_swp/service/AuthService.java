@@ -31,34 +31,34 @@ public class AuthService {
     private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
 
     private static final Set<String> VALID_STAFF_ROLE_IDS = Set.of("R001", "R002", "R003");
-    
+
     @Autowired
     private AuthenticationManager authenticationManager;
-    
+
     @Autowired
     private StaffRepository staffRepository;
-    
+
     @Autowired
     private ResidentsRepository residentsRepository;
-    
+
     @Autowired
     private ApartmentRepository apartmentRepository;
-    
+
     @Autowired
     private PasswordEncoder passwordEncoder;
-    
+
     @Autowired
     private JwtTokenProvider tokenProvider;
-    
+
     @Autowired
     private CustomUserDetailsService userDetailsService;
-    
+
     @Autowired
     private EmailService emailService;
 
 //    @Value("${password.reset.token.expiration}")
 //    private long resetTokenExpiration;
-    
+
     /**
      * Đăng nhập
      */
@@ -91,6 +91,16 @@ public class AuthService {
                 // -> Resident đang cố gắng truy cập staff
                 logger.warn("SECURITY: Resident '{}' attempted to access Staff portal", username);
                 throw new RuntimeException("Tài khoản này không có quyền truy cập vào hệ thống quản lý. Vui lòng chọn 'Cư dân' để đăng nhập.");
+            }
+
+            // Kiểm tra tài khoản nhân viên bị vô hiệu hóa hoặc đã nghỉ
+            if (staff.getStatus() == Staff.StaffStatus.RESIGNED) {
+                logger.warn("SECURITY: Resigned staff '{}' attempted to login", username);
+                throw new RuntimeException("Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.");
+            }
+            if (staff.getStatus() == Staff.StaffStatus.ON_LEAVE) {
+                logger.warn("Staff '{}' on leave attempted to login", username);
+                throw new RuntimeException("Tài khoản của bạn đang trong trạng thái nghỉ phép. Vui lòng liên hệ quản trị viên.");
             }
 
             // Validate Role (chỉ cho phép ADMIN, MANAGER, STAFF)
@@ -128,6 +138,12 @@ public class AuthService {
                 throw new RuntimeException("Tài khoản này không phải tài khoản cư dân. Vui lòng chọn 'Nhân viên' để đăng nhập.");
             }
 
+            // Kiểm tra tài khoản bị vô hiệu hóa
+            if (resident.getStatus() == Residents.ResidentStatus.INACTIVE) {
+                logger.warn("SECURITY: Inactive resident '{}' attempted to login", username);
+                throw new RuntimeException("Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ ban quản lý.");
+            }
+
             // Update last login
             resident.setLastLogin(LocalDateTime.now());
             residentsRepository.save(resident);
@@ -150,7 +166,7 @@ public class AuthService {
             throw new RuntimeException("Loại người dùng không hợp lệ. Vui lòng chọn 'Nhân viên' hoặc 'Cư dân'.");
         }
     }
-    
+
     /**
      * Đăng ký resident mới - chỉ cần thông tin cơ bản
      * Admin sẽ phê duyệt & gán căn hộ sau
@@ -192,39 +208,39 @@ public class AuthService {
 
         return "Đăng ký thành công! Bạn có thể đăng nhập ngay bây giờ.";
     }
-    
+
     /**
      * Quên mật khẩu - Gửi email reset
      */
     @Transactional
     public String forgotPassword(ForgotPasswordRequest request) {
         String resetToken;
-        
+
         // Tìm user theo email
         if ("staff".equalsIgnoreCase(request.getUserType())) {
             Staff staff = staffRepository.findByEmail(request.getEmail())
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản với email này"));
-            
+
             // Tạo JWT reset token chứa username
             resetToken = tokenProvider.generateTokenFromUsername(staff.getUsername());
-            
+
             // Gửi email
             emailService.sendPasswordResetEmail(staff.getEmail(), resetToken);
-            
+
         } else {
             Residents resident = residentsRepository.findByEmail(request.getEmail())
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản với email này"));
-            
+
             // Tạo JWT reset token chứa username
             resetToken = tokenProvider.generateTokenFromUsername(resident.getUsername());
-            
+
             // Gửi email
             emailService.sendPasswordResetEmail(resident.getEmail(), resetToken);
         }
-        
+
         return "Email reset password đã được gửi. Vui lòng kiểm tra email của bạn.";
     }
-    
+
     /**
      * Reset password
      */
@@ -234,16 +250,16 @@ public class AuthService {
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {
             throw new RuntimeException("Password mới và Confirm Password không khớp");
         }
-        
+
         // Validate token (cần implement logic validate token)
         // Đây là simplified version
-        
+
         // Get username from token
         String username = tokenProvider.getUsernameFromToken(request.getToken());
-        
+
         // Try to find in Staff
         Staff staff = staffRepository.findByUsername(username).orElse(null);
-        
+
         if (staff != null) {
             staff.setPassword(passwordEncoder.encode(request.getNewPassword()));
             staffRepository.save(staff);
@@ -251,15 +267,15 @@ public class AuthService {
         } else {
             Residents resident = residentsRepository.findByUsername(username)
                     .orElseThrow(() -> new RuntimeException("User not found"));
-            
+
             resident.setPassword(passwordEncoder.encode(request.getNewPassword()));
             residentsRepository.save(resident);
             emailService.sendPasswordResetSuccessEmail(resident.getEmail());
         }
-        
+
         return "Reset password thành công! Bạn có thể đăng nhập với password mới.";
     }
-    
+
     /**
      * Generate unique Resident ID
      */

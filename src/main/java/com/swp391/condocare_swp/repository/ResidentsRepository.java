@@ -2,6 +2,7 @@ package com.swp391.condocare_swp.repository;
 
 import com.swp391.condocare_swp.entity.Residents;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -10,7 +11,7 @@ import java.util.Optional;
  * Repository cho Residents entity
  */
 @Repository
-public interface ResidentsRepository extends JpaRepository<Residents, String> {
+public interface ResidentsRepository extends JpaRepository<Residents, String>, JpaSpecificationExecutor<Residents> {
     
     /**
      * Tìm Resident theo username
@@ -46,4 +47,6 @@ public interface ResidentsRepository extends JpaRepository<Residents, String> {
      * Đếm số Resident theo status
      */
     Long countByStatus(Residents.ResidentStatus status);
+
+    long countByType(Residents.ResidentType type);
 }
