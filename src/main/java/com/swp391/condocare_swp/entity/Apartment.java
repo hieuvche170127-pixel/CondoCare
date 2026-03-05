@@ -19,7 +19,7 @@ public class Apartment {
      * ID của Apartment (Primary Key)
      */
     @Id
-    @Column(name = "ID", length = 4, nullable = false)
+    @Column(name = "ID", length = 20, nullable = false)
     private String id;
     
     /**
@@ -39,7 +39,13 @@ public class Apartment {
      */
     @Column(name = "area", nullable = false)
     private Float area;
-    
+
+    @Column(name = "sale_price")
+    private Float salePrice;
+
+    @Column(name = "rent_price")
+    private Float rentPrice;
+
     /**
      * Tòa nhà chứa căn hộ
      * Many-to-One: Một Building có nhiều Apartment
@@ -47,19 +53,19 @@ public class Apartment {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "building_id", nullable = false)
     private Building building;
-    
+
     /**
      * Trạng thái căn hộ: EMPTY, OCCUPIED, MAINTENANCE
      */
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", columnDefinition = "ENUM('EMPTY', 'OCCUPIED', 'MAINTENANCE')")
+    @Column(name = "status", columnDefinition = "ENUM('EMPTY', 'OCCUPIED', 'MAINTENANCE') DEFAULT 'EMPTY'")
     private ApartmentStatus status = ApartmentStatus.EMPTY;
     
     /**
      * Trạng thái cho thuê: AVAILABLE, RENTED, OWNER
      */
     @Enumerated(EnumType.STRING)
-    @Column(name = "rental_status", columnDefinition = "ENUM('AVAILABLE', 'RENTED', 'OWNER')")
+    @Column(name = "rental_status", columnDefinition = "ENUM('AVAILABLE', 'RENTED', 'OWNER') DEFAULT 'AVAILABLE'")
     private RentalStatus rentalStatus = RentalStatus.AVAILABLE;
     
     /**
@@ -85,7 +91,17 @@ public class Apartment {
      */
     @Column(name = "total_vehicle")
     private Integer totalVehicle = 0;
-    
+
+    @PrePersist
+    protected void onCreate() {
+        if (this.id == null || this.id.isEmpty()) {
+            String bId = (this.building != null && this.building.getId() != null) ? this.building.getId() : "UNK";
+            this.id = bId + this.floor + this.number;
+        }
+        if (status == null) status = ApartmentStatus.EMPTY;
+        if (rentalStatus == null) rentalStatus = RentalStatus.AVAILABLE;
+    }
+
     /**
      * Enum cho Apartment Status
      */
