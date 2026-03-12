@@ -45,6 +45,7 @@
                             <i class="fas fa-users"></i> Cư dân
                         </a>
                     </li>
+                    <li class="nav-item"><a class="nav-link" href="/dashboard/contracts"><i class="fas fa-file-signature"></i> Hợp đồng</a></li>
                     <li class="nav-item">
                         <a class="nav-link" href="/dashboard/fees">
                             <i class="fas fa-file-invoice-dollar"></i> Phí dịch vụ
@@ -95,16 +96,9 @@
                                    class="form-control"
                                    placeholder="Tìm kiếm theo tên...">
                         </div>
-                        <div class="col-md-3">
-                            <select class="form-select">
-                                <option>Trạng thái: Tất cả</option>
-                                <option>Hoạt động</option>
-                                <option>Bảo trì</option>
-                            </select>
-                        </div>
                         <div class="col-md-2">
                             <button class="btn btn-outline-secondary w-100">
-                                <i class="fas fa-filter"></i> Lọc
+                                <i class="fas fa-filter"></i> Tìm kiếm
                             </button>
                         </div>
                     </div>
@@ -148,7 +142,8 @@
                                 <td th:text="${building.totalApartments}">200</td>
 
                                 <td>
-                                    <span class="badge bg-success">Hoạt động</span>
+                                    <span th:if="${building.status.name() == 'ACTIVE'}" class="badge bg-success">Hoạt động</span>
+                                    <span th:if="${building.status.name() == 'INACTIVE'}" class="badge bg-secondary">Tạm ngưng</span>
                                 </td>
 
                                 <td class="text-center">
@@ -159,9 +154,21 @@
                                         <a th:href="@{/dashboard/buildings/edit/{id}(id=${building.id})}" class="btn btn-outline-secondary" title="Chỉnh sửa">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <a th:href="@{/dashboard/buildings/delete/{id}(id=${building.id})}" class="btn btn-outline-danger" title="Xóa" onclick="return confirm('Bạn có chắc chắn muốn xóa tòa nhà này?');">
-                                            <i class="fas fa-trash"></i>
+
+                                        <a th:if="${building.status.name() == 'ACTIVE'}"
+                                           th:href="@{/dashboard/buildings/toggle-status/{id}(id=${building.id})}"
+                                           class="btn btn-outline-danger" title="Tạm ngưng hoạt động"
+                                           onclick="return confirm('Bạn có chắc chắn muốn ngưng hoạt động tòa nhà này?');">
+                                            <i class="fas fa-power-off"></i>
                                         </a>
+
+                                        <a th:if="${building.status.name() == 'INACTIVE'}"
+                                           th:href="@{/dashboard/buildings/toggle-status/{id}(id=${building.id})}"
+                                           class="btn btn-outline-success" title="Kích hoạt lại"
+                                           onclick="return confirm('Bạn có chắc chắn muốn kích hoạt lại tòa nhà này?');">
+                                            <i class="fas fa-undo"></i>
+                                        </a>
+
                                     </div>
                                 </td>
                             </tr>
@@ -170,7 +177,36 @@
 
                         </table>
                     </div>
+                    <div th:if="${totalPages > 1}" class="d-flex justify-content-between align-items-center mt-4">
+                        <div class="text-muted small">
+                            Hiển thị từ trang <span class="fw-bold" th:text="${currentPage}"></span>
+                            trên tổng <span class="fw-bold" th:text="${totalPages}"></span> trang
+                            (Tổng <span th:text="${totalItems}"></span> kết quả)
+                        </div>
 
+                        <nav aria-label="Page navigation">
+                            <ul class="pagination pagination-sm mb-0">
+
+                                <li class="page-item" th:classappend="${currentPage == 1 ? 'disabled' : ''}">
+                                    <a class="page-link" th:href="@{/dashboard/buildings(pageNo=${currentPage - 1}, keyword=${keyword})}">
+                                        <i class="fas fa-chevron-left"></i> Trước
+                                    </a>
+                                </li>
+
+                                <li class="page-item" th:each="i : ${#numbers.sequence(1, totalPages)}"
+                                    th:classappend="${currentPage == i ? 'active' : ''}">
+                                    <a class="page-link" th:href="@{/dashboard/buildings(pageNo=${i}, keyword=${keyword})}" th:text="${i}">1</a>
+                                </li>
+
+                                <li class="page-item" th:classappend="${currentPage == totalPages ? 'disabled' : ''}">
+                                    <a class="page-link" th:href="@{/dashboard/buildings(pageNo=${currentPage + 1}, keyword=${keyword})}">
+                                        Sau <i class="fas fa-chevron-right"></i>
+                                    </a>
+                                </li>
+
+                            </ul>
+                        </nav>
+                    </div>
                 </div>
             </div>
 
@@ -181,5 +217,15 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="/js/common.js"></script>
+<script>
+    setTimeout(function() {
+        let alerts = document.querySelectorAll('.alert');
+        alerts.forEach(function(alert) {
+            let bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        });
+    }, 3000);
+</script>
+
 </body>
 </html>
