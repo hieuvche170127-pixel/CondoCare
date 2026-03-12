@@ -62,4 +62,10 @@ public interface InvoiceRepository extends JpaRepository<Invoice, String> {
     List<Invoice> searchByKeyword(
             @Param("apartment") Apartment apartment,
             @Param("keyword")   String keyword);
+
+    /** Tất cả hóa đơn mọi căn hộ, mới nhất trước — dùng cho staff list */
+    List<Invoice> findAllByOrderByYearDescMonthDesc();
+
+    /** Đếm theo status — dùng cho stats */
+    Long countByStatus(Invoice.InvoiceStatus status);
 }

@@ -103,4 +103,8 @@ public class PageController {
     /** GET /dashboard/resident → Quản lý cư dân (phía staff) */
     @GetMapping("/dashboard/resident")
     public String residentManagement()    { return "resident/list"; }
+
+    /** GET /dashboard/invoices → Quản lý hóa đơn */
+    @GetMapping("/dashboard/invoices")
+    public String invoiceManagement()     { return "staff/invoices"; }
 }

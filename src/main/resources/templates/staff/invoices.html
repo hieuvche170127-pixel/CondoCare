@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Hóa đơn - CondoCare</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar d-flex flex-column p-3">
+    <div class="text-center mb-4">
+        <i class="fas fa-building fa-2x mb-2 text-white-50"></i>
+        <div class="fw-bold">CondoCare</div>
+        <small class="text-white-50" id="sidebarUser"></small>
+    </div>
+    <ul class="nav flex-column gap-1 flex-grow-1">
+        <li><a href="/dashboard" class="nav-link text-white-50"><i class="fas fa-chart-bar me-2"></i>Tổng quan</a></li>
+        <li><a href="/dashboard/staff" class="nav-link text-white-50"><i class="fas fa-users-cog me-2"></i>Nhân viên</a></li>
+        <li><a href="/dashboard/residents" class="nav-link text-white-50"><i class="fas fa-user-friends me-2"></i>Cư dân</a></li>
+        <li><a href="/dashboard/invoices" class="nav-link text-white active bg-white bg-opacity-10 rounded"><i class="fas fa-file-invoice-dollar me-2"></i>Hóa đơn</a></li>
+    </ul>
+    <hr class="border-secondary">
+    <a href="#" id="logoutBtn" class="nav-link text-danger-emphasis"><i class="fas fa-sign-out-alt me-2"></i>Đăng xuất</a>
+</nav>
+
+<!-- MAIN -->
+<div class="resident-main">
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-0"><i class="fas fa-file-invoice-dollar text-primary me-2"></i>Quản lý Hóa đơn</h4>
+            <small class="text-muted">Tạo, tìm kiếm và quản lý hóa đơn tháng</small>
+        </div>
+        <button class="btn btn-primary" onclick="InvoiceMgmt.openCreate()">
+            <i class="fas fa-plus me-1"></i>Tạo hóa đơn
+        </button>
+    </div>
+
+    <!-- STAT CARDS -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-xl-3">
+            <div class="stat-card primary">
+                <div class="stat-icon icon-blue"><i class="fas fa-file-invoice"></i></div>
+                <div><div class="stat-label">Tổng hóa đơn</div><div class="stat-number" id="statTotal">—</div></div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="stat-card warning">
+                <div class="stat-icon icon-orange"><i class="fas fa-clock"></i></div>
+                <div><div class="stat-label">Chưa thanh toán</div><div class="stat-number" id="statUnpaid">—</div></div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="stat-card success">
+                <div class="stat-icon icon-green"><i class="fas fa-check-circle"></i></div>
+                <div><div class="stat-label">Đã thanh toán</div><div class="stat-number" id="statPaid">—</div></div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="stat-card danger">
+                <div class="stat-icon icon-red"><i class="fas fa-exclamation-circle"></i></div>
+                <div><div class="stat-label">Quá hạn</div><div class="stat-number" id="statOverdue">—</div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FILTER BAR -->
+    <div class="card mb-3">
+        <div class="card-body py-2">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-3">
+                    <input type="text" class="form-control form-control-sm" id="filterSearch"
+                           placeholder="Tìm mã HĐ, số căn hộ, tòa nhà...">
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select form-select-sm" id="filterStatus">
+                        <option value="">— Trạng thái —</option>
+                        <option value="UNPAID">Chưa thanh toán</option>
+                        <option value="PAID">Đã thanh toán</option>
+                        <option value="OVERDUE">Quá hạn</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select form-select-sm" id="filterMonth">
+                        <option value="">— Tháng —</option>
+                        <option th:each="m : ${#numbers.sequence(1,12)}" th:value="${m}" th:text="'Tháng ' + ${m}"></option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select form-select-sm" id="filterYear">
+                        <option value="">— Năm —</option>
+                        <option value="2026">2026</option>
+                        <option value="2025">2025</option>
+                        <option value="2024">2024</option>
+                    </select>
+                </div>
+                <div class="col-md-1">
+                    <button class="btn btn-primary btn-sm w-100" onclick="InvoiceMgmt.loadList(0)">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+                <div class="col-md-1">
+                    <button class="btn btn-outline-secondary btn-sm w-100" onclick="InvoiceMgmt.resetFilter()">
+                        <i class="fas fa-redo"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="card">
+        <div class="card-body p-0">
+            <div id="tableInfo" class="px-3 pt-3 text-muted small"></div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                    <tr>
+                        <th>Mã HĐ</th>
+                        <th>Căn hộ</th>
+                        <th>Kỳ</th>
+                        <th class="text-end">Điện</th>
+                        <th class="text-end">Nước</th>
+                        <th class="text-end">Dịch vụ</th>
+                        <th class="text-end">Tổng tiền</th>
+                        <th>Trạng thái</th>
+                        <th>Hạn TT</th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody id="invoiceTableBody">
+                    <tr><td colspan="10" class="text-center py-4 text-muted">Đang tải...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div id="paginationBar" class="d-flex justify-content-center py-3"></div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: TẠO HÓA ĐƠN -->
+<div class="modal fade" id="createModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-plus-circle text-primary me-2"></i>Tạo hóa đơn mới</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="createAlert"></div>
+                <div class="row g-3">
+                    <!-- Căn hộ + tháng/năm -->
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Căn hộ <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="cApartmentId" placeholder="VD: A-101">
+                        <small class="text-muted">Nhập mã căn hộ</small>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Tháng <span class="text-danger">*</span></label>
+                        <select class="form-select" id="cMonth">
+                            <option value="">— Chọn tháng —</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Năm <span class="text-danger">*</span></label>
+                        <select class="form-select" id="cYear">
+                            <option value="2026">2026</option>
+                            <option value="2025">2025</option>
+                            <option value="2024">2024</option>
+                        </select>
+                    </div>
+
+                    <!-- Nút tải dữ liệu -->
+                    <div class="col-12">
+                        <button class="btn btn-outline-primary btn-sm" onclick="InvoiceMgmt.loadFormData()">
+                            <i class="fas fa-sync me-1"></i>Tải dữ liệu điện/nước/phí cho căn hộ này
+                        </button>
+                    </div>
+
+                    <div class="col-12"><hr class="my-1"></div>
+
+                    <!-- Chỉ số điện + nước: chọn có sẵn HOẶC nhập tay -->
+                    <div class="col-12">
+                        <div class="card border-0 bg-light">
+                            <div class="card-body p-3">
+                                <!-- Tab toggle -->
+                                <div class="d-flex align-items-center gap-3 mb-3">
+                                    <span class="fw-semibold small">Chỉ số điện &amp; nước:</span>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <input type="radio" class="btn-check" name="meterMode" id="modePick" value="pick" checked>
+                                        <label class="btn btn-outline-primary" for="modePick">
+                                            <i class="fas fa-list me-1"></i>Chọn từ DB
+                                        </label>
+                                        <input type="radio" class="btn-check" name="meterMode" id="modeManual" value="manual">
+                                        <label class="btn btn-outline-warning" for="modeManual">
+                                            <i class="fas fa-pencil-alt me-1"></i>Nhập tay
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Mode 1: Chọn từ DB -->
+                                <div id="meterPickSection" class="row g-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold"><i class="fas fa-bolt text-warning me-1"></i>Chỉ số điện</label>
+                                        <select class="form-select form-select-sm" id="cElectricReadingId" onchange="InvoiceMgmt.updatePreview()">
+                                            <option value="">— Không có —</option>
+                                        </select>
+                                        <small id="cElectricInfo" class="text-muted"></small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold"><i class="fas fa-tint text-info me-1"></i>Chỉ số nước</label>
+                                        <select class="form-select form-select-sm" id="cWaterReadingId" onchange="InvoiceMgmt.updatePreview()">
+                                            <option value="">— Không có —</option>
+                                        </select>
+                                        <small id="cWaterInfo" class="text-muted"></small>
+                                    </div>
+                                </div>
+
+                                <!-- Mode 2: Nhập tay -->
+                                <div id="meterManualSection" style="display:none">
+                                    <div class="row g-2">
+                                        <!-- Điện -->
+                                        <div class="col-12">
+                                            <div class="d-flex align-items-center gap-2 mb-1">
+                                                <i class="fas fa-bolt text-warning"></i>
+                                                <span class="small fw-semibold">Điện</span>
+                                                <small class="text-muted">(kWh × đơn giá = tiền)</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small text-muted">Chỉ số cũ</label>
+                                            <input type="number" class="form-control form-control-sm" id="mElecPrev" placeholder="0" min="0" oninput="InvoiceMgmt.calcManual()">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small text-muted">Chỉ số mới</label>
+                                            <input type="number" class="form-control form-control-sm" id="mElecCurr" placeholder="0" min="0" oninput="InvoiceMgmt.calcManual()">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small text-muted">Đơn giá (đ/kWh)</label>
+                                            <input type="number" class="form-control form-control-sm" id="mElecPrice" value="2800" min="0" oninput="InvoiceMgmt.calcManual()">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small text-muted">Thành tiền</label>
+                                            <input type="text" class="form-control form-control-sm bg-warning-subtle fw-semibold" id="mElecTotal" readonly placeholder="0 đ">
+                                        </div>
+
+                                        <!-- Nước -->
+                                        <div class="col-12 mt-1">
+                                            <div class="d-flex align-items-center gap-2 mb-1">
+                                                <i class="fas fa-tint text-info"></i>
+                                                <span class="small fw-semibold">Nước</span>
+                                                <small class="text-muted">(m³ × đơn giá = tiền)</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small text-muted">Chỉ số cũ</label>
+                                            <input type="number" class="form-control form-control-sm" id="mWaterPrev" placeholder="0" min="0" oninput="InvoiceMgmt.calcManual()">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small text-muted">Chỉ số mới</label>
+                                            <input type="number" class="form-control form-control-sm" id="mWaterCurr" placeholder="0" min="0" oninput="InvoiceMgmt.calcManual()">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small text-muted">Đơn giá (đ/m³)</label>
+                                            <input type="number" class="form-control form-control-sm" id="mWaterPrice" value="15929" min="0" oninput="InvoiceMgmt.calcManual()">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small text-muted">Thành tiền</label>
+                                            <input type="text" class="form-control form-control-sm bg-info-subtle fw-semibold" id="mWaterTotal" readonly placeholder="0 đ">
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Phí dịch vụ / quản lý -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold"><i class="fas fa-concierge-bell text-secondary me-1"></i>Phí quản lý / dịch vụ</label>
+                        <select class="form-select" id="cServiceFeeId" onchange="InvoiceMgmt.updatePreview()">
+                            <option value="">— Không có —</option>
+                        </select>
+                        <small id="cServiceInfo" class="text-muted"></small>
+                    </div>
+
+                    <!-- Phí xe máy -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold"><i class="fas fa-motorcycle text-secondary me-1"></i>Phí xe máy</label>
+                        <select class="form-select" id="cMotorbikeFeeId" onchange="InvoiceMgmt.updatePreview()">
+                            <option value="">— Không có —</option>
+                        </select>
+                        <small id="cMotorbikeInfo" class="text-muted"></small>
+                    </div>
+
+                    <!-- Phí ô tô -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold"><i class="fas fa-car text-secondary me-1"></i>Phí ô tô</label>
+                        <select class="form-select" id="cCarFeeId" onchange="InvoiceMgmt.updatePreview()">
+                            <option value="">— Không có —</option>
+                        </select>
+                        <small id="cCarInfo" class="text-muted"></small>
+                    </div>
+
+                    <!-- Phí xe đạp điện -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold"><i class="fas fa-bicycle text-secondary me-1"></i>Phí xe đạp điện</label>
+                        <select class="form-select" id="cEbikeFeeId" onchange="InvoiceMgmt.updatePreview()">
+                            <option value="">— Không có —</option>
+                        </select>
+                        <small id="cEbikeInfo" class="text-muted"></small>
+                    </div>
+
+                    <!-- Preview tổng tiền -->
+                    <div class="col-12">
+                        <div class="bg-light rounded p-3" id="amountPreview" style="display:none">
+                            <div class="row text-center g-2">
+                                <div class="col"><div class="text-muted small">⚡ Điện</div><div class="fw-semibold" id="pvElectric">0đ</div></div>
+                                <div class="col"><div class="text-muted small">💧 Nước</div><div class="fw-semibold" id="pvWater">0đ</div></div>
+                                <div class="col"><div class="text-muted small">🏢 Quản lý</div><div class="fw-semibold" id="pvService">0đ</div></div>
+                                <div class="col"><div class="text-muted small">🛵 Xe máy</div><div class="fw-semibold" id="pvMotorbike">0đ</div></div>
+                                <div class="col"><div class="text-muted small">🚗 Ô tô</div><div class="fw-semibold" id="pvCar">0đ</div></div>
+                                <div class="col"><div class="text-muted small">🚲 Xe điện</div><div class="fw-semibold" id="pvEbike">0đ</div></div>
+                                <div class="col border-start"><div class="text-muted small fw-bold">Tổng cộng</div><div class="fw-bold text-danger fs-5" id="pvTotal">0đ</div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" onclick="InvoiceMgmt.submitCreate()">
+                    <i class="fas fa-save me-1"></i>Tạo hóa đơn
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: CHI TIẾT -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-file-invoice text-info me-2"></i>Chi tiết hóa đơn</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailBody">Đang tải...</div>
+            <div class="modal-footer" id="detailFooter"></div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/common.js"></script>
+<script>
+    const API_INV = `${API_BASE_URL}/invoice-management`;
+
+    const InvoiceMgmt = (() => {
+        let currentPage = 0;
+        let formData = { readings: [], fees: [] }; // cache dữ liệu form
+
+        // ── Khởi tạo ──────────────────────────────────────────────
+        function init() {
+            (function() {
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                if (!token) { window.location.href = '/login'; return; }
+                try {
+                    const info = JSON.parse(localStorage.getItem('userInfo') || sessionStorage.getItem('userInfo') || '{}');
+                    const el = document.getElementById('sidebarUser');
+                    if (el) el.textContent = info.fullName || info.username || '';
+                } catch(e) {}
+            })();
+            document.getElementById('logoutBtn').addEventListener('click', e => {
+                e.preventDefault();
+                if (confirm('Đăng xuất?')) logout();
+            });
+
+            // Populate tháng dropdown
+            const mSel = document.getElementById('cMonth');
+            for (let m = 1; m <= 12; m++) {
+                const o = document.createElement('option');
+                o.value = m; o.textContent = 'Tháng ' + m;
+                mSel.appendChild(o);
+            }
+            // Filter tháng
+            const fMonth = document.getElementById('filterMonth');
+            for (let m = 1; m <= 12; m++) {
+                const o = document.createElement('option');
+                o.value = m; o.textContent = 'Tháng ' + m;
+                fMonth.appendChild(o);
+            }
+
+            // Debounce search
+            document.getElementById('filterSearch').addEventListener('input',
+                debounce(() => loadList(0), 400));
+
+            // Preview khi chọn dropdown
+            ['cElectricReadingId','cWaterReadingId','cServiceFeeId',
+             'cMotorbikeFeeId','cCarFeeId','cEbikeFeeId']
+                .forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.addEventListener('change', updatePreview);
+                });
+
+            // Chuyển mode nhập chỉ số
+            document.querySelectorAll('input[name="meterMode"]').forEach(radio => {
+                radio.addEventListener('change', e => switchMeterMode(e.target.value));
+            });
+
+            loadStats();
+            loadList(0);
+        }
+
+        // ── Thống kê ──────────────────────────────────────────────
+        async function loadStats() {
+            try {
+                const res = await apiRequest(`${API_INV}/stats`);
+                const d = await res.json();
+                document.getElementById('statTotal').textContent   = d.total   ?? 0;
+                document.getElementById('statUnpaid').textContent  = d.unpaid  ?? 0;
+                document.getElementById('statPaid').textContent    = d.paid    ?? 0;
+                document.getElementById('statOverdue').textContent = d.overdue ?? 0;
+            } catch(e) { console.error('Stats error', e); }
+        }
+
+        // ── Danh sách ─────────────────────────────────────────────
+        async function loadList(page = 0) {
+            currentPage = page;
+            const search      = document.getElementById('filterSearch').value.trim();
+            const status      = document.getElementById('filterStatus').value;
+            const month       = document.getElementById('filterMonth').value;
+            const year        = document.getElementById('filterYear').value;
+            const params = new URLSearchParams({ page, size: 10 });
+            if (search) params.set('search', search);
+            if (status) params.set('status', status);
+            if (month)  params.set('month', month);
+            if (year)   params.set('year', year);
+
+            const tbody = document.getElementById('invoiceTableBody');
+            tbody.innerHTML = '<tr><td colspan="10" class="text-center py-3 text-muted">Đang tải...</td></tr>';
+
+            try {
+                const res  = await apiRequest(`${API_INV}?${params}`);
+                const data = await res.json();
+                renderTable(data.content || []);
+                renderInfo(data);
+                renderPagination(data);
+            } catch(e) {
+                tbody.innerHTML = '<tr><td colspan="10" class="text-center text-danger">Không thể tải dữ liệu</td></tr>';
+            }
+        }
+
+        function renderTable(list) {
+            const tbody = document.getElementById('invoiceTableBody');
+            if (!list.length) {
+                tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-muted">Không có hóa đơn nào</td></tr>';
+                return;
+            }
+            const statusLabel = { UNPAID:'Chưa TT', PAID:'Đã TT', OVERDUE:'Quá hạn' };
+            const statusCls   = { UNPAID:'bg-warning text-dark', PAID:'bg-success', OVERDUE:'bg-danger' };
+            tbody.innerHTML = list.map(i => `
+                <tr>
+                    <td><span class="fw-bold text-primary font-monospace">${i.id}</span></td>
+                    <td>
+                        <div class="fw-semibold">${i.apartmentNumber}</div>
+                        <small class="text-muted">${i.buildingName}</small>
+                    </td>
+                    <td>Tháng ${i.month}/${i.year}</td>
+                    <td class="text-end">${fmtVND(i.electricAmount)}</td>
+                    <td class="text-end">${fmtVND(i.waterAmount)}</td>
+                    <td class="text-end">${fmtVND(i.serviceAmount)}</td>
+                    <td class="text-end fw-bold text-primary">${fmtVND(i.totalAmount)}</td>
+                    <td><span class="badge ${statusCls[i.status] || 'bg-secondary'}">${statusLabel[i.status] || i.status}</span></td>
+                    <td><small>${i.dueDate || '—'}</small></td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-sm btn-outline-info" title="Chi tiết"
+                                onclick="InvoiceMgmt.openDetail('${i.id}')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            ${i.status !== 'PAID' ? `
+                            <button class="btn btn-sm btn-outline-success" title="Đánh dấu đã thanh toán"
+                                onclick="InvoiceMgmt.markPaid('${i.id}')">
+                                <i class="fas fa-check"></i>
+                            </button>` : ''}
+                            ${i.status !== 'PAID' ? `
+                            <button class="btn btn-sm btn-outline-danger" title="Xóa"
+                                onclick="InvoiceMgmt.confirmDelete('${i.id}')">
+                                <i class="fas fa-trash"></i>
+                            </button>` : ''}
+                        </div>
+                    </td>
+                </tr>`).join('');
+        }
+
+        function renderInfo(data) {
+            const from = data.number * data.size + 1;
+            const to   = Math.min(from + data.size - 1, data.totalElements);
+            document.getElementById('tableInfo').textContent =
+                `Hiển thị ${from}–${to} / ${data.totalElements} hóa đơn`;
+        }
+
+        function renderPagination(data) {
+            const bar = document.getElementById('paginationBar');
+            if (data.totalPages <= 1) { bar.innerHTML = ''; return; }
+            let html = '<nav><ul class="pagination pagination-sm mb-0">';
+            html += `<li class="page-item ${data.first?'disabled':''}">
+                <a class="page-link" href="#" onclick="InvoiceMgmt.loadList(${data.number-1});return false">‹</a></li>`;
+            for (let p = 0; p < data.totalPages; p++) {
+                html += `<li class="page-item ${p===data.number?'active':''}">
+                    <a class="page-link" href="#" onclick="InvoiceMgmt.loadList(${p});return false">${p+1}</a></li>`;
+            }
+            html += `<li class="page-item ${data.last?'disabled':''}">
+                <a class="page-link" href="#" onclick="InvoiceMgmt.loadList(${data.number+1});return false">›</a></li>`;
+            html += '</ul></nav>';
+            bar.innerHTML = html;
+        }
+
+        // ── Reset filter ───────────────────────────────────────────
+        function resetFilter() {
+            document.getElementById('filterSearch').value = '';
+            document.getElementById('filterStatus').value = '';
+            document.getElementById('filterMonth').value  = '';
+            document.getElementById('filterYear').value   = '';
+            loadList(0);
+        }
+
+        // ── Mở modal tạo ──────────────────────────────────────────
+        function openCreate() {
+            document.getElementById('cApartmentId').value = '';
+            document.getElementById('cMonth').value = new Date().getMonth() + 1;
+            document.getElementById('cYear').value  = new Date().getFullYear();
+            resetFormDropdowns();
+            document.getElementById('createAlert').innerHTML = '';
+            document.getElementById('amountPreview').style.display = 'none';
+            // Reset manual meter inputs
+            ['mElecPrev','mElecCurr','mWaterPrev','mWaterCurr'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+            document.getElementById('mElecPrice').value  = '2800';
+            document.getElementById('mWaterPrice').value = '15929';
+            document.getElementById('mElecTotal').value  = '';
+            document.getElementById('mWaterTotal').value = '';
+            // Reset to "pick" mode
+            document.getElementById('modePick').checked = true;
+            switchMeterMode('pick');
+            new bootstrap.Modal('#createModal').show();
+        }
+
+        function resetFormDropdowns() {
+            ['cElectricReadingId','cWaterReadingId'].forEach(id => {
+                document.getElementById(id).innerHTML = '<option value="">— Không có —</option>';
+            });
+            ['cServiceFeeId','cMotorbikeFeeId','cCarFeeId','cEbikeFeeId'].forEach(id => {
+                document.getElementById(id).innerHTML = '<option value="">— Không có —</option>';
+            });
+            ['cElectricInfo','cWaterInfo','cServiceInfo','cMotorbikeInfo','cCarInfo','cEbikeInfo'].forEach(id => {
+                document.getElementById(id).textContent = '';
+            });
+            formData = { readings: [], fees: [] };
+        }
+
+        // ── Tải dữ liệu form (meter readings + fees) ──────────────
+        async function loadFormData() {
+            const aptId = document.getElementById('cApartmentId').value.trim().toUpperCase();
+            const month = document.getElementById('cMonth').value;
+            const year  = document.getElementById('cYear').value;
+            if (!aptId || !month || !year) {
+                showMgmtAlert('createAlert', 'Vui lòng nhập căn hộ, tháng, năm trước', 'warning');
+                return;
+            }
+            document.getElementById('cApartmentId').value = aptId;
+            try {
+                const [rRes, fRes] = await Promise.all([
+                    apiRequest(`${API_INV}/meter-readings?apartmentId=${aptId}&month=${month}&year=${year}`),
+                    apiRequest(`${API_INV}/fees?apartmentId=${aptId}`)
+                ]);
+                if (!rRes.ok) { showMgmtAlert('createAlert', await rRes.text(), 'danger'); return; }
+                const readings = await rRes.json();
+                const fees     = await fRes.json();
+                formData = { readings, fees };
+
+                // helper điền dropdown + auto-select nếu chỉ có 1
+                const fillSelect = (selId, infoId, items, labelFn) => {
+                    const sel = document.getElementById(selId);
+                    sel.innerHTML = '<option value="">— Không có —</option>';
+                    items.forEach(item => {
+                        const o = document.createElement('option');
+                        o.value = item.id;
+                        o.textContent = labelFn(item);
+                        o.dataset.amount = item.totalAmount ?? item.amount ?? 0;
+                        sel.appendChild(o);
+                    });
+                    if (items.length === 1) sel.value = items[0].id;
+                    if (infoId) document.getElementById(infoId).textContent =
+                        items.length === 0 ? 'Chưa có dữ liệu' : `${items.length} mục`;
+                };
+
+                fillSelect('cElectricReadingId', 'cElectricInfo',
+                    readings.filter(r => r.meterType === 'ELECTRIC'),
+                    r => `Chỉ số: ${r.previousIndex}→${r.currentIndex} | ${r.consumption} kWh | ${fmtVND(r.totalAmount)}`
+                );
+                fillSelect('cWaterReadingId', 'cWaterInfo',
+                    readings.filter(r => r.meterType === 'WATER'),
+                    r => `Chỉ số: ${r.previousIndex}→${r.currentIndex} | ${r.consumption} m³ | ${fmtVND(r.totalAmount)}`
+                );
+                fillSelect('cServiceFeeId', 'cServiceInfo',
+                    fees.filter(f => f.type === 'SERVICE' || f.type === 'MANAGEMENT'),
+                    f => `${f.name} — ${fmtVND(f.amount)}`
+                );
+
+                // Phí xe: tách theo tên (xe máy / ô tô / xe đạp điện)
+                const parkingFees = fees.filter(f => f.type === 'PARKING');
+                const motorbikes  = parkingFees.filter(f => f.name.toLowerCase().includes('máy'));
+                const cars        = parkingFees.filter(f => f.name.toLowerCase().includes('ô tô') || f.name.toLowerCase().includes('o to'));
+                const ebikes      = parkingFees.filter(f => f.name.toLowerCase().includes('đạp') || f.name.toLowerCase().includes('điện'));
+
+                fillSelect('cMotorbikeFeeId', 'cMotorbikeInfo', motorbikes, f => `${f.name} — ${fmtVND(f.amount)}`);
+                fillSelect('cCarFeeId',       'cCarInfo',       cars,       f => `${f.name} — ${fmtVND(f.amount)}`);
+                fillSelect('cEbikeFeeId',     'cEbikeInfo',     ebikes,     f => `${f.name} — ${fmtVND(f.amount)}`);
+
+                updatePreview();
+                const total = readings.length + fees.length;
+                showMgmtAlert('createAlert',
+                    `✅ Đã tải: ${readings.length} chỉ số điện/nước, ${fees.length} phí cho căn hộ <b>${aptId}</b>`, 'success');
+            } catch(e) {
+                showMgmtAlert('createAlert', 'Lỗi khi tải dữ liệu: ' + e.message, 'danger');
+            }
+        }
+
+        // ── Chuyển mode chọn/nhập tay ─────────────────────────────
+        function switchMeterMode(mode) {
+            document.getElementById('meterPickSection').style.display   = mode === 'pick'   ? '' : 'none';
+            document.getElementById('meterManualSection').style.display = mode === 'manual' ? '' : 'none';
+            updatePreview();
+        }
+
+        // ── Tính tiền khi nhập tay ────────────────────────────────
+        function calcManual() {
+            const parse = id => parseFloat(document.getElementById(id).value) || 0;
+            const fmt   = n  => n > 0 ? new Intl.NumberFormat('vi-VN').format(Math.round(n)) + ' đ' : '0 đ';
+
+            const elec  = Math.max(0, parse('mElecCurr') - parse('mElecPrev')) * parse('mElecPrice');
+            const water = Math.max(0, parse('mWaterCurr') - parse('mWaterPrev')) * parse('mWaterPrice');
+
+            document.getElementById('mElecTotal').value  = fmt(elec);
+            document.getElementById('mWaterTotal').value = fmt(water);
+            updatePreview();
+        }
+
+        // ── Tính preview tổng tiền ─────────────────────────────────
+        function updatePreview() {
+            // getAmt đọc data-amount từ option đang chọn trong dropdown
+            const getAmt = id => {
+                const sel = document.getElementById(id);
+                const opt = sel?.options[sel.selectedIndex];
+                return parseFloat(opt?.dataset?.amount || 0);
+            };
+
+            const isManual = document.querySelector('input[name="meterMode"]:checked')?.value === 'manual';
+            let el = 0, wa = 0;
+            if (isManual) {
+                const parse = id => parseFloat(document.getElementById(id).value) || 0;
+                el = Math.max(0, parse('mElecCurr')  - parse('mElecPrev'))  * parse('mElecPrice');
+                wa = Math.max(0, parse('mWaterCurr') - parse('mWaterPrev')) * parse('mWaterPrice');
+            } else {
+                el = getAmt('cElectricReadingId');
+                wa = getAmt('cWaterReadingId');
+            }
+            const sv = getAmt('cServiceFeeId');
+            const mb = getAmt('cMotorbikeFeeId');
+            const ca = getAmt('cCarFeeId');
+            const eb = getAmt('cEbikeFeeId');
+            const total = el + wa + sv + mb + ca + eb;
+
+            document.getElementById('pvElectric').textContent  = fmtVND(el);
+            document.getElementById('pvWater').textContent     = fmtVND(wa);
+            document.getElementById('pvService').textContent   = fmtVND(sv);
+            document.getElementById('pvMotorbike').textContent = fmtVND(mb);
+            document.getElementById('pvCar').textContent       = fmtVND(ca);
+            document.getElementById('pvEbike').textContent     = fmtVND(eb);
+            document.getElementById('pvTotal').textContent     = fmtVND(total);
+            document.getElementById('amountPreview').style.display = 'block';
+        }
+
+        // ── Submit tạo hóa đơn ─────────────────────────────────────
+        async function submitCreate() {
+            const aptId = document.getElementById('cApartmentId').value.trim().toUpperCase();
+            const month = parseInt(document.getElementById('cMonth').value);
+            const year  = parseInt(document.getElementById('cYear').value);
+            if (!aptId) { showMgmtAlert('createAlert', 'Vui lòng nhập mã căn hộ', 'warning'); return; }
+            if (!month || !year) { showMgmtAlert('createAlert', 'Vui lòng chọn tháng và năm', 'warning'); return; }
+
+            const isManual = document.querySelector('input[name="meterMode"]:checked')?.value === 'manual';
+            let electricReadingId = null;
+            let waterReadingId    = null;
+
+            // Nếu nhập tay → tạo MeterReading trước, lấy ID về
+            if (isManual) {
+                const parse = id => parseFloat(document.getElementById(id).value) || 0;
+                const elecPrev  = parse('mElecPrev');
+                const elecCurr  = parse('mElecCurr');
+                const elecPrice = parse('mElecPrice');
+                const waterPrev  = parse('mWaterPrev');
+                const waterCurr  = parse('mWaterCurr');
+                const waterPrice = parse('mWaterPrice');
+
+                // Tạo chỉ số điện nếu có nhập
+                if (elecCurr > 0 || elecPrev > 0) {
+                    if (elecCurr <= elecPrev) {
+                        showMgmtAlert('createAlert', 'Chỉ số điện mới phải lớn hơn chỉ số cũ', 'warning'); return;
+                    }
+                    try {
+                        const r = await apiRequest(`${API_INV}/meter-readings`, {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                apartmentId: aptId, month, year,
+                                meterType: 'ELECTRIC',
+                                previousIndex: elecPrev,
+                                currentIndex:  elecCurr,
+                                unitPrice:     elecPrice
+                            })
+                        });
+                        if (!r.ok) { showMgmtAlert('createAlert', 'Lỗi lưu chỉ số điện: ' + await r.text(), 'danger'); return; }
+                        const rd = await r.json();
+                        electricReadingId = rd.id;
+                    } catch(e) { showMgmtAlert('createAlert', 'Lỗi: ' + e.message, 'danger'); return; }
+                }
+
+                // Tạo chỉ số nước nếu có nhập
+                if (waterCurr > 0 || waterPrev > 0) {
+                    if (waterCurr <= waterPrev) {
+                        showMgmtAlert('createAlert', 'Chỉ số nước mới phải lớn hơn chỉ số cũ', 'warning'); return;
+                    }
+                    try {
+                        const r = await apiRequest(`${API_INV}/meter-readings`, {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                apartmentId: aptId, month, year,
+                                meterType: 'WATER',
+                                previousIndex: waterPrev,
+                                currentIndex:  waterCurr,
+                                unitPrice:     waterPrice
+                            })
+                        });
+                        if (!r.ok) { showMgmtAlert('createAlert', 'Lỗi lưu chỉ số nước: ' + await r.text(), 'danger'); return; }
+                        const rd = await r.json();
+                        waterReadingId = rd.id;
+                    } catch(e) { showMgmtAlert('createAlert', 'Lỗi: ' + e.message, 'danger'); return; }
+                }
+            } else {
+                electricReadingId = document.getElementById('cElectricReadingId').value || null;
+                waterReadingId    = document.getElementById('cWaterReadingId').value    || null;
+            }
+
+            const parkingFeeId = document.getElementById('cMotorbikeFeeId').value
+                || document.getElementById('cCarFeeId').value
+                || document.getElementById('cEbikeFeeId').value
+                || null;
+
+            const payload = {
+                apartmentId: aptId, month, year,
+                electricReadingId,
+                waterReadingId,
+                serviceFeeId: document.getElementById('cServiceFeeId').value || null,
+                parkingFeeId,
+            };
+
+            try {
+                const res = await apiRequest(API_INV, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) {
+                    showMgmtAlert('createAlert', await res.text() || 'Tạo hóa đơn thất bại', 'danger');
+                    return;
+                }
+                bootstrap.Modal.getInstance(document.getElementById('createModal')).hide();
+                loadList(0); loadStats();
+            } catch(e) {
+                showMgmtAlert('createAlert', 'Lỗi: ' + e.message, 'danger');
+            }
+        }
+
+        // ── Chi tiết ──────────────────────────────────────────────
+        async function openDetail(id) {
+            const body   = document.getElementById('detailBody');
+            const footer = document.getElementById('detailFooter');
+            body.innerHTML = '<div class="text-center py-3"><i class="fas fa-spinner fa-spin"></i> Đang tải...</div>';
+            footer.innerHTML = '';
+            new bootstrap.Modal('#detailModal').show();
+            try {
+                const res = await apiRequest(`${API_INV}/${id}`);
+                const d   = await res.json();
+                const statusLabel = { UNPAID:'Chưa TT', PAID:'Đã TT', OVERDUE:'Quá hạn' };
+                const statusCls   = { UNPAID:'bg-warning text-dark', PAID:'bg-success', OVERDUE:'bg-danger' };
+                body.innerHTML = `
+                    <div class="row g-3">
+                        <div class="col-6"><label class="text-muted small">Mã hóa đơn</label>
+                            <div class="fw-bold font-monospace">${d.id}</div></div>
+                        <div class="col-6"><label class="text-muted small">Trạng thái</label>
+                            <div><span class="badge ${statusCls[d.status]||'bg-secondary'}">${statusLabel[d.status]||d.status}</span></div></div>
+                        <div class="col-6"><label class="text-muted small">Căn hộ</label>
+                            <div>${d.apartmentNumber} — ${d.buildingName}</div></div>
+                        <div class="col-6"><label class="text-muted small">Kỳ hóa đơn</label>
+                            <div>Tháng ${d.month}/${d.year}</div></div>
+                        <div class="col-12"><hr class="my-1"></div>
+                        <div class="col-6 col-md-3"><label class="text-muted small">Tiền điện</label>
+                            <div class="fw-semibold">${fmtVND(d.electricAmount)}</div>
+                            ${d.electricReading ? `<small class="text-muted">Chỉ số: ${d.electricReading.previousIndex}→${d.electricReading.currentIndex} (×${d.electricReading.unitPrice})</small>` : ''}</div>
+                        <div class="col-6 col-md-3"><label class="text-muted small">Tiền nước</label>
+                            <div class="fw-semibold">${fmtVND(d.waterAmount)}</div>
+                            ${d.waterReading ? `<small class="text-muted">Chỉ số: ${d.waterReading.previousIndex}→${d.waterReading.currentIndex} (×${d.waterReading.unitPrice})</small>` : ''}</div>
+                        <div class="col-6 col-md-3"><label class="text-muted small">Dịch vụ</label>
+                            <div class="fw-semibold">${fmtVND(d.serviceAmount)}</div>
+                            <small class="text-muted">${d.serviceFeeName||''}</small></div>
+                        <div class="col-6 col-md-3"><label class="text-muted small">Phí xe</label>
+                            <div class="fw-semibold">${fmtVND(d.parkingAmount)}</div>
+                            <small class="text-muted">${d.parkingFeeName||''}</small></div>
+                        <div class="col-12">
+                            <div class="bg-primary bg-opacity-10 rounded p-3 text-center">
+                                <div class="text-muted small">Tổng cộng phải thanh toán</div>
+                                <div class="fw-bold fs-4 text-primary">${fmtVND(d.totalAmount)}</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-4"><label class="text-muted small">Ngày phát hành</label>
+                            <div>${d.issuedAt ? new Date(d.issuedAt).toLocaleString('vi-VN') : '—'}</div></div>
+                        <div class="col-6 col-md-4"><label class="text-muted small">Hạn thanh toán</label>
+                            <div>${d.dueDate||'—'}</div></div>
+                        <div class="col-6 col-md-4"><label class="text-muted small">Ngày thanh toán</label>
+                            <div>${d.paidAt ? new Date(d.paidAt).toLocaleString('vi-VN') : '—'}</div></div>
+                        <div class="col-12"><label class="text-muted small">Người tạo</label>
+                            <div>${d.createdBy}</div></div>
+                    </div>`;
+                // Footer buttons
+                if (d.status !== 'PAID') {
+                    footer.innerHTML = `
+                        <button class="btn btn-success me-2" onclick="InvoiceMgmt.markPaid('${d.id}', true)">
+                            <i class="fas fa-check me-1"></i>Đánh dấu đã thanh toán
+                        </button>
+                        <button class="btn btn-danger" onclick="InvoiceMgmt.confirmDelete('${d.id}', true)">
+                            <i class="fas fa-trash me-1"></i>Xóa hóa đơn
+                        </button>`;
+                }
+                footer.innerHTML += '<button class="btn btn-secondary ms-2" data-bs-dismiss="modal">Đóng</button>';
+            } catch(e) {
+                body.innerHTML = '<div class="text-danger">Không thể tải chi tiết</div>';
+            }
+        }
+
+        // ── Đánh dấu đã thanh toán ────────────────────────────────
+        async function markPaid(id, fromDetail = false) {
+            if (!confirm('Xác nhận đánh dấu hóa đơn này là ĐÃ THANH TOÁN?')) return;
+            try {
+                const res = await apiRequest(`${API_INV}/${id}/status`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ status: 'PAID' })
+                });
+                if (!res.ok) { alert(await res.text()); return; }
+                if (fromDetail) bootstrap.Modal.getInstance(document.getElementById('detailModal')).hide();
+                loadList(currentPage); loadStats();
+            } catch(e) { alert('Lỗi: ' + e.message); }
+        }
+
+        // ── Xóa hóa đơn ───────────────────────────────────────────
+        async function confirmDelete(id, fromDetail = false) {
+            if (!confirm('Xác nhận xóa hóa đơn này? Hành động không thể hoàn tác.')) return;
+            try {
+                const res = await apiRequest(`${API_INV}/${id}`, { method: 'DELETE' });
+                if (!res.ok) { alert(await res.text()); return; }
+                if (fromDetail) bootstrap.Modal.getInstance(document.getElementById('detailModal')).hide();
+                loadList(currentPage); loadStats();
+            } catch(e) { alert('Lỗi: ' + e.message); }
+        }
+
+        // ── Helpers ───────────────────────────────────────────────
+        function showMgmtAlert(containerId, msg, type='danger') {
+            const icon = type==='success' ? 'fa-check-circle' : type==='warning' ? 'fa-exclamation-triangle' : 'fa-exclamation-circle';
+            document.getElementById(containerId).innerHTML = `
+                <div class="alert alert-${type} alert-dismissible fade show py-2">
+                    <i class="fas ${icon} me-1"></i>${msg}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>`;
+        }
+
+        function fmtVND(amount) {
+            if (amount == null || amount === '') return '—';
+            return new Intl.NumberFormat('vi-VN', { style:'currency', currency:'VND' }).format(amount);
+        }
+
+        // Public API
+        return { init, loadList, resetFilter, openCreate, loadFormData, submitCreate,
+                 openDetail, markPaid, confirmDelete, updatePreview, calcManual, switchMeterMode };
+    })();
+
+    document.addEventListener('DOMContentLoaded', InvoiceMgmt.init);
+</script>
+</body>
+</html>

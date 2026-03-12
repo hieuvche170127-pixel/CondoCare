@@ -170,14 +170,19 @@
 
                 // Lưu token và user info
                 const remember = document.getElementById('rememberMe')?.checked || false;
-                saveLoginSession({
-                    id: data.id,
-                    username: data.username,
-                    email: data.email,
-                    fullName: data.fullName,
-                    role: data.role,
-                    userType: data.userType
-                });
+                saveLoginSession(
+                    data.token,
+                    {
+                        id:       data.id,
+                        username: data.username,
+                        email:    data.email,
+                        fullName: data.fullName,
+                        role:     data.role,
+                        roleName: data.role,
+                        userType: data.userType
+                    },
+                    remember
+                );
 
                 // Show success message
                 showAlert('Đăng nhập thành công! Đang chuyển hướng...', 'success');
