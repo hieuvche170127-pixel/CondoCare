@@ -13,10 +13,16 @@
 <div id="loading" class="loading"><div class="spinner"></div></div>
 
 <div class="resident-wrapper">
+    <!-- Sidebar inject bởi renderResidentSidebar() -->
     <nav class="resident-sidebar" id="residentSidebar"></nav>
-    <button class="mobile-toggle" id="mobileToggle"><i class="fas fa-bars"></i></button>
+
+    <button class="mobile-toggle" id="mobileToggle">
+        <i class="fas fa-bars"></i>
+    </button>
 
     <main class="resident-main">
+
+        <!-- Page header -->
         <div class="page-header">
             <div>
                 <h4><i class="fas fa-file-invoice-dollar"></i> Hóa đơn của tôi</h4>
@@ -31,370 +37,389 @@
 
         <div id="alertContainer"></div>
 
-        <!-- ── Filter Bar ─────────────────────────────────── -->
+        <!-- Stat cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon icon-blue"><i class="fas fa-file-invoice"></i></div>
+                    <div>
+                        <div class="stat-value" id="statTotal">—</div>
+                        <div class="stat-label">Tổng hóa đơn</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon icon-orange"><i class="fas fa-clock"></i></div>
+                    <div>
+                        <div class="stat-value" id="statUnpaid">—</div>
+                        <div class="stat-label">Chưa thanh toán</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon icon-green"><i class="fas fa-check-circle"></i></div>
+                    <div>
+                        <div class="stat-value" id="statPaid">—</div>
+                        <div class="stat-label">Đã thanh toán</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon icon-red"><i class="fas fa-exclamation-circle"></i></div>
+                    <div>
+                        <div class="stat-value" id="statOverdue">—</div>
+                        <div class="stat-label">Quá hạn</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter bar -->
         <div class="content-card mb-3">
-            <div class="d-flex flex-wrap gap-2 align-items-end">
-                <div>
-                    <label class="form-label small mb-1 fw-semibold">🔍 Tìm kiếm</label>
-                    <input type="text" id="filterKeyword" class="form-control form-control-sm"
-                           placeholder="Tên hóa đơn..." style="width:180px"
-                           onkeydown="if(event.key==='Enter') applyFilter()">
-                </div>
-                <div>
-                    <label class="form-label small mb-1 fw-semibold">📅 Lọc theo</label>
-                    <select id="filterType" class="form-select form-select-sm" style="width:130px"
-                            onchange="toggleFilterInputs()">
-                        <option value="all">Tất cả</option>
-                        <option value="month">Tháng</option>
-                        <option value="quarter">Quý</option>
-                        <option value="year">Năm</option>
+            <div class="row g-2 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small text-muted mb-1">Trạng thái</label>
+                    <select class="form-select form-select-sm" id="filterStatus">
+                        <option value="all">— Tất cả —</option>
+                        <option value="UNPAID">Chưa thanh toán</option>
+                        <option value="PAID">Đã thanh toán</option>
+                        <option value="OVERDUE">Quá hạn</option>
                     </select>
                 </div>
-                <div id="monthGroup" style="display:none">
-                    <label class="form-label small mb-1 fw-semibold">Tháng</label>
-                    <select id="filterMonth" class="form-select form-select-sm" style="width:110px">
-                        <option value="1">Tháng 1</option><option value="2">Tháng 2</option>
-                        <option value="3">Tháng 3</option><option value="4">Tháng 4</option>
-                        <option value="5">Tháng 5</option><option value="6">Tháng 6</option>
-                        <option value="7">Tháng 7</option><option value="8">Tháng 8</option>
-                        <option value="9">Tháng 9</option><option value="10">Tháng 10</option>
-                        <option value="11">Tháng 11</option><option value="12">Tháng 12</option>
+                <div class="col-md-2">
+                    <label class="form-label small text-muted mb-1">Tháng</label>
+                    <select class="form-select form-select-sm" id="filterMonth">
+                        <option value="">— Tháng —</option>
                     </select>
                 </div>
-                <div id="quarterGroup" style="display:none">
-                    <label class="form-label small mb-1 fw-semibold">Quý</label>
-                    <select id="filterQuarter" class="form-select form-select-sm" style="width:150px">
-                        <option value="1">Quý 1 (T1–T3)</option>
-                        <option value="2">Quý 2 (T4–T6)</option>
-                        <option value="3">Quý 3 (T7–T9)</option>
-                        <option value="4">Quý 4 (T10–T12)</option>
-                    </select>
-                </div>
-                <div id="yearGroup" style="display:none">
-                    <label class="form-label small mb-1 fw-semibold">Năm</label>
-                    <select id="filterYear" class="form-select form-select-sm" style="width:100px">
-                        <option value="2023">2023</option>
-                        <option value="2024">2024</option>
+                <div class="col-md-2">
+                    <label class="form-label small text-muted mb-1">Năm</label>
+                    <select class="form-select form-select-sm" id="filterYear">
+                        <option value="">— Năm —</option>
+                        <option value="2026">2026</option>
                         <option value="2025">2025</option>
-                        <option value="2026" selected>2026</option>
+                        <option value="2024">2024</option>
                     </select>
                 </div>
-                <div>
-                    <label class="form-label small mb-1 fw-semibold">Trạng thái</label>
-                    <select id="filterStatus" class="form-select form-select-sm" style="width:170px">
-                        <option value="ALL">Tất cả</option>
-                        <option value="UNPAID">🔴 Chưa thanh toán</option>
-                        <option value="PAID">✅ Đã thanh toán</option>
-                        <option value="OVERDUE">⚫ Quá hạn</option>
-                    </select>
-                </div>
-                <div class="d-flex gap-2 mt-3">
-                    <button class="btn btn-primary btn-sm" onclick="applyFilter()">
-                        <i class="fas fa-filter me-1"></i>Lọc
+                <div class="col-auto">
+                    <button class="btn btn-primary btn-sm" onclick="loadInvoices()">
+                        <i class="fas fa-search me-1"></i>Lọc
                     </button>
-                    <button class="btn btn-outline-secondary btn-sm" onclick="resetFilter()">
-                        <i class="fas fa-redo me-1"></i>Đặt lại
+                    <button class="btn btn-outline-secondary btn-sm ms-1" onclick="resetFilter()">
+                        <i class="fas fa-redo"></i>
                     </button>
                 </div>
             </div>
         </div>
-        <div class="row g-3 mb-4" id="invoiceSummary"></div>
 
-        <!-- Bảng hóa đơn -->
-        <div class="content-card">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <div class="card-title mb-0"><i class="fas fa-list me-2"></i>Danh sách hóa đơn</div>
-                <button class="btn btn-success btn-sm" onclick="exportInvoicesToPDF()">
-                    <i class="fas fa-file-pdf me-1"></i> Xuất PDF
-                </button>
-            </div>
+        <!-- Table -->
+        <div class="content-card p-0">
             <div class="table-responsive">
-                <table class="table table-hover invoice-table align-middle" id="invoiceTable">
-                    <thead>
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
                     <tr>
-                        <th>Tháng</th>
-                        <th>Điện (kWh)</th>
-                        <th>Nước (m³)</th>
+                        <th class="ps-3">Kỳ</th>
                         <th class="text-end">Tiền điện</th>
                         <th class="text-end">Tiền nước</th>
-                        <th class="text-end">Phí DV</th>
+                        <th class="text-end">Dịch vụ</th>
                         <th class="text-end">Phí xe</th>
-                        <th class="text-end">Tổng cộng</th>
-                        <th class="text-center">Trạng thái</th>
-                        <th class="text-center">Hạn đóng</th>
+                        <th class="text-end fw-bold">Tổng cộng</th>
+                        <th>Trạng thái</th>
+                        <th>Hạn TT</th>
+                        <th></th>
                     </tr>
                     </thead>
-                    <tbody id="invoiceBody">
-                    <tr><td colspan="10" class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Đang tải...</td></tr>
+                    <tbody id="invoiceTableBody">
+                    <tr><td colspan="9" class="text-center py-4 text-muted">
+                        <i class="fas fa-spinner fa-spin me-2"></i>Đang tải...
+                    </td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
+
     </main>
 </div>
 
 <!-- Modal chi tiết hóa đơn -->
-<div class="modal fade" id="invModal" tabindex="-1">
-    <div class="modal-dialog">
+<div class="modal fade" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="invModalTitle">Chi tiết hóa đơn</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-file-invoice text-primary me-2"></i>Chi tiết hóa đơn
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body" id="invModalBody"></div>
-            <div class="modal-footer" id="invModalFooter">
-                <!-- Nút được render động -->
+            <div class="modal-body" id="detailBody">Đang tải...</div>
+            <div class="modal-footer" id="detailFooter">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
             </div>
         </div>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<link rel="stylesheet" href="/css/style.css">
 <script src="/js/common.js"></script>
 <script src="/js/resident-common.js"></script>
 <script>
+    // ── Khởi tạo ──────────────────────────────────────────────
     requireResidentLogin();
     renderResidentSidebar('invoices');
+
     document.getElementById('mobileToggle').addEventListener('click', () =>
         document.getElementById('residentSidebar').classList.toggle('open'));
 
-    let invoices = [];
-    const invModal = new bootstrap.Modal(document.getElementById('invModal'));
-
-    // Khởi tạo tháng hiện tại
-    document.getElementById('filterMonth').value = String(new Date().getMonth() + 1);
-
-    // ── Toggle filter inputs ────────────────────────────────────
-    function toggleFilterInputs() {
-        const type = document.getElementById('filterType').value;
-        document.getElementById('monthGroup').style.display   = type === 'month'   ? '' : 'none';
-        document.getElementById('quarterGroup').style.display = type === 'quarter' ? '' : 'none';
-        document.getElementById('yearGroup').style.display    = type !== 'all'     ? '' : 'none';
+    // Populate tháng
+    const fMonth = document.getElementById('filterMonth');
+    for (let m = 1; m <= 12; m++) {
+        const o = document.createElement('option');
+        o.value = m;
+        o.textContent = 'Tháng ' + m;
+        fMonth.appendChild(o);
     }
 
-    // ── Apply filter ────────────────────────────────────────────
-    function applyFilter() {
-        const params = new URLSearchParams();
-        const filterType = document.getElementById('filterType').value;
-        const keyword    = document.getElementById('filterKeyword').value.trim();
-        const status     = document.getElementById('filterStatus').value;
+    // ── Load danh sách ─────────────────────────────────────────
+    async function loadInvoices() {
+        const status = document.getElementById('filterStatus').value;
+        const month  = document.getElementById('filterMonth').value;
+        const year   = document.getElementById('filterYear').value;
 
-        if (keyword) {
-            params.set('keyword', keyword);
-        } else {
-            params.set('filterType', filterType);
-            if (filterType === 'month') {
-                params.set('month', document.getElementById('filterMonth').value);
-                params.set('year',  document.getElementById('filterYear').value);
-            } else if (filterType === 'quarter') {
-                params.set('quarter', document.getElementById('filterQuarter').value);
-                params.set('year',    document.getElementById('filterYear').value);
-            } else if (filterType === 'year') {
-                params.set('year', document.getElementById('filterYear').value);
-            }
+        // Nếu chọn tháng mà chưa chọn năm → tự dùng năm hiện tại
+        const resolvedYear = year || (month ? String(new Date().getFullYear()) : '');
+
+        const params = new URLSearchParams({ filterType: 'all' });
+        if (status && status !== 'all') params.set('status', status);
+        if (month && resolvedYear) {
+            params.set('month', month);
+            params.set('year', resolvedYear);
+            params.set('filterType', 'month');
+        } else if (resolvedYear && !month) {
+            params.set('year', resolvedYear);
+            params.set('filterType', 'year');
         }
-        if (status !== 'ALL') params.set('status', status);
 
-        loadInvoices(params);
-    }
+        const tbody = document.getElementById('invoiceTableBody');
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-muted">
+            <i class="fas fa-spinner fa-spin me-2"></i>Đang tải...</td></tr>`;
 
-    function resetFilter() {
-        document.getElementById('filterType').value    = 'all';
-        document.getElementById('filterStatus').value  = 'ALL';
-        document.getElementById('filterKeyword').value = '';
-        toggleFilterInputs();
-        loadInvoices();
-    }
-
-    async function loadInvoices(params) {
         showLoading();
         try {
-            const qs  = params ? '?' + params.toString() : '';
-            const res = await apiRequest(`${API_BASE_URL}/resident/invoices${qs}`);
-            invoices = await res.json();
-            renderSummary();
-            renderTable();
+            const res  = await apiRequest(`${API_BASE_URL}/resident/invoices?${params}`);
+            if (!res.ok) throw new Error(await res.text());
+            const list = await res.json();
+            renderTable(list);
+            updateStats(list);
         } catch(e) {
-            showResidentAlert('alertContainer', 'Không thể tải hóa đơn.', 'danger');
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-4">
+                <i class="fas fa-exclamation-circle me-2"></i>Không thể tải dữ liệu: ${e.message}
+            </td></tr>`;
+            showResidentAlert('alertContainer', 'Không thể tải hóa đơn: ' + e.message);
         } finally { hideLoading(); }
     }
 
-    function renderSummary() {
-        const unpaid  = invoices.filter(i => i.status === 'UNPAID').length;
-        const paid    = invoices.filter(i => i.status === 'PAID').length;
-        const overdue = invoices.filter(i => i.status === 'OVERDUE').length;
-        const totalUnpaidAmt = invoices.filter(i => i.status !== 'PAID')
-            .reduce((s, i) => s + parseFloat(i.totalAmt || 0), 0);
-
-        document.getElementById('invoiceSummary').innerHTML = `
-            <div class="col-6 col-md-3">
-                <div class="stat-card">
-                    <div class="stat-icon icon-red"><i class="fas fa-exclamation"></i></div>
-                    <div><div class="stat-value">${unpaid}</div><div class="stat-label">Chưa thanh toán</div></div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="stat-card">
-                    <div class="stat-icon icon-green"><i class="fas fa-check"></i></div>
-                    <div><div class="stat-value">${paid}</div><div class="stat-label">Đã thanh toán</div></div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="stat-card">
-                    <div class="stat-icon icon-orange"><i class="fas fa-clock"></i></div>
-                    <div><div class="stat-value">${overdue}</div><div class="stat-label">Quá hạn</div></div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="stat-card">
-                    <div class="stat-icon icon-purple"><i class="fas fa-money-bill"></i></div>
-                    <div><div class="stat-value" style="font-size:1.1rem">${formatVND(totalUnpaidAmt)}</div><div class="stat-label">Tổng cần đóng</div></div>
-                </div>
-            </div>`;
-    }
-
-    function renderTable() {
-        if (!invoices.length) {
-            document.getElementById('invoiceBody').innerHTML =
-                `<tr><td colspan="10"><div class="empty-state"><i class="fas fa-file-invoice d-block mb-2"></i><p>Chưa có hóa đơn nào</p></div></td></tr>`;
+    // ── Render bảng ────────────────────────────────────────────
+    function renderTable(list) {
+        const tbody = document.getElementById('invoiceTableBody');
+        if (!list || !list.length) {
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-muted">
+                <i class="fas fa-file-invoice fa-2x mb-2 d-block opacity-25"></i>
+                Không có hóa đơn nào
+            </td></tr>`;
             return;
         }
-        document.getElementById('invoiceBody').innerHTML = invoices.map(inv => {
-            const s = INV_STATUS[inv.status] || INV_STATUS.UNPAID;
+
+        const statusCls   = { UNPAID:'bg-warning text-dark', PAID:'bg-success', OVERDUE:'bg-danger' };
+        const statusLabel = { UNPAID:'Chưa thanh toán', PAID:'Đã thanh toán', OVERDUE:'Quá hạn' };
+
+        tbody.innerHTML = list.map(inv => {
+            const isOverdue = inv.status === 'OVERDUE';
+            const isUnpaid  = inv.status === 'UNPAID';
+            // Escape JSON for onclick attribute
+            const invJson = JSON.stringify(inv).replace(/'/g, "\\'");
             return `
-            <tr style="cursor:pointer" onclick="openDetail('${inv.id}')">
-                <td><strong>Tháng ${inv.month}/${inv.year}</strong></td>
-                <td>${inv.electricKwh || 0}</td>
-                <td>${inv.waterM3 || 0}</td>
-                <td class="text-end">${formatVND(inv.electricAmt)}</td>
-                <td class="text-end">${formatVND(inv.waterAmt)}</td>
-                <td class="text-end">${formatVND(inv.serviceAmt)}</td>
-                <td class="text-end">${formatVND(inv.parkingAmt)}</td>
-                <td class="text-end invoice-total">${formatVND(inv.totalAmt)}</td>
-                <td class="text-center"><span class="badge ${s.cls}">${s.label}</span></td>
-                <td class="text-center">${formatDate(inv.dueDate)}</td>
+            <tr class="${isOverdue ? 'table-danger' : ''}">
+                <td class="ps-3">
+                    <div class="fw-semibold">Tháng ${inv.month}/${inv.year}</div>
+                    <small class="text-muted font-monospace">${inv.id}</small>
+                </td>
+                <td class="text-end">${fmtVND(inv.electricAmount ?? inv.electricAmt)}</td>
+                <td class="text-end">${fmtVND(inv.waterAmount    ?? inv.waterAmt)}</td>
+                <td class="text-end">${fmtVND(inv.serviceAmount  ?? inv.serviceAmt)}</td>
+                <td class="text-end">${fmtVND(inv.parkingAmount  ?? inv.parkingAmt)}</td>
+                <td class="text-end fw-bold ${isOverdue ? 'text-danger' : 'text-primary'}">
+                    ${fmtVND(inv.totalAmount ?? inv.totalAmt)}
+                </td>
+                <td>
+                    <span class="badge ${statusCls[inv.status] || 'bg-secondary'}">
+                        ${statusLabel[inv.status] || inv.status}
+                    </span>
+                </td>
+                <td>
+                    <small class="${isOverdue ? 'text-danger fw-semibold' : ''}">${inv.dueDate || '—'}</small>
+                    ${isOverdue ? '<br><small class="text-danger"><i class="fas fa-exclamation-triangle"></i> Quá hạn!</small>' : ''}
+                </td>
+                <td>
+                    <div class="d-flex gap-1">
+                        <button class="btn btn-sm btn-outline-info"
+                                onclick="openDetail(invoiceMap['${inv.id}'])"
+                                title="Xem chi tiết">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        ${(isUnpaid || isOverdue) ? `
+                        <button class="btn btn-sm btn-outline-success"
+                                onclick="markPaid('${inv.id}')"
+                                title="Thanh toán">
+                            <i class="fas fa-credit-card"></i>
+                        </button>` : ''}
+                    </div>
+                </td>
             </tr>`;
         }).join('');
+
+        // Lưu map để dùng trong onclick (tránh escape JSON phức tạp)
+        window.invoiceMap = {};
+        list.forEach(inv => window.invoiceMap[inv.id] = inv);
     }
 
-    function openDetail(id) {
-        const inv = invoices.find(i => i.id === id);
+    // ── Stat cards ─────────────────────────────────────────────
+    function updateStats(list) {
+        document.getElementById('statTotal').textContent   = list.length;
+        document.getElementById('statUnpaid').textContent  = list.filter(i => i.status === 'UNPAID').length;
+        document.getElementById('statPaid').textContent    = list.filter(i => i.status === 'PAID').length;
+        document.getElementById('statOverdue').textContent = list.filter(i => i.status === 'OVERDUE').length;
+    }
+
+    // ── Reset filter ───────────────────────────────────────────
+    function resetFilter() {
+        document.getElementById('filterStatus').value = 'all';
+        document.getElementById('filterMonth').value  = '';
+        document.getElementById('filterYear').value   = '';
+        loadInvoices();
+    }
+
+    // ── Modal chi tiết ─────────────────────────────────────────
+    function openDetail(inv) {
         if (!inv) return;
-        const s = INV_STATUS[inv.status] || INV_STATUS.UNPAID;
+        const statusCls   = { UNPAID:'bg-warning text-dark', PAID:'bg-success', OVERDUE:'bg-danger' };
+        const statusLabel = { UNPAID:'Chưa thanh toán', PAID:'Đã thanh toán', OVERDUE:'Quá hạn' };
 
-        document.getElementById('invModalTitle').textContent = `Hóa đơn Tháng ${inv.month}/${inv.year}`;
+        const elAmt = inv.electricAmount ?? inv.electricAmt ?? 0;
+        const waAmt = inv.waterAmount    ?? inv.waterAmt    ?? 0;
+        const svAmt = inv.serviceAmount  ?? inv.serviceAmt  ?? 0;
+        const pkAmt = inv.parkingAmount  ?? inv.parkingAmt  ?? 0;
+        const total = inv.totalAmount    ?? inv.totalAmt    ?? 0;
 
-        let bodyHTML = `
-            <table class="table table-borderless table-sm">
-                <tr><td class="text-muted">Trạng thái</td><td><span class="badge ${s.cls}">${s.label}</span></td></tr>
-                <tr><td class="text-muted">Hạn thanh toán</td><td>${formatDate(inv.dueDate)}</td></tr>
-                ${inv.paidAt ? `<tr><td class="text-muted">Ngày đã thanh toán</td><td>${formatDateTime(inv.paidAt)}</td></tr>` : ''}
-                <tr><td colspan="2"><hr class="my-2"></td></tr>
-                <tr><td>Điện (${inv.electricKwh || 0} kWh)</td><td class="text-end">${formatVND(inv.electricAmt)}</td></tr>
-                <tr><td>Nước (${inv.waterM3 || 0} m³)</td><td class="text-end">${formatVND(inv.waterAmt)}</td></tr>
-                <tr><td>Phí dịch vụ</td><td class="text-end">${formatVND(inv.serviceAmt)}</td></tr>
-                <tr><td>Phí gửi xe</td><td class="text-end">${formatVND(inv.parkingAmt)}</td></tr>
-                <tr class="fw-bold"><td>TỔNG CỘNG</td><td class="text-end text-danger">${formatVND(inv.totalAmt)}</td></tr>
-            </table>`;
+        document.getElementById('detailBody').innerHTML = `
+            <div class="row g-3">
+                <div class="col-6">
+                    <label class="text-muted small">Mã hóa đơn</label>
+                    <div class="fw-bold font-monospace">${inv.id}</div>
+                </div>
+                <div class="col-6">
+                    <label class="text-muted small">Trạng thái</label>
+                    <div><span class="badge ${statusCls[inv.status] || 'bg-secondary'}">
+                        ${statusLabel[inv.status] || inv.status}
+                    </span></div>
+                </div>
+                <div class="col-6">
+                    <label class="text-muted small">Kỳ hóa đơn</label>
+                    <div class="fw-semibold">Tháng ${inv.month}/${inv.year}</div>
+                </div>
+                <div class="col-6">
+                    <label class="text-muted small">Hạn thanh toán</label>
+                    <div class="${inv.status === 'OVERDUE' ? 'text-danger fw-semibold' : ''}">${inv.dueDate || '—'}</div>
+                </div>
+                <div class="col-12"><hr class="my-1"></div>
 
-        document.getElementById('invModalBody').innerHTML = bodyHTML;
+                <div class="col-6 col-md-3">
+                    <div class="border rounded p-2 text-center">
+                        <div class="text-warning mb-1"><i class="fas fa-bolt fa-lg"></i></div>
+                        <div class="text-muted small">Tiền điện</div>
+                        <div class="fw-semibold">${fmtVND(elAmt)}</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="border rounded p-2 text-center">
+                        <div class="text-info mb-1"><i class="fas fa-tint fa-lg"></i></div>
+                        <div class="text-muted small">Tiền nước</div>
+                        <div class="fw-semibold">${fmtVND(waAmt)}</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="border rounded p-2 text-center">
+                        <div class="text-secondary mb-1"><i class="fas fa-building fa-lg"></i></div>
+                        <div class="text-muted small">Phí quản lý</div>
+                        <div class="fw-semibold">${fmtVND(svAmt)}</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="border rounded p-2 text-center">
+                        <div class="text-secondary mb-1"><i class="fas fa-parking fa-lg"></i></div>
+                        <div class="text-muted small">Phí xe</div>
+                        <div class="fw-semibold">${fmtVND(pkAmt)}</div>
+                    </div>
+                </div>
 
-        // Render footer động với nút thanh toán
-        let footerHTML = `
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>`;
+                <div class="col-12">
+                    <div class="bg-primary bg-opacity-10 rounded p-3 text-center">
+                        <div class="text-muted small mb-1">Tổng cộng phải thanh toán</div>
+                        <div class="fw-bold fs-3 text-primary">${fmtVND(total)}</div>
+                    </div>
+                </div>
 
-        if (inv.status === 'UNPAID' || inv.status === 'OVERDUE') {
-            footerHTML += `
-            <button type="button" class="btn btn-success" onclick="payInvoice('${inv.id}')">
-                <i class="fas fa-credit-card"></i> Thanh toán ngay
-            </button>`;
+                ${inv.paidAt ? `
+                <div class="col-12">
+                    <div class="alert alert-success py-2 mb-0">
+                        <i class="fas fa-check-circle me-2"></i>
+                        Đã thanh toán lúc <strong>${new Date(inv.paidAt).toLocaleString('vi-VN')}</strong>
+                    </div>
+                </div>` : ''}
+
+                <div class="col-12">
+                    <small class="text-muted">Người tạo: ${inv.createdBy || 'Ban quản lý'}</small>
+                </div>
+            </div>`;
+
+        const footer = document.getElementById('detailFooter');
+        footer.innerHTML = '';
+        if (inv.status !== 'PAID') {
+            footer.innerHTML = `
+                <button class="btn btn-success me-2" onclick="markPaid('${inv.id}', true)">
+                    <i class="fas fa-credit-card me-1"></i>Thanh toán ngay
+                </button>`;
         }
+        footer.innerHTML += '<button class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>';
 
-        document.getElementById('invModalFooter').innerHTML = footerHTML;
-
-        invModal.show();
+        new bootstrap.Modal(document.getElementById('detailModal')).show();
     }
 
-    async function payInvoice(invoiceId) {
+    // ── Thanh toán ─────────────────────────────────────────────
+    async function markPaid(id, fromDetail = false) {
         if (!confirm('Xác nhận thanh toán hóa đơn này?')) return;
-
         showLoading();
         try {
-            const res = await apiRequest(`${API_BASE_URL}/resident/invoices/${invoiceId}/pay`, {
-                method: 'PUT'
-            });
-
-            if (res.ok) {
-                const message = await res.text();
-                showResidentAlert('alertContainer', message, 'success');
-
-                invModal.hide();
-                loadInvoices();
-            } else {
-                const error = await res.text();
-                showResidentAlert('alertContainer', 'Lỗi: ' + error, 'danger');
-            }
-        } catch (error) {
-            showResidentAlert('alertContainer', 'Có lỗi xảy ra: ' + error.message, 'danger');
-        } finally {
-            hideLoading();
-        }
+            const res = await apiRequest(`${API_BASE_URL}/resident/invoices/${id}/pay`, { method: 'PUT' });
+            if (!res.ok) { showResidentAlert('alertContainer', await res.text()); return; }
+            if (fromDetail) bootstrap.Modal.getInstance(document.getElementById('detailModal'))?.hide();
+            showResidentAlert('alertContainer', 'Thanh toán thành công!', 'success');
+            loadInvoices();
+        } catch(e) {
+            showResidentAlert('alertContainer', 'Lỗi: ' + e.message);
+        } finally { hideLoading(); }
     }
 
+    // ── Helper format tiền ────────────────────────────────────
+    function fmtVND(amount) {
+        if (amount == null || amount === 0) return '<span class="text-muted">—</span>';
+        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+    }
+
+    // Load khi page sẵn sàng
     loadInvoices();
-    function exportInvoicesToPDF() {
-        if (!invoices.length) {
-            showResidentAlert('alertContainer', 'Không có hóa đơn để xuất!', 'warning');
-            return;
-        }
-
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        const userInfo = getUserInfo();
-
-        // Header
-        doc.setFontSize(18);
-        doc.text('DANH SÁCH HÓA ĐƠN', 105, 20, { align: 'center' });
-        doc.setFontSize(12);
-        doc.text(`Cư dân: ${userInfo.fullName}`, 20, 30);
-        doc.text(`Ngày xuất: ${new Date().toLocaleDateString('vi-VN')}`, 20, 37);
-
-        // Table
-        let y = 50;
-        invoices.forEach((inv, idx) => {
-            if (y > 270) { doc.addPage(); y = 20; }
-
-            doc.setFontSize(11);
-            doc.setFont(undefined, 'bold');
-            doc.text(`${idx+1}. Tháng ${inv.month}/${inv.year}`, 20, y);
-            doc.setFont(undefined, 'normal');
-            doc.setFontSize(10);
-            y += 7;
-
-            doc.text(`Điện: ${inv.electricKwh} kWh × 2,500đ = ${formatVND(inv.electricAmt)}`, 25, y);
-            y += 6;
-            doc.text(`Nước: ${inv.waterM3} m³ × 15,000đ = ${formatVND(inv.waterAmt)}`, 25, y);
-            y += 6;
-            doc.text(`Phí dịch vụ: ${formatVND(inv.serviceAmt)}`, 25, y);
-            y += 6;
-            doc.text(`Phí gửi xe: ${formatVND(inv.parkingAmt)}`, 25, y);
-            y += 6;
-
-            doc.setFont(undefined, 'bold');
-            doc.text(`TỔNG: ${formatVND(inv.totalAmt)}`, 25, y);
-            doc.setFont(undefined, 'normal');
-
-            const s = INV_STATUS[inv.status] || INV_STATUS.UNPAID;
-            doc.text(`Trạng thái: ${s.label}`, 120, y);
-            y += 10;
-        });
-
-        doc.save(`hoa-don-${new Date().getTime()}.pdf`);
-    }
 </script>
-
-<!-- jsPDF CDN -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </body>
 </html>

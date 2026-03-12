@@ -188,8 +188,9 @@ public class ResidentDashboardService {
             BigDecimal electricAmount = BigDecimal.ZERO;
             if (inv.getElectricReading() != null) {
                 MeterReading er = inv.getElectricReading();
-                electricConsumption = er.getConsumption() != null ? er.getConsumption() : BigDecimal.ZERO;
-                electricAmount = er.getTotalAmount() != null ? er.getTotalAmount() : BigDecimal.ZERO;
+                electricConsumption = er.getConsumption(); // @Transient — đã trả BigDecimal
+                electricAmount = er.getTotalAmount() != null
+                        ? BigDecimal.valueOf(er.getTotalAmount()) : BigDecimal.ZERO;
             }
             m.put("electricKwh", electricConsumption);
             m.put("electricAmt", electricAmount);
@@ -199,8 +200,9 @@ public class ResidentDashboardService {
             BigDecimal waterAmount = BigDecimal.ZERO;
             if (inv.getWaterReading() != null) {
                 MeterReading wr = inv.getWaterReading();
-                waterConsumption = wr.getConsumption() != null ? wr.getConsumption() : BigDecimal.ZERO;
-                waterAmount = wr.getTotalAmount() != null ? wr.getTotalAmount() : BigDecimal.ZERO;
+                waterConsumption = wr.getConsumption(); // @Transient — đã trả BigDecimal
+                waterAmount = wr.getTotalAmount() != null
+                        ? BigDecimal.valueOf(wr.getTotalAmount()) : BigDecimal.ZERO;
             }
             m.put("waterM3", waterConsumption);
             m.put("waterAmt", waterAmount);
