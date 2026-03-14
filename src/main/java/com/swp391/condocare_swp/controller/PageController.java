@@ -71,4 +71,40 @@ public class PageController {
     public String profilePage() {
         return "profile";
     }
+
+    // ─── RESIDENT DASHBOARD PAGES ───────────────────────────
+
+    /** GET /resident → Trang chủ cư dân */
+    @GetMapping("/resident")
+    public String residentHome()          { return "resident/home"; }
+
+    /** GET /resident/notifications → Thông báo */
+    @GetMapping("/resident/notifications")
+    public String residentNotifications() { return "resident/notifications"; }
+
+    /** GET /resident/invoices → Hóa đơn */
+    @GetMapping("/resident/invoices")
+    public String residentInvoices()      { return "resident/invoices"; }
+
+    /** GET /resident/apartment → Thông tin căn hộ */
+    @GetMapping("/resident/apartment")
+    public String residentApartment()     { return "resident/apartment"; }
+
+    /** GET /resident/requests → Yêu cầu hỗ trợ */
+    @GetMapping("/resident/requests")
+    public String residentRequests()      { return "resident/requests"; }
+
+    // ─── STAFF ACCOUNT MANAGEMENT PAGES ────────────────────
+
+    /** GET /dashboard/staff → Quản lý nhân viên */
+    @GetMapping("/dashboard/staff")
+    public String staffManagement()       { return "staff/list"; }
+
+    /** GET /dashboard/resident → Quản lý cư dân (phía staff) */
+    @GetMapping("/dashboard/resident")
+    public String residentManagement()    { return "resident/list"; }
+
+    /** GET /dashboard/invoices → Quản lý hóa đơn */
+    @GetMapping("/dashboard/invoices")
+    public String invoiceManagement()     { return "staff/invoices"; }
 }

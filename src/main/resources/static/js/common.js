@@ -52,49 +52,65 @@ function showAlert(message, type = 'info') {
 }
 
 /**
- * Lưu token vào localStorage
+ * Lưu token.
  * @param {string} token - JWT token
+ * @param {boolean} remember - true = ghi nhớ (localStorage), false = sessionStorage
  */
-function saveToken(token) {
-    localStorage.setItem('token', token);
+function saveToken(token, remember = false) {
+    if (remember) {
+        localStorage.setItem('token', token);
+        sessionStorage.removeItem('token');
+    } else {
+        sessionStorage.setItem('token', token);
+        localStorage.removeItem('token');  // xóa nếu lần trước đã remember
+    }
 }
 
 /**
- * Lấy token từ localStorage
+ * Lấy token — ưu tiên sessionStorage, fallback localStorage (remember me)
  * @returns {string|null} JWT token
  */
 function getToken() {
-    return localStorage.getItem('token');
+    return sessionStorage.getItem('token') || localStorage.getItem('token');
 }
 
 /**
- * Xóa token khỏi localStorage
+ * Xóa token khỏi cả hai storage
  */
 function removeToken() {
+    sessionStorage.removeItem('token');
     localStorage.removeItem('token');
 }
 
 /**
- * Lưu user info vào localStorage
+ * Lưu user info — đồng bộ với nơi lưu token
  * @param {Object} userInfo - Thông tin user
+ * @param {boolean} remember - true = localStorage
  */
-function saveUserInfo(userInfo) {
-    localStorage.setItem('userInfo', JSON.stringify(userInfo));
+function saveUserInfo(userInfo, remember = false) {
+    if (remember) {
+        localStorage.setItem('userInfo', JSON.stringify(userInfo));
+        sessionStorage.removeItem('userInfo');
+    } else {
+        sessionStorage.setItem('userInfo', JSON.stringify(userInfo));
+        localStorage.removeItem('userInfo');
+    }
 }
 
 /**
- * Lấy user info từ localStorage
+ * Lấy user info — ưu tiên sessionStorage
  * @returns {Object|null} User info
  */
 function getUserInfo() {
-    const userInfo = localStorage.getItem('userInfo');
-    return userInfo ? JSON.parse(userInfo) : null;
+    const raw = sessionStorage.getItem('userInfo') || localStorage.getItem('userInfo');
+    try { return raw ? JSON.parse(raw) : null; } catch { return null; }
 }
 
 /**
- * Xóa user info khỏi localStorage
+ * Xóa user info khỏi cả hai storage
  */
 function removeUserInfo() {
+    sessionStorage.removeItem('userInfo');
     localStorage.removeItem('userInfo');
 }
 
@@ -144,14 +160,14 @@ function redirectIfNotLoggedIn() {
  */
 async function apiRequest(url, options = {}) {
     const token = getToken();
-    
+
     const defaultOptions = {
         headers: {
             'Content-Type': 'application/json',
             ...(token && { 'Authorization': `Bearer ${token}` })
         }
     };
-    
+
     const mergedOptions = {
         ...defaultOptions,
         ...options,
@@ -160,16 +176,16 @@ async function apiRequest(url, options = {}) {
             ...options.headers
         }
     };
-    
+
     try {
         const response = await fetch(url, mergedOptions);
-        
+
         // Nếu 401 Unauthorized, logout
         if (response.status === 401) {
             logout();
             return;
         }
-        
+
         return response;
     } catch (error) {
         console.error('API Request Error:', error);
@@ -248,3 +264,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+/**
+ * Lưu session sau khi login thành công.
+ * Gọi hàm này trong login.html thay vì gọi saveToken/saveUserInfo riêng lẻ.
+ * @param {string} token - JWT token từ server
+ * @param {Object} userInfo - Thông tin user từ server
+ * @param {boolean} remember - Giá trị checkbox "Ghi nhớ đăng nhập"
+ */
+function saveLoginSession(token, userInfo, remember = false) {
+    saveToken(token, remember);
+    saveUserInfo(userInfo, remember);
+}

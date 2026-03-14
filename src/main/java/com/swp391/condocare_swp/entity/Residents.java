@@ -67,7 +67,7 @@ public class Residents {
     /**
      * Số CMND/CCCD
      */
-    @Column(name = "id_number", length = 12, nullable = false)
+    @Column(name = "id_number", length = 12, nullable = true)
     private String idNumber;
     
     /**
@@ -94,7 +94,7 @@ public class Residents {
      * Many-to-One: Một Apartment có nhiều Residents
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "apartment_id", nullable = false)
+    @JoinColumn(name = "apartment_id", nullable = true)
     private Apartment apartment;
     
     /**

@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý cư dân</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div id="loading" class="loading"><div class="spinner"></div></div>
+
+<div class="container-fluid">
+    <div class="row">
+
+        <!-- Sidebar (giống staff list) -->
+        <nav class="col-md-3 col-lg-2 d-md-block sidebar">
+            <div class="position-sticky pt-3">
+                <div class="text-center mb-4 px-3">
+                    <h5 class="text-white fw-bold"><i class="fas fa-building me-2"></i>CondoCare</h5>
+                    <small class="text-white-50" id="sidebarUser"></small>
+                </div>
+                <ul class="nav flex-column px-2">
+                    <li class="nav-item"><a class="nav-link" href="/dashboard"><i class="fas fa-tachometer-alt"></i> Tổng quan</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/dashboard/buildings"><i class="fas fa-building"></i> Tòa nhà</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/dashboard/apartments"><i class="fas fa-home"></i> Căn hộ</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/dashboard/staff"><i class="fas fa-users-cog"></i> Quản lý nhân viên</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/dashboard/resident"><i class="fas fa-users"></i> Quản lý cư dân</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/dashboard/invoices"><i class="fas fa-receipt"></i> Hóa đơn</a></li>
+                    <li class="nav-item mt-3"><a class="nav-link text-danger-emphasis" href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Đăng xuất</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Main -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+            <div class="page-header mb-4">
+                <div>
+                    <h4><i class="fas fa-users text-primary"></i> Quản lý cư dân</h4>
+                    <nav aria-label="breadcrumb"><ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
+                        <li class="breadcrumb-item active">Cư dân</li>
+                    </ol></nav>
+                </div>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#rCreateModal">
+                    <i class="fas fa-user-plus me-1"></i> Thêm cư dân
+                </button>
+            </div>
+
+            <div id="rAlertContainer"></div>
+
+            <!-- Stats -->
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-md-2">
+                    <div class="stat-card primary">
+                        <div class="stat-icon icon-blue"><i class="fas fa-users"></i></div>
+                        <div><div class="stat-value" id="rStatTotal">0</div><div class="stat-label">Tổng cư dân</div></div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-2">
+                    <div class="stat-card success">
+                        <div class="stat-icon icon-green"><i class="fas fa-user-check"></i></div>
+                        <div><div class="stat-value" id="rStatActive">0</div><div class="stat-label">Đang hoạt động</div></div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-2">
+                    <div class="stat-card danger">
+                        <div class="stat-icon icon-red"><i class="fas fa-user-slash"></i></div>
+                        <div><div class="stat-value" id="rStatInactive">0</div><div class="stat-label">Không HĐ</div></div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-2">
+                    <div class="stat-card primary">
+                        <div class="stat-icon icon-purple"><i class="fas fa-home"></i></div>
+                        <div><div class="stat-value" id="rStatOwners">0</div><div class="stat-label">Chủ nhà</div></div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-2">
+                    <div class="stat-card warning">
+                        <div class="stat-icon icon-orange"><i class="fas fa-key"></i></div>
+                        <div><div class="stat-value" id="rStatTenants">0</div><div class="stat-label">Người thuê</div></div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-2">
+                    <div class="stat-card">
+                        <div class="stat-icon icon-blue" style="background:#f5f5f5;color:#9e9e9e"><i class="fas fa-user"></i></div>
+                        <div><div class="stat-value text-secondary" id="rStatGuests">0</div><div class="stat-label">Khách</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter Bar -->
+            <div class="content-card mb-3">
+                <div class="d-flex flex-wrap gap-2 align-items-end">
+                    <div>
+                        <label class="form-label small fw-semibold mb-1">🔍 Tìm kiếm</label>
+                        <input type="text" id="rSearchInput" class="form-control form-control-sm" style="width:220px"
+                               placeholder="Tên, username, email, CCCD...">
+                    </div>
+                    <div>
+                        <label class="form-label small fw-semibold mb-1">Loại</label>
+                        <select id="rFilterType" class="form-select form-select-sm" style="width:140px">
+                            <option value="">Tất cả</option>
+                            <option value="OWNER">🏠 Chủ nhà</option>
+                            <option value="TENANT">🔑 Người thuê</option>
+                            <option value="GUEST">👤 Khách</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label small fw-semibold mb-1">Trạng thái</label>
+                        <select id="rFilterStatus" class="form-select form-select-sm" style="width:140px">
+                            <option value="">Tất cả</option>
+                            <option value="ACTIVE">✅ Hoạt động</option>
+                            <option value="INACTIVE">🔴 Không HĐ</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label small fw-semibold mb-1">Sắp xếp</label>
+                        <select id="rSortField" class="form-select form-select-sm" style="width:130px">
+                            <option value="fullName">Họ tên</option>
+                            <option value="username">Username</option>
+                            <option value="createAt">Ngày tạo</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label small fw-semibold mb-1">&nbsp;</label>
+                        <select id="rSortDir" class="form-select form-select-sm" style="width:100px">
+                            <option value="asc">A → Z</option>
+                            <option value="desc">Z → A</option>
+                        </select>
+                    </div>
+                    <div class="d-flex gap-2 mt-3">
+                        <button class="btn btn-primary btn-sm" id="rBtnSearch"><i class="fas fa-search me-1"></i>Tìm</button>
+                        <button class="btn btn-outline-secondary btn-sm" id="rBtnReset"><i class="fas fa-redo me-1"></i>Đặt lại</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="content-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted small" id="rTableInfo"></span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                        <tr>
+                            <th style="width:90px">ID</th>
+                            <th>Họ tên</th>
+                            <th>Email</th>
+                            <th>Điện thoại</th>
+                            <th>Căn hộ</th>
+                            <th>Loại</th>
+                            <th>Trạng thái</th>
+                            <th style="width:100px">Thao tác</th>
+                        </tr>
+                        </thead>
+                        <tbody id="residentTableBody">
+                        <tr><td colspan="8" class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Đang tải...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="rPaginationContainer" class="mt-3"></div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- Modal Tạo cư dân -->
+<div class="modal fade" id="rCreateModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-user-plus me-2"></i>Thêm cư dân mới</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="rCreateFormAlert"></div>
+                <form id="rCreateForm">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Username <span class="text-danger">*</span></label>
+                            <input type="text" id="rFormUsername" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Mật khẩu <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="password" id="rFormPassword" class="form-control" required>
+                                <button class="btn btn-outline-secondary" type="button" onclick="togglePwd('rFormPassword',this)"><i class="fas fa-eye"></i></button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Họ và tên <span class="text-danger">*</span></label>
+                            <input type="text" id="rFormFullName" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Loại cư dân <span class="text-danger">*</span></label>
+                            <select id="rFormType" class="form-select" required>
+                                <option value="">-- Chọn --</option>
+                                <option value="OWNER">🏠 Chủ nhà</option>
+                                <option value="TENANT">🔑 Người thuê</option>
+                                <option value="GUEST">👤 Khách</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Email</label>
+                            <input type="email" id="rFormEmail" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Số điện thoại</label>
+                            <input type="text" id="rFormPhone" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Giới tính <span class="text-danger">*</span></label>
+                            <select id="rFormGender" class="form-select" required>
+                                <option value="">-- Chọn --</option>
+                                <option value="M">Nam</option>
+                                <option value="F">Nữ</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Ngày sinh</label>
+                            <input type="date" id="rFormDob" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Số CCCD</label>
+                            <input type="text" id="rFormIdNumber" class="form-control" maxlength="12" placeholder="12 chữ số">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label fw-semibold">Căn hộ <small class="text-muted">(ID căn hộ, vd: A101)</small></label>
+                            <input type="text" id="rFormApartment" class="form-control" placeholder="Để trống nếu chưa phân căn hộ">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" id="rBtnCreateSubmit">
+                    <i class="fas fa-save me-1"></i>Lưu
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Chỉnh sửa cư dân -->
+<div class="modal fade" id="rEditModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title"><i class="fas fa-user-edit me-2"></i>Chỉnh sửa cư dân
+                    <small class="ms-2 opacity-75" id="rEditResidentId"></small>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="rEditFormAlert"></div>
+                <ul class="nav nav-tabs mb-3">
+                    <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabBasic">Thông tin cơ bản</a></li>
+                    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabExtra">Thông tin bổ sung</a></li>
+                    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabSecurity">Bảo mật</a></li>
+                </ul>
+                <div class="tab-content">
+                    <!-- Tab cơ bản -->
+                    <div class="tab-pane fade show active" id="tabBasic">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Họ và tên</label>
+                                <input type="text" id="rEditFullName" class="form-control">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Email</label>
+                                <input type="email" id="rEditEmail" class="form-control">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Số điện thoại</label>
+                                <input type="text" id="rEditPhone" class="form-control">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Số CCCD</label>
+                                <input type="text" id="rEditIdNumber" class="form-control" maxlength="12">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Giới tính</label>
+                                <select id="rEditGender" class="form-select">
+                                    <option value="M">Nam</option>
+                                    <option value="F">Nữ</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Ngày sinh</label>
+                                <input type="date" id="rEditDob" class="form-control">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Loại cư dân</label>
+                                <select id="rEditType" class="form-select">
+                                    <option value="OWNER">🏠 Chủ nhà</option>
+                                    <option value="TENANT">🔑 Người thuê</option>
+                                    <option value="GUEST">👤 Khách</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Trạng thái</label>
+                                <select id="rEditStatus" class="form-select">
+                                    <option value="ACTIVE">✅ Hoạt động</option>
+                                    <option value="INACTIVE">🔴 Không hoạt động</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Căn hộ <small class="text-muted">(ID, để trống để bỏ liên kết)</small></label>
+                                <input type="text" id="rEditApartment" class="form-control" placeholder="vd: A101">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Tab bổ sung -->
+                    <div class="tab-pane fade" id="tabExtra">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Địa chỉ tạm trú</label>
+                                <textarea id="rEditTempResidence" class="form-control" rows="2"
+                                          placeholder="Địa chỉ tạm trú (nếu khác nơi đăng ký)"></textarea>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Tạm vắng</label>
+                                <textarea id="rEditTempAbsence" class="form-control" rows="2"
+                                          placeholder="Thông tin tạm vắng (đi đâu, thời gian bao lâu...)"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Tab bảo mật -->
+                    <div class="tab-pane fade" id="tabSecurity">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Để trống nếu không muốn thay đổi mật khẩu.
+                        </div>
+                        <label class="form-label fw-semibold">Mật khẩu mới</label>
+                        <div class="input-group">
+                            <input type="password" id="rEditNewPassword" class="form-control"
+                                   placeholder="Ít nhất 6 ký tự">
+                            <button class="btn btn-outline-secondary" type="button"
+                                    onclick="togglePwd('rEditNewPassword',this)">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-warning" id="rBtnEditSubmit">
+                    <i class="fas fa-save me-1"></i>Lưu thay đổi
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/common.js"></script>
+<script src="/js/staff-management.js"></script>
+<script>
+    // Auth check — dùng pattern giống resident-common.js
+    (function() {
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        if (!token) { window.location.href = '/login'; return; }
+        try {
+            const info = JSON.parse(localStorage.getItem('userInfo') || sessionStorage.getItem('userInfo') || '{}');
+            const nameEl = document.getElementById('sidebarUser');
+            if (nameEl) nameEl.textContent = info.fullName || info.username || '';
+        } catch(e) {}
+    })();
+    document.getElementById('logoutBtn').addEventListener('click', e => {
+        e.preventDefault();
+        if (confirm('Đăng xuất?')) {
+            localStorage.removeItem('token'); localStorage.removeItem('userInfo');
+            sessionStorage.removeItem('token'); sessionStorage.removeItem('userInfo');
+            window.location.href = '/login';
+        }
+    });
+    function togglePwd(id, btn) {
+        const el = document.getElementById(id);
+        el.type = el.type === 'password' ? 'text' : 'password';
+        btn.innerHTML = el.type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+    }
+    ResidentMgmt.init();
+</script>
+</body>
+</html>
