@@ -11,49 +11,31 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class DashboardStats {
-    
-    /**
-     * Tổng số căn hộ
-     */
+
+    // ── Căn hộ ──────────────────────────────────────────────
     private Long totalApartments;
-    
-    /**
-     * Số căn hộ trống
-     */
     private Long emptyApartments;
-    
-    /**
-     * Số căn hộ đang có người ở
-     */
     private Long occupiedApartments;
-    
-    /**
-     * Số căn hộ đang bảo trì
-     */
     private Long maintenanceApartments;
-    
-    /**
-     * Tổng số cư dân
-     */
+
+    // ── Cư dân ──────────────────────────────────────────────
     private Long totalResidents;
-    
-    /**
-     * Số cư dân hoạt động
-     */
     private Long activeResidents;
-    
-    /**
-     * Tổng số nhân viên
-     */
+
+    // ── Nhân viên ───────────────────────────────────────────
     private Long totalStaff;
-    
-    /**
-     * Số nhân viên đang làm việc
-     */
     private Long activeStaff;
-    
-    /**
-     * Tổng số tòa nhà
-     */
+
+    // ── Tòa nhà ─────────────────────────────────────────────
     private Long totalBuildings;
+
+    // ── Hóa đơn ─────────────────────────────────────────────
+    private Long paidInvoices;
+    private Long unpaidInvoices;
+    private Long overdueInvoices;
+
+    // ── Yêu cầu hỗ trợ ──────────────────────────────────────
+    private Long pendingRequests;
+    private Long inProgressRequests;
+    private Long doneRequests;
 }

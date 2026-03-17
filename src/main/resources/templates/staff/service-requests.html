@@ -63,11 +63,11 @@
                             <i class="fas fa-users-cog me-2"></i>Quản lý nhân viên
                         </a>
                     </li>
-<!--                    <li class="nav-item">-->
-<!--                        <a class="nav-link" href="/dashboard/fees">-->
-<!--                            <i class="fas fa-file-invoice-dollar me-2"></i>Phí dịch vụ-->
-<!--                        </a>-->
-<!--                    </li>-->
+                    <!--                    <li class="nav-item">-->
+                    <!--                        <a class="nav-link" href="/dashboard/fees">-->
+                    <!--                            <i class="fas fa-file-invoice-dollar me-2"></i>Phí dịch vụ-->
+                    <!--                        </a>-->
+                    <!--                    </li>-->
                     <li class="nav-item">
                         <a class="nav-link" href="/dashboard/invoices">
                             <i class="fas fa-receipt me-2"></i>Hóa đơn
@@ -546,7 +546,7 @@
                 </td>
                 <td><span class="badge bg-${s.cls}">${s.label}</span></td>
                 <td><span class="badge bg-${p.cls}">${p.label}</span></td>
-                <td class="small">${escHtml(sr.assignedToName || '<em class="text-muted">Chưa phân công</em>')}</td>
+                <td class="small">${sr.assignedToName ? escHtml(sr.assignedToName) : '<em class="text-muted">Chưa phân công</em>'}</td>
                 <td class="small text-muted">${fmtDate(sr.createdAt)}</td>
                 <td class="text-end">
                     <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); openDetail('${sr.id}')">
