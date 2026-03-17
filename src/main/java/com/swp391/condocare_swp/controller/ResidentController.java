@@ -164,4 +164,31 @@ public class ResidentController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    /**
+     * GET /api/resident/requests/{id} → chi tiết yêu cầu (bao gồm ảnh xác nhận)
+     */
+    @GetMapping("/requests/{id}")
+    public ResponseEntity<?> getRequestDetail(@PathVariable String id) {
+        try { return ResponseEntity.ok(service.getServiceRequestDetail(id)); }
+        catch (Exception e) {
+            logger.error("Error getting request detail {}", id, e);
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    /**
+     * PUT /api/resident/requests/{id}/confirm
+     * Resident xác nhận đã nhận kết quả xử lý.
+     */
+    @PutMapping("/requests/{id}/confirm")
+    public ResponseEntity<?> confirmRequest(@PathVariable String id) {
+        try {
+            String message = service.confirmServiceRequest(id);
+            return ResponseEntity.ok(message);
+        } catch (Exception e) {
+            logger.error("Error confirming request {}", id, e);
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }

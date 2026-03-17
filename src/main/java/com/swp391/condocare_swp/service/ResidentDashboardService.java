@@ -343,6 +343,11 @@ public class ResidentDashboardService {
             m.put("status",      sr.getStatus().name());
             m.put("priority",    sr.getPriority().name());
             m.put("note",        sr.getNote());
+            m.put("rejectReason", sr.getRejectReason());
+            m.put("residentConfirmed", sr.getResidentConfirmed());
+            m.put("confirmedAt", sr.getConfirmedAt() != null ? sr.getConfirmedAt().toString() : null);
+            // Chỉ trả cờ hasImage thay vì base64 đầy đủ (tránh payload lớn trong danh sách)
+            m.put("hasImage",    sr.getCompletionImage() != null && !sr.getCompletionImage().isBlank());
             m.put("createdAt",   sr.getCreatedAt().toString());
             m.put("updatedAt",   sr.getUpdatedAt() != null ? sr.getUpdatedAt().toString() : null);
             m.put("assignedTo",  sr.getAssignedTo() != null ? sr.getAssignedTo().getFullName() : null);
@@ -444,5 +449,74 @@ public class ResidentDashboardService {
         logger.info("Invoice {} marked as paid by resident {}", invoiceId, r.getId());
 
         return "Thanh toán thành công!";
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       SERVICE REQUEST — chi tiết (bao gồm ảnh xác nhận)
+    ═══════════════════════════════════════════════════════════ */
+
+    /**
+     * Lấy chi tiết 1 yêu cầu, bao gồm ảnh xác nhận của staff.
+     * Chỉ cho phép xem yêu cầu của chính mình.
+     */
+    public Map<String, Object> getServiceRequestDetail(String requestId) {
+        Residents r = currentResident();
+        ServiceRequest sr = srRepo.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy yêu cầu"));
+
+        if (!sr.getResident().getId().equals(r.getId()))
+            throw new RuntimeException("Bạn không có quyền xem yêu cầu này");
+
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id",          sr.getId());
+        m.put("title",       sr.getTitle());
+        m.put("description", sr.getDescription());
+        m.put("category",    sr.getCategory().name());
+        m.put("status",      sr.getStatus().name());
+        m.put("priority",    sr.getPriority().name());
+        m.put("note",        sr.getNote());
+        m.put("rejectReason", sr.getRejectReason());
+        m.put("completionImage", sr.getCompletionImage()); // base64 đầy đủ
+        m.put("residentConfirmed", sr.getResidentConfirmed());
+        m.put("confirmedAt", sr.getConfirmedAt() != null ? sr.getConfirmedAt().toString() : null);
+        m.put("createdAt",   sr.getCreatedAt().toString());
+        m.put("updatedAt",   sr.getUpdatedAt() != null ? sr.getUpdatedAt().toString() : null);
+        m.put("assignedTo",  sr.getAssignedTo() != null ? sr.getAssignedTo().getFullName() : null);
+        return m;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       SERVICE REQUEST — cư dân xác nhận đã hoàn thành
+    ═══════════════════════════════════════════════════════════ */
+
+    /**
+     * Resident bấm "Xác nhận đã được xử lý".
+     * Chỉ hợp lệ khi status = DONE.
+     */
+    @Transactional
+    public String confirmServiceRequest(String requestId) {
+        Residents r = currentResident();
+        ServiceRequest sr = srRepo.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy yêu cầu"));
+
+        // Kiểm tra quyền
+        if (!sr.getResident().getId().equals(r.getId()))
+            throw new RuntimeException("Bạn không có quyền xác nhận yêu cầu này");
+
+        // Kiểm tra trạng thái
+        if (sr.getStatus() != ServiceRequest.RequestStatus.DONE)
+            throw new RuntimeException(
+                    "Chỉ có thể xác nhận yêu cầu đã hoàn thành (DONE). " +
+                            "Trạng thái hiện tại: " + sr.getStatus());
+
+        if (Boolean.TRUE.equals(sr.getResidentConfirmed()))
+            throw new RuntimeException("Bạn đã xác nhận yêu cầu này rồi");
+
+        sr.setResidentConfirmed(true);
+        sr.setConfirmedAt(LocalDateTime.now());
+        srRepo.save(sr);
+
+        logger.info("SR [{}] confirmed by resident [{}]", requestId, r.getId());
+        return "Xác nhận thành công! Cảm ơn bạn đã phản hồi.";
     }
 }

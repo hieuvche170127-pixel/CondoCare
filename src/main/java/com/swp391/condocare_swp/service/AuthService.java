@@ -189,6 +189,11 @@ public class AuthService {
             throw new RuntimeException("Email đã được sử dụng");
         }
 
+        // Check phone exists
+        if (residentsRepository.existsByPhone(registerRequest.getPhone())) {
+            throw new RuntimeException("Số điện thoại đã được sử dụng");
+        }
+
         // Tạo Resident mới với thông tin cơ bản
         Residents resident = new Residents();
         resident.setId(generateResidentId());

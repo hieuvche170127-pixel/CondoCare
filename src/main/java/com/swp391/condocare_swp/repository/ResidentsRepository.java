@@ -37,6 +37,11 @@ public interface ResidentsRepository extends JpaRepository<Residents, String>, J
      * Kiểm tra email đã tồn tại
      */
     Boolean existsByEmail(String email);
+
+    /**
+     * Kiểm tra email đã tồn tại
+     */
+    Boolean existsByPhone(String phone);
     
     /**
      * Kiểm tra số CMND/CCCD đã tồn tại

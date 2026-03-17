@@ -139,6 +139,11 @@
                     </tbody>
                 </table>
             </div>
+            <!-- Pagination footer -->
+            <div class="d-flex align-items-center justify-content-between px-3 py-2 border-top bg-light">
+                <small class="text-muted" id="pageInfo"></small>
+                <div id="paginationContainer"></div>
+            </div>
         </div>
 
     </main>
@@ -158,6 +163,135 @@
             <div class="modal-footer" id="detailFooter">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══ Modal MoMo Payment (REAL INTEGRATION) ══════════════════ -->
+<div class="modal fade" id="momoModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content overflow-hidden">
+            <div class="modal-header border-0 pb-0"
+                 style="background:linear-gradient(135deg,#ae2070,#d82d8b);color:#fff;">
+                <div class="d-flex align-items-center gap-2">
+                    <div style="background:#fff;border-radius:8px;padding:3px 6px;">
+                        <span style="color:#ae2070;font-weight:900;font-size:14px;">M</span>
+                        <span style="color:#ae2070;font-weight:400;font-size:14px;">oMo</span>
+                    </div>
+                    <h6 class="mb-0 text-white">Thanh toán MoMo</h6>
+                </div>
+                <button type="button" class="btn-close btn-close-white ms-auto"
+                        data-bs-dismiss="modal" onclick="momoCancelPolling()"></button>
+            </div>
+
+            <!-- Loading khi đang gọi API tạo payment -->
+            <div id="momoLoading" class="text-center py-5">
+                <div class="spinner-border mb-3" style="color:#ae2070;"></div>
+                <p class="text-muted">Đang kết nối MoMo...</p>
+            </div>
+
+            <!-- Lỗi -->
+            <div id="momoError" class="d-none text-center py-4 px-4">
+                <div class="text-danger mb-3" style="font-size:3rem;">
+                    <i class="fas fa-exclamation-circle"></i>
+                </div>
+                <p class="fw-semibold mb-1">Không thể tạo thanh toán</p>
+                <p class="text-muted small" id="momoErrorMsg"></p>
+                <button class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal"
+                        onclick="momoCancelPolling()">Đóng</button>
+            </div>
+
+            <!-- Nội dung chính sau khi tạo payment thành công -->
+            <div id="momoContent" class="d-none">
+                <div class="modal-body pt-3">
+
+                    <!-- Invoice info banner -->
+                    <div class="rounded-3 p-3 mb-3 text-center"
+                         style="background:linear-gradient(135deg,#fce4ec,#fff0f5);">
+                        <div class="text-muted small" id="momoInvoiceLabel"></div>
+                        <div class="fw-bold fs-4" style="color:#ae2070;" id="momoAmountDisplay"></div>
+                    </div>
+
+                    <!-- Tab: QR / Deeplink -->
+                    <ul class="nav nav-pills nav-fill mb-3" id="momoTabs">
+                        <li class="nav-item">
+                            <button class="nav-link active" id="tabQrBtn"
+                                    onclick="momoSwitchTab('qr')">
+                                <i class="fas fa-qrcode me-1"></i>Quét QR
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" id="tabLinkBtn"
+                                    onclick="momoSwitchTab('link')">
+                                <i class="fas fa-mobile-alt me-1"></i>Mở App / Web
+                            </button>
+                        </li>
+                    </ul>
+
+                    <!-- Tab QR -->
+                    <div id="tabQr" class="text-center">
+                        <p class="text-muted small mb-2">
+                            Mở <strong>app MoMo</strong> → Quét mã QR bên dưới
+                        </p>
+                        <div class="d-flex justify-content-center mb-2">
+                            <div class="border rounded-3 p-2 shadow-sm" style="background:#fff;">
+                                <img id="momoQrImg" src="" alt="MoMo QR"
+                                     width="200" height="200" style="display:block;border-radius:4px;">
+                            </div>
+                        </div>
+                        <p class="text-muted" style="font-size:11px;">
+                            <i class="fas fa-shield-alt me-1 text-success"></i>
+                            Mã QR hết hạn sau <span id="momoCountdown" class="fw-bold text-danger">15:00</span>
+                        </p>
+                    </div>
+
+                    <!-- Tab Link/Deeplink -->
+                    <div id="tabLink" class="d-none">
+                        <div class="d-grid gap-2">
+                            <a id="momoDeeplinkBtn" href="#" target="_blank"
+                               class="btn btn-lg py-3"
+                               style="background:#ae2070;color:#fff;border-radius:12px;">
+                                <i class="fas fa-mobile-alt me-2"></i>Mở app MoMo để thanh toán
+                            </a>
+                            <a id="momoPayUrlBtn" href="#" target="_blank"
+                               class="btn btn-outline-secondary btn-lg py-3"
+                               style="border-radius:12px;">
+                                <i class="fas fa-globe me-2"></i>Thanh toán qua trình duyệt
+                            </a>
+                        </div>
+                        <p class="text-muted small text-center mt-3">
+                            Sau khi thanh toán, quay lại trang này để xem kết quả.
+                        </p>
+                    </div>
+
+                    <!-- Trạng thái polling -->
+                    <div class="d-flex align-items-center gap-2 mt-3 p-2 rounded"
+                         style="background:#f8f9fa;">
+                        <div class="spinner-border spinner-border-sm text-secondary" id="momoPollingSpinner"></div>
+                        <small class="text-muted" id="momoPollingStatus">
+                            Đang chờ xác nhận thanh toán...
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button class="btn btn-outline-secondary btn-sm"
+                            data-bs-dismiss="modal" onclick="momoCancelPolling()">
+                        Hủy
+                    </button>
+                </div>
+            </div>
+
+            <!-- Thành công -->
+            <div id="momoSuccess" class="d-none text-center py-5 px-4">
+                <div class="mb-3 animate__animated animate__bounceIn"
+                     style="color:#ae2070;font-size:4rem;">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h5 class="fw-bold mb-1">Thanh toán thành công!</h5>
+                <p class="text-muted small mb-0">Hóa đơn đã được cập nhật trạng thái
+                    <strong>Đã thanh toán</strong>.</p>
+            </div>
+
         </div>
     </div>
 </div>
@@ -182,8 +316,14 @@
         fMonth.appendChild(o);
     }
 
+    // ── Pagination state ───────────────────────────────────────
+    const PAGE_SIZE = 5;
+    let _allInvoices = [];   // toàn bộ list sau filter
+    let _currentPage = 0;
+
     // ── Load danh sách ─────────────────────────────────────────
-    async function loadInvoices() {
+    async function loadInvoices(page = 0) {
+        _currentPage = page;
         const status = document.getElementById('filterStatus').value;
         const month  = document.getElementById('filterMonth').value;
         const year   = document.getElementById('filterYear').value;
@@ -210,15 +350,56 @@
         try {
             const res  = await apiRequest(`${API_BASE_URL}/resident/invoices?${params}`);
             if (!res.ok) throw new Error(await res.text());
-            const list = await res.json();
-            renderTable(list);
-            updateStats(list);
+            _allInvoices = await res.json();
+            updateStats(_allInvoices);
+            renderPage(_currentPage);
         } catch(e) {
             tbody.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-4">
                 <i class="fas fa-exclamation-circle me-2"></i>Không thể tải dữ liệu: ${e.message}
             </td></tr>`;
             showResidentAlert('alertContainer', 'Không thể tải hóa đơn: ' + e.message);
         } finally { hideLoading(); }
+    }
+
+    // ── Phân trang frontend ────────────────────────────────────
+    function renderPage(page) {
+        _currentPage = page;
+        const total      = _allInvoices.length;
+        const totalPages = Math.ceil(total / PAGE_SIZE);
+        const start      = page * PAGE_SIZE;
+        const end        = Math.min(start + PAGE_SIZE, total);
+        const pageItems  = _allInvoices.slice(start, end);
+
+        renderTable(pageItems);
+
+        // Info text
+        document.getElementById('pageInfo').textContent =
+            total === 0 ? '' : `Hiển thị ${start + 1}–${end} / ${total} hóa đơn`;
+
+        // Pagination buttons
+        renderPaginationUI(page, totalPages);
+    }
+
+    function renderPaginationUI(cur, total) {
+        const el = document.getElementById('paginationContainer');
+        if (total <= 1) { el.innerHTML = ''; return; }
+
+        const pages = [];
+        for (let i = Math.max(0, cur - 2); i <= Math.min(total - 1, cur + 2); i++) pages.push(i);
+
+        el.innerHTML = `
+            <nav><ul class="pagination pagination-sm mb-0">
+                <li class="page-item ${cur === 0 ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="renderPage(${cur-1});return false">‹</a>
+                </li>
+                ${pages.map(i => `
+                <li class="page-item ${i === cur ? 'active' : ''}">
+                    <a class="page-link" href="#" onclick="renderPage(${i});return false">${i + 1}</a>
+                </li>`).join('')}
+                <li class="page-item ${cur === total - 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="renderPage(${cur+1});return false">›</a>
+                </li>
+            </ul></nav>`;
     }
 
     // ── Render bảng ────────────────────────────────────────────
@@ -270,10 +451,11 @@
                             <i class="fas fa-eye"></i>
                         </button>
                         ${(isUnpaid || isOverdue) ? `
-                        <button class="btn btn-sm btn-outline-success"
-                                onclick="markPaid('${inv.id}')"
-                                title="Thanh toán">
-                            <i class="fas fa-credit-card"></i>
+                        <button class="btn btn-sm"
+                                style="background:#ae2070;color:#fff;border:none;"
+                                onclick="openMoMo('${inv.id}')"
+                                title="Thanh toán MoMo">
+                            <i class="fas fa-mobile-alt"></i> MoMo
                         </button>` : ''}
                     </div>
                 </td>
@@ -298,7 +480,7 @@
         document.getElementById('filterStatus').value = 'all';
         document.getElementById('filterMonth').value  = '';
         document.getElementById('filterYear').value   = '';
-        loadInvoices();
+        loadInvoices(0);
     }
 
     // ── Modal chi tiết ─────────────────────────────────────────
@@ -388,11 +570,15 @@
         footer.innerHTML = '';
         if (inv.status !== 'PAID') {
             footer.innerHTML = `
-                <button class="btn btn-success me-2" onclick="markPaid('${inv.id}', true)">
-                    <i class="fas fa-credit-card me-1"></i>Thanh toán ngay
+                <button class="btn btn-sm me-2" style="background:#ae2070;color:#fff;"
+                        onclick="openMoMo('${inv.id}', true)">
+                    <i class="fas fa-mobile-alt me-1"></i>Thanh toán MoMo
+                </button>
+                <button class="btn btn-success btn-sm me-2" onclick="markPaid('${inv.id}', true)">
+                    <i class="fas fa-check me-1"></i>Đánh dấu đã TT
                 </button>`;
         }
-        footer.innerHTML += '<button class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>';
+        footer.innerHTML += '<button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Đóng</button>';
 
         new bootstrap.Modal(document.getElementById('detailModal')).show();
     }
@@ -406,7 +592,7 @@
             if (!res.ok) { showResidentAlert('alertContainer', await res.text()); return; }
             if (fromDetail) bootstrap.Modal.getInstance(document.getElementById('detailModal'))?.hide();
             showResidentAlert('alertContainer', 'Thanh toán thành công!', 'success');
-            loadInvoices();
+            loadInvoices(_currentPage);
         } catch(e) {
             showResidentAlert('alertContainer', 'Lỗi: ' + e.message);
         } finally { hideLoading(); }
@@ -418,8 +604,154 @@
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
     }
 
+    // ══ MoMo Payment — REAL INTEGRATION ══════════════════════
+    let _momoInvoiceId    = null;
+    let _momoFromDetail   = false;
+    let _momoPollingTimer = null;
+    let _momoCountdownTimer = null;
+    const MOMO_TIMEOUT_SEC = 15 * 60; // 15 phút
+
+    async function openMoMo(invoiceId, fromDetail = false) {
+        _momoInvoiceId  = invoiceId;
+        _momoFromDetail = fromDetail;
+
+        // Reset modal về trạng thái loading
+        document.getElementById('momoLoading').classList.remove('d-none');
+        document.getElementById('momoError').classList.add('d-none');
+        document.getElementById('momoContent').classList.add('d-none');
+        document.getElementById('momoSuccess').classList.add('d-none');
+
+        // Đóng detail modal nếu đang mở
+        const detailModal = bootstrap.Modal.getInstance(document.getElementById('detailModal'));
+        if (detailModal && fromDetail) detailModal.hide();
+
+        const delay = detailModal && fromDetail ? 320 : 0;
+        setTimeout(async () => {
+            new bootstrap.Modal(document.getElementById('momoModal')).show();
+            await momoCallCreatePayment(invoiceId);
+        }, delay);
+    }
+
+    async function momoCallCreatePayment(invoiceId) {
+        try {
+            const res = await apiRequest(`${API_BASE_URL}/momo/create-payment`, {
+                method: 'POST',
+                body: JSON.stringify({ invoiceId })
+            });
+
+            if (!res.ok) {
+                const errMsg = await res.text();
+                momoShowError(errMsg || 'Không thể tạo thanh toán MoMo');
+                return;
+            }
+
+            const data = await res.json();
+            // data = { payUrl, qrCodeUrl, deeplink, shortLink, orderId, amount }
+
+            // Điền thông tin vào modal
+            const inv   = _allInvoices.find(i => i.id === invoiceId);
+            const total = inv ? (inv.totalAmount ?? 0) : data.amount;
+            document.getElementById('momoInvoiceLabel').textContent =
+                `Hóa đơn ${invoiceId}` + (inv ? ` — Tháng ${inv.month}/${inv.year}` : '');
+            document.getElementById('momoAmountDisplay').textContent =
+                new Intl.NumberFormat('vi-VN', { style:'currency', currency:'VND' }).format(total);
+
+            // QR code thật từ MoMo
+            if (data.qrCodeUrl) {
+                document.getElementById('momoQrImg').src = data.qrCodeUrl;
+            } else {
+                // fallback: dùng QR generator với payUrl
+                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.payUrl || '')}`;
+                document.getElementById('momoQrImg').src = qrUrl;
+            }
+
+            // Deeplink & payUrl
+            document.getElementById('momoDeeplinkBtn').href = data.deeplink || data.shortLink || data.payUrl || '#';
+            document.getElementById('momoPayUrlBtn').href   = data.payUrl || '#';
+
+            // Hiện nội dung, mặc định tab QR
+            document.getElementById('momoLoading').classList.add('d-none');
+            document.getElementById('momoContent').classList.remove('d-none');
+            momoSwitchTab('qr');
+
+            // Bắt đầu countdown 15 phút
+            momoStartCountdown(MOMO_TIMEOUT_SEC);
+
+            // Bắt đầu polling trạng thái mỗi 3 giây
+            momoStartPolling(invoiceId);
+
+        } catch(e) {
+            momoShowError('Lỗi kết nối: ' + e.message);
+        }
+    }
+
+    function momoSwitchTab(tab) {
+        document.getElementById('tabQr').classList.toggle('d-none', tab !== 'qr');
+        document.getElementById('tabLink').classList.toggle('d-none', tab !== 'link');
+        document.getElementById('tabQrBtn').classList.toggle('active', tab === 'qr');
+        document.getElementById('tabLinkBtn').classList.toggle('active', tab === 'link');
+    }
+
+    function momoShowError(msg) {
+        document.getElementById('momoLoading').classList.add('d-none');
+        document.getElementById('momoContent').classList.add('d-none');
+        document.getElementById('momoError').classList.remove('d-none');
+        document.getElementById('momoErrorMsg').textContent = msg;
+        momoCancelPolling();
+    }
+
+    // ── Polling: kiểm tra trạng thái mỗi 3 giây ───────────────
+    function momoStartPolling(invoiceId) {
+        momoCancelPolling();
+        _momoPollingTimer = setInterval(async () => {
+            try {
+                const res = await apiRequest(`${API_BASE_URL}/momo/status/${invoiceId}`);
+                if (!res) return;
+                const data = await res.json();
+
+                if (data.paid === true || data.status === 'PAID') {
+                    momoCancelPolling();
+                    momoShowSuccess();
+                }
+            } catch(e) { /* ignore polling errors */ }
+        }, 3000);
+    }
+
+    function momoCancelPolling() {
+        if (_momoPollingTimer) { clearInterval(_momoPollingTimer); _momoPollingTimer = null; }
+        if (_momoCountdownTimer) { clearInterval(_momoCountdownTimer); _momoCountdownTimer = null; }
+    }
+
+    // ── Countdown timer ────────────────────────────────────────
+    function momoStartCountdown(seconds) {
+        let remaining = seconds;
+        const el = document.getElementById('momoCountdown');
+        if (_momoCountdownTimer) clearInterval(_momoCountdownTimer);
+        _momoCountdownTimer = setInterval(() => {
+            remaining--;
+            const m = Math.floor(remaining / 60).toString().padStart(2, '0');
+            const s = (remaining % 60).toString().padStart(2, '0');
+            if (el) el.textContent = `${m}:${s}`;
+            if (remaining <= 0) {
+                momoCancelPolling();
+                momoShowError('Mã QR đã hết hạn. Vui lòng thử lại.');
+            }
+        }, 1000);
+    }
+
+    // ── Hiển thị màn hình thành công ───────────────────────────
+    function momoShowSuccess() {
+        document.getElementById('momoContent').classList.add('d-none');
+        document.getElementById('momoSuccess').classList.remove('d-none');
+        setTimeout(() => {
+            bootstrap.Modal.getInstance(document.getElementById('momoModal'))?.hide();
+            showResidentAlert('alertContainer', '✅ Thanh toán MoMo thành công! Hóa đơn đã được cập nhật.', 'success');
+            loadInvoices(_currentPage);
+        }, 2500);
+    }
+
     // Load khi page sẵn sàng
-    loadInvoices();
+    loadInvoices(0);
 </script>
 </body>
 </html>

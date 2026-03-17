@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý yêu cầu hỗ trợ - Staff</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .priority-HIGH   { border-left: 4px solid #dc3545 !important; }
+        .priority-MEDIUM { border-left: 4px solid #ffc107 !important; }
+        .priority-LOW    { border-left: 4px solid #198754 !important; }
+        .stat-badge { font-size: 1.6rem; font-weight: 800; }
+        .img-preview { max-width: 100%; max-height: 350px; object-fit: contain;
+                       border: 2px dashed #dee2e6; border-radius: 8px; padding: 4px; }
+        .upload-zone { border: 2px dashed #adb5bd; border-radius: 8px; padding: 2rem;
+                       text-align: center; cursor: pointer; transition: border-color .2s; }
+        .upload-zone:hover, .upload-zone.drag-over { border-color: #0d6efd; background:#f0f7ff; }
+        .request-row { cursor: pointer; transition: background .15s; }
+        .request-row:hover { background: #f8f9fa; }
+        .confirmed-badge { background: #d1fae5; color: #065f46;
+                           border: 1px solid #6ee7b7; padding: 2px 8px;
+                           border-radius: 12px; font-size: .75rem; font-weight: 700; }
+    </style>
+</head>
+<body>
+<div id="loading" class="loading"><div class="spinner"></div></div>
+
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <nav class="col-md-3 col-lg-2 d-md-block sidebar">
+            <div class="position-sticky pt-3">
+                <div class="text-center mb-4 px-3">
+                    <h5 class="text-white fw-bold"><i class="fas fa-building me-2"></i>CondoCare</h5>
+                    <small class="text-white-50" id="sidebarUser"></small>
+                </div>
+                <ul class="nav flex-column px-2">
+                    <li class="nav-item"><a class="nav-link" href="/dashboard"><i class="fas fa-tachometer-alt"></i> Tổng quan</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/dashboard/staff"><i class="fas fa-users-cog"></i> Nhân viên</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/dashboard/residents"><i class="fas fa-users"></i> Cư dân</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/dashboard/service-requests"><i class="fas fa-tools"></i> Yêu cầu hỗ trợ</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/dashboard/invoices"><i class="fas fa-receipt"></i> Hóa đơn</a></li>
+                    <li class="nav-item mt-3"><a class="nav-link text-danger-emphasis" href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Đăng xuất</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Main -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+            <div class="page-header mb-4">
+                <div>
+                    <h4><i class="fas fa-tools text-primary"></i> Quản lý yêu cầu hỗ trợ</h4>
+                    <nav aria-label="breadcrumb"><ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
+                        <li class="breadcrumb-item active">Yêu cầu hỗ trợ</li>
+                    </ol></nav>
+                </div>
+            </div>
+
+            <div id="alertContainer" class="mb-3"></div>
+
+            <!-- Stats -->
+            <div class="row g-3 mb-4" id="statsRow">
+                <div class="col-6 col-md-2">
+                    <div class="card text-center border-0 shadow-sm">
+                        <div class="card-body py-2">
+                            <div class="stat-badge text-secondary" id="statTotal">—</div>
+                            <small class="text-muted">Tổng</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-2">
+                    <div class="card text-center border-0 shadow-sm">
+                        <div class="card-body py-2">
+                            <div class="stat-badge text-warning" id="statPending">—</div>
+                            <small class="text-muted">Chờ xử lý</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-2">
+                    <div class="card text-center border-0 shadow-sm">
+                        <div class="card-body py-2">
+                            <div class="stat-badge text-primary" id="statInProgress">—</div>
+                            <small class="text-muted">Đang xử lý</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-2">
+                    <div class="card text-center border-0 shadow-sm">
+                        <div class="card-body py-2">
+                            <div class="stat-badge text-success" id="statDone">—</div>
+                            <small class="text-muted">Hoàn thành</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-2">
+                    <div class="card text-center border-0 shadow-sm">
+                        <div class="card-body py-2">
+                            <div class="stat-badge text-danger" id="statRejected">—</div>
+                            <small class="text-muted">Từ chối</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-2">
+                    <div class="card text-center border-0 shadow-sm">
+                        <div class="card-body py-2">
+                            <div class="stat-badge text-info" id="statAwaiting">—</div>
+                            <small class="text-muted">Chờ xác nhận</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-body py-2">
+                    <div class="d-flex flex-wrap gap-2 align-items-end">
+                        <div>
+                            <label class="form-label small mb-1 fw-semibold">Tìm kiếm</label>
+                            <input type="text" id="filterKeyword" class="form-control form-control-sm"
+                                   placeholder="Tiêu đề, mô tả, tên cư dân..." style="width:220px"
+                                   onkeydown="if(event.key==='Enter') loadList(0)">
+                        </div>
+                        <div>
+                            <label class="form-label small mb-1 fw-semibold">Trạng thái</label>
+                            <select id="filterStatus" class="form-select form-select-sm" style="width:150px">
+                                <option value="ALL">Tất cả</option>
+                                <option value="PENDING">⏳ Chờ xử lý</option>
+                                <option value="IN_PROGRESS">🔧 Đang xử lý</option>
+                                <option value="DONE">✅ Hoàn thành</option>
+                                <option value="REJECTED">❌ Từ chối</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label small mb-1 fw-semibold">Ưu tiên</label>
+                            <select id="filterPriority" class="form-select form-select-sm" style="width:130px">
+                                <option value="ALL">Tất cả</option>
+                                <option value="HIGH">🔴 Cao</option>
+                                <option value="MEDIUM">🟡 Trung bình</option>
+                                <option value="LOW">🟢 Thấp</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label small mb-1 fw-semibold">Phân công</label>
+                            <select id="filterAssigned" class="form-select form-select-sm" style="width:150px">
+                                <option value="ALL">Tất cả</option>
+                                <option value="me">Của tôi</option>
+                                <option value="unassigned">Chưa phân công</option>
+                            </select>
+                        </div>
+                        <div class="d-flex gap-2 mt-3">
+                            <button class="btn btn-primary btn-sm" onclick="loadList(0)">
+                                <i class="fas fa-filter me-1"></i>Lọc
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="resetFilter()">
+                                <i class="fas fa-redo me-1"></i>Đặt lại
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                            <tr>
+                                <th style="width:40%">Yêu cầu</th>
+                                <th>Cư dân / Căn hộ</th>
+                                <th>Trạng thái</th>
+                                <th>Ưu tiên</th>
+                                <th>Phụ trách</th>
+                                <th>Ngày tạo</th>
+                                <th class="text-end">Thao tác</th>
+                            </tr>
+                            </thead>
+                            <tbody id="requestTableBody">
+                            <tr><td colspan="7" class="text-center py-4 text-muted">
+                                <i class="fas fa-spinner fa-spin me-2"></i>Đang tải...
+                            </td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer d-flex justify-content-between align-items-center py-2">
+                    <small class="text-muted" id="paginationInfo"></small>
+                    <div id="pagination" class="d-flex gap-1"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- ═══════════════════ MODAL CHI TIẾT + XỬ LÝ ═══════════════════ -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-file-alt me-2"></i>Chi tiết yêu cầu</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="detailAlert" class="mb-3"></div>
+
+                <!-- Thông tin yêu cầu -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-8">
+                        <h6 id="dtTitle" class="fw-bold fs-5"></h6>
+                        <p id="dtDescription" class="text-muted"></p>
+                    </div>
+                    <div class="col-md-4">
+                        <dl class="row small mb-0">
+                            <dt class="col-5 text-muted">Danh mục</dt>
+                            <dd class="col-7" id="dtCategory"></dd>
+                            <dt class="col-5 text-muted">Ưu tiên</dt>
+                            <dd class="col-7" id="dtPriority"></dd>
+                            <dt class="col-5 text-muted">Trạng thái</dt>
+                            <dd class="col-7" id="dtStatus"></dd>
+                            <dt class="col-5 text-muted">Cư dân</dt>
+                            <dd class="col-7" id="dtResident"></dd>
+                            <dt class="col-5 text-muted">Căn hộ</dt>
+                            <dd class="col-7" id="dtApartment"></dd>
+                            <dt class="col-5 text-muted">Ngày tạo</dt>
+                            <dd class="col-7" id="dtCreatedAt"></dd>
+                        </dl>
+                    </div>
+                </div>
+
+                <hr>
+
+                <!-- Ghi chú hiện tại (nếu có) -->
+                <div id="currentNoteSection" class="mb-3 d-none">
+                    <h6 class="fw-semibold"><i class="fas fa-comment me-1 text-primary"></i>Ghi chú xử lý</h6>
+                    <div id="currentNote" class="alert alert-light"></div>
+                </div>
+
+                <!-- Lý do từ chối (nếu có) -->
+                <div id="rejectReasonSection" class="mb-3 d-none">
+                    <h6 class="fw-semibold"><i class="fas fa-times-circle me-1 text-danger"></i>Lý do từ chối</h6>
+                    <div id="rejectReasonText" class="alert alert-danger"></div>
+                </div>
+
+                <!-- Ảnh xác nhận (nếu có) -->
+                <div id="completionImageSection" class="mb-3 d-none">
+                    <h6 class="fw-semibold"><i class="fas fa-camera me-1 text-success"></i>Ảnh xác nhận hoàn thành</h6>
+                    <img id="completionImageEl" src="" alt="Ảnh xác nhận" class="img-preview">
+                    <div id="residentConfirmBadge" class="mt-2 d-none">
+                        <span class="confirmed-badge"><i class="fas fa-check-circle me-1"></i>Cư dân đã xác nhận</span>
+                        <small class="text-muted ms-2" id="confirmedAtText"></small>
+                    </div>
+                </div>
+
+                <hr>
+
+                <!-- ── ACTION PANELS ── -->
+                <!-- 1. PHÂN CÔNG (khi PENDING) -->
+                <div id="panelAssign" class="d-none">
+                    <h6 class="fw-semibold text-primary mb-3">
+                        <i class="fas fa-user-plus me-1"></i>Phân công xử lý
+                    </h6>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Chọn nhân viên phụ trách <span class="text-danger">*</span></label>
+                            <select id="assigneeSelect" class="form-select">
+                                <option value="">-- Chọn nhân viên --</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Ghi chú khi phân công</label>
+                            <textarea id="assignNote" class="form-control" rows="2"
+                                      placeholder="VD: Kiểm tra dây dẫn điện trần nhà, cần thang 3m..."></textarea>
+                        </div>
+                        <div class="col-12 d-flex gap-2">
+                            <button class="btn btn-primary" onclick="doAssign()">
+                                <i class="fas fa-user-check me-1"></i>Phân công & bắt đầu xử lý
+                            </button>
+                            <button class="btn btn-outline-danger" data-bs-toggle="collapse"
+                                    data-bs-target="#rejectPanel">
+                                <i class="fas fa-times me-1"></i>Từ chối yêu cầu
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Collapse: lý do từ chối -->
+                    <div class="collapse mt-3" id="rejectPanel">
+                        <div class="card border-danger">
+                            <div class="card-body">
+                                <label class="form-label fw-semibold text-danger">Lý do từ chối <span class="text-danger">*</span></label>
+                                <textarea id="rejectReasonInput" class="form-control border-danger" rows="2"
+                                          placeholder="VD: Vấn đề này thuộc trách nhiệm cư dân tự xử lý..."></textarea>
+                                <button class="btn btn-danger mt-2" onclick="doReject()">
+                                    <i class="fas fa-times-circle me-1"></i>Xác nhận từ chối
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. TỪ CHỐI KHI ĐANG IN_PROGRESS (nếu cần) -->
+                <div id="panelInProgress" class="d-none">
+                    <h6 class="fw-semibold text-primary mb-3">
+                        <i class="fas fa-camera me-1"></i>Upload ảnh xác nhận hoàn thành
+                    </h6>
+                    <div class="row g-3">
+                        <!-- Upload zone -->
+                        <div class="col-md-6">
+                            <div class="upload-zone" id="uploadZone"
+                                 onclick="document.getElementById('imageFileInput').click()"
+                                 ondragover="event.preventDefault(); this.classList.add('drag-over')"
+                                 ondragleave="this.classList.remove('drag-over')"
+                                 ondrop="handleDrop(event)">
+                                <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-2 d-block"></i>
+                                <p class="mb-1 fw-semibold">Click hoặc kéo thả ảnh vào đây</p>
+                                <small class="text-muted">JPG, PNG, WEBP — Tối đa 2MB</small>
+                            </div>
+                            <input type="file" id="imageFileInput" class="d-none"
+                                   accept="image/*" onchange="handleFileSelect(event)">
+                        </div>
+                        <!-- Preview -->
+                        <div class="col-md-6 d-flex align-items-center justify-content-center">
+                            <img id="uploadPreview" src="" alt="Preview" class="img-preview d-none">
+                            <div id="uploadPlaceholder" class="text-center text-muted">
+                                <i class="fas fa-image fa-4x mb-2 d-block text-muted"></i>
+                                <small>Ảnh preview sẽ hiển thị ở đây</small>
+                            </div>
+                        </div>
+                        <!-- Note -->
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Ghi chú hoàn thành</label>
+                            <textarea id="doneNote" class="form-control" rows="2"
+                                      placeholder="VD: Đã thay bóng đèn LED 9W, kiểm tra hoạt động ổn định..."></textarea>
+                        </div>
+                        <div class="col-12 d-flex gap-2">
+                            <button class="btn btn-success" onclick="doMarkDone()">
+                                <i class="fas fa-check me-1"></i>Xác nhận hoàn thành
+                            </button>
+                            <button class="btn btn-outline-danger" data-bs-toggle="collapse"
+                                    data-bs-target="#rejectPanel2">
+                                <i class="fas fa-times me-1"></i>Từ chối yêu cầu
+                            </button>
+                        </div>
+                    </div>
+                    <div class="collapse mt-3" id="rejectPanel2">
+                        <div class="card border-danger">
+                            <div class="card-body">
+                                <label class="form-label fw-semibold text-danger">Lý do từ chối <span class="text-danger">*</span></label>
+                                <textarea id="rejectReasonInput2" class="form-control border-danger" rows="2"
+                                          placeholder="VD: Thiết bị cần nhà cung cấp chuyên nghiệp, không thuộc phạm vi xử lý..."></textarea>
+                                <button class="btn btn-danger mt-2" onclick="doReject2()">
+                                    <i class="fas fa-times-circle me-1"></i>Xác nhận từ chối
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. DONE — chờ resident confirm -->
+                <div id="panelDone" class="d-none">
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        Yêu cầu đã <strong>hoàn thành</strong>. Đang chờ cư dân xác nhận.
+                    </div>
+                </div>
+
+                <!-- 4. REJECTED -->
+                <div id="panelRejected" class="d-none">
+                    <div class="alert alert-danger">
+                        <i class="fas fa-times-circle me-2"></i>
+                        Yêu cầu đã <strong>bị từ chối</strong>.
+                    </div>
+                </div>
+
+            </div><!-- /modal-body -->
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/common.js"></script>
+<script>
+    // ── Constants ─────────────────────────────────────────────────────
+    const API_SR = `${API_BASE_URL}/staff/requests`;
+
+    const STATUS_MAP = {
+        PENDING:     { cls: 'warning text-dark', label: '⏳ Chờ xử lý' },
+        IN_PROGRESS: { cls: 'primary',           label: '🔧 Đang xử lý' },
+        DONE:        { cls: 'success',           label: '✅ Hoàn thành' },
+        REJECTED:    { cls: 'danger',            label: '❌ Từ chối' },
+    };
+    const PRIORITY_MAP = {
+        HIGH:   { cls: 'danger',  label: '🔴 Cao' },
+        MEDIUM: { cls: 'warning text-dark', label: '🟡 TB' },
+        LOW:    { cls: 'success', label: '🟢 Thấp' },
+    };
+    const CAT_ICON = {
+        ELECTRIC: 'fa-bolt', WATER: 'fa-tint', INTERNET: 'fa-wifi',
+        HVAC: 'fa-snowflake', STRUCTURE: 'fa-home', OTHER: 'fa-tools'
+    };
+
+    let currentPage = 0;
+    let currentRequestId = null;
+    let uploadedImageBase64 = null;
+    let detailModal = null;
+
+    // ── Init ─────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+        redirectIfNotLoggedIn();
+        const info = getUserInfo();
+        if (info) document.getElementById('sidebarUser').textContent = info.fullName || '';
+        detailModal = new bootstrap.Modal(document.getElementById('detailModal'));
+        loadStats();
+        loadList(0);
+
+        // Logout
+        document.getElementById('logoutBtn')?.addEventListener('click', e => {
+            e.preventDefault(); logout();
+        });
+    });
+
+    // ── Stats ─────────────────────────────────────────────────────────
+    async function loadStats() {
+        try {
+            const res  = await apiRequest(`${API_SR}/stats`);
+            const data = await res.json();
+            document.getElementById('statTotal').textContent      = data.total      ?? '—';
+            document.getElementById('statPending').textContent    = data.pending    ?? '—';
+            document.getElementById('statInProgress').textContent = data.inProgress ?? '—';
+            document.getElementById('statDone').textContent       = data.done       ?? '—';
+            document.getElementById('statRejected').textContent   = data.rejected   ?? '—';
+            document.getElementById('statAwaiting').textContent   = data.awaitingConfirm ?? '—';
+        } catch(e) { console.error('Stats error', e); }
+    }
+
+    // ── List ──────────────────────────────────────────────────────────
+    async function loadList(page = 0) {
+        currentPage = page;
+        showLoading();
+        try {
+            const params = new URLSearchParams({ page, size: 10 });
+            const keyword  = document.getElementById('filterKeyword').value.trim();
+            const status   = document.getElementById('filterStatus').value;
+            const priority = document.getElementById('filterPriority').value;
+            const assigned = document.getElementById('filterAssigned').value;
+
+            if (keyword)  params.set('keyword', keyword);
+            if (status   !== 'ALL') params.set('status', status);
+            if (priority !== 'ALL') params.set('priority', priority);
+            if (assigned !== 'ALL') params.set('assignedToId', assigned);
+
+            const res  = await apiRequest(`${API_SR}?${params}`);
+            const data = await res.json();
+            renderTable(data.content || []);
+            renderPagination(data.currentPage, data.totalPages, data.totalElements, data.size);
+        } catch(e) {
+            showMgmtAlert('alertContainer', 'Không thể tải danh sách yêu cầu.', 'danger');
+        } finally { hideLoading(); }
+    }
+
+    function resetFilter() {
+        document.getElementById('filterKeyword').value  = '';
+        document.getElementById('filterStatus').value   = 'ALL';
+        document.getElementById('filterPriority').value = 'ALL';
+        document.getElementById('filterAssigned').value = 'ALL';
+        loadList(0);
+    }
+
+    function renderTable(list) {
+        const tbody = document.getElementById('requestTableBody');
+        if (!list.length) {
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-5 text-muted">
+                <i class="fas fa-inbox fa-2x mb-2 d-block"></i>Không có yêu cầu nào</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = list.map(sr => {
+            const s = STATUS_MAP[sr.status] || STATUS_MAP.PENDING;
+            const p = PRIORITY_MAP[sr.priority] || PRIORITY_MAP.MEDIUM;
+            const catIcon = CAT_ICON[sr.category] || 'fa-tools';
+            const confirmBadge = sr.residentConfirmed
+                ? `<span class="confirmed-badge ms-1"><i class="fas fa-check-circle"></i> Đã xác nhận</span>` : '';
+            return `
+            <tr class="request-row priority-${sr.priority}" onclick="openDetail('${sr.id}')">
+                <td>
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="fas ${catIcon} text-muted mt-1 flex-shrink-0"></i>
+                        <div>
+                            <div class="fw-semibold">${escHtml(sr.title)}</div>
+                            <small class="text-muted">${escHtml((sr.description||'').substring(0,80))}${sr.description?.length>80?'...':''}</small>
+                            ${confirmBadge}
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div class="fw-semibold small">${escHtml(sr.residentName || '—')}</div>
+                    <small class="text-muted">${escHtml(sr.apartmentNumber ? sr.buildingName+' / '+sr.apartmentNumber : '—')}</small>
+                </td>
+                <td><span class="badge bg-${s.cls}">${s.label}</span></td>
+                <td><span class="badge bg-${p.cls}">${p.label}</span></td>
+                <td class="small">${escHtml(sr.assignedToName || '<em class="text-muted">Chưa phân công</em>')}</td>
+                <td class="small text-muted">${fmtDate(sr.createdAt)}</td>
+                <td class="text-end">
+                    <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); openDetail('${sr.id}')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    function renderPagination(current, total, totalEl, size) {
+        document.getElementById('paginationInfo').textContent =
+            `Hiển thị ${current*size+1}–${Math.min((current+1)*size, totalEl)} / ${totalEl} yêu cầu`;
+        const div = document.getElementById('pagination');
+        if (total <= 1) { div.innerHTML = ''; return; }
+        let html = '';
+        for (let i = 0; i < total; i++) {
+            html += `<button class="btn btn-sm ${i===current?'btn-primary':'btn-outline-secondary'}"
+                        onclick="loadList(${i})">${i+1}</button>`;
+        }
+        div.innerHTML = html;
+    }
+
+    // ── Detail modal ──────────────────────────────────────────────────
+    async function openDetail(id) {
+        currentRequestId = id;
+        uploadedImageBase64 = null;
+
+        showLoading();
+        try {
+            // Load assignable staff for dropdown
+            const [detailRes, staffRes] = await Promise.all([
+                apiRequest(`${API_SR}/${id}`),
+                apiRequest(`${API_SR}/assignable-staff`)
+            ]);
+            const sr    = await detailRes.json();
+            const staff = await staffRes.json();
+
+            populateDetail(sr, staff);
+            document.getElementById('detailAlert').innerHTML = '';
+            detailModal.show();
+        } catch(e) {
+            showMgmtAlert('alertContainer', 'Không thể tải chi tiết yêu cầu.', 'danger');
+        } finally { hideLoading(); }
+    }
+
+    function populateDetail(sr, staffList) {
+        // Basic info
+        document.getElementById('dtTitle').textContent       = sr.title;
+        document.getElementById('dtDescription').textContent = sr.description;
+        document.getElementById('dtCategory').textContent    = sr.category;
+        document.getElementById('dtPriority').innerHTML      = `<span class="badge bg-${(PRIORITY_MAP[sr.priority]||{}).cls||'secondary'}">${sr.priority}</span>`;
+        document.getElementById('dtStatus').innerHTML        = `<span class="badge bg-${(STATUS_MAP[sr.status]||{}).cls||'secondary'}">${(STATUS_MAP[sr.status]||{}).label||sr.status}</span>`;
+        document.getElementById('dtResident').textContent    = `${sr.residentName||'—'} (${sr.residentPhone||'—'})`;
+        document.getElementById('dtApartment').textContent   = sr.apartmentNumber ? `${sr.buildingName} / ${sr.apartmentNumber}` : '—';
+        document.getElementById('dtCreatedAt').textContent   = fmtDate(sr.createdAt);
+
+        // Note
+        const noteSection = document.getElementById('currentNoteSection');
+        if (sr.note) {
+            noteSection.classList.remove('d-none');
+            document.getElementById('currentNote').textContent = sr.note;
+        } else { noteSection.classList.add('d-none'); }
+
+        // Reject reason
+        const rrSection = document.getElementById('rejectReasonSection');
+        if (sr.rejectReason) {
+            rrSection.classList.remove('d-none');
+            document.getElementById('rejectReasonText').textContent = sr.rejectReason;
+        } else { rrSection.classList.add('d-none'); }
+
+        // Completion image
+        const imgSection = document.getElementById('completionImageSection');
+        if (sr.completionImage) {
+            imgSection.classList.remove('d-none');
+            document.getElementById('completionImageEl').src = sr.completionImage;
+            const confirmBadge = document.getElementById('residentConfirmBadge');
+            if (sr.residentConfirmed) {
+                confirmBadge.classList.remove('d-none');
+                document.getElementById('confirmedAtText').textContent =
+                    sr.confirmedAt ? `vào ${fmtDate(sr.confirmedAt)}` : '';
+            } else { confirmBadge.classList.add('d-none'); }
+        } else { imgSection.classList.add('d-none'); }
+
+        // Action panels
+        ['panelAssign','panelInProgress','panelDone','panelRejected'].forEach(id =>
+            document.getElementById(id).classList.add('d-none'));
+
+        if (sr.status === 'PENDING') {
+            document.getElementById('panelAssign').classList.remove('d-none');
+            // Populate assignee dropdown
+            const sel = document.getElementById('assigneeSelect');
+            sel.innerHTML = '<option value="">-- Chọn nhân viên --</option>' +
+                staffList.map(s =>
+                    `<option value="${s.id}">${escHtml(s.fullName)} (${escHtml(s.roleName)}${s.department?' – '+escHtml(s.department):''})</option>`
+                ).join('');
+            document.getElementById('assignNote').value = '';
+            document.getElementById('rejectReasonInput').value = '';
+        } else if (sr.status === 'IN_PROGRESS') {
+            document.getElementById('panelInProgress').classList.remove('d-none');
+            document.getElementById('doneNote').value = '';
+            document.getElementById('rejectReasonInput2').value = '';
+            // Reset upload zone
+            uploadedImageBase64 = null;
+            document.getElementById('uploadPreview').classList.add('d-none');
+            document.getElementById('uploadPlaceholder').classList.remove('d-none');
+            document.getElementById('uploadZone').style.borderColor = '';
+        } else if (sr.status === 'DONE') {
+            document.getElementById('panelDone').classList.remove('d-none');
+        } else if (sr.status === 'REJECTED') {
+            document.getElementById('panelRejected').classList.remove('d-none');
+        }
+    }
+
+    // ── Actions ───────────────────────────────────────────────────────
+    async function doAssign() {
+        const assigneeId = document.getElementById('assigneeSelect').value;
+        const note       = document.getElementById('assignNote').value.trim();
+        if (!assigneeId) {
+            showDetailAlert('Vui lòng chọn nhân viên phụ trách', 'warning'); return;
+        }
+        await callAction(`${API_SR}/${currentRequestId}/assign`,
+            { assigneeId, note }, 'Phân công thành công!');
+    }
+
+    async function doReject() {
+        const reason = document.getElementById('rejectReasonInput').value.trim();
+        if (!reason) { showDetailAlert('Vui lòng nhập lý do từ chối', 'warning'); return; }
+        if (!confirm('Xác nhận từ chối yêu cầu này?')) return;
+        await callAction(`${API_SR}/${currentRequestId}/reject`,
+            { rejectReason: reason }, 'Đã từ chối yêu cầu.');
+    }
+
+    async function doReject2() {
+        const reason = document.getElementById('rejectReasonInput2').value.trim();
+        if (!reason) { showDetailAlert('Vui lòng nhập lý do từ chối', 'warning'); return; }
+        if (!confirm('Xác nhận từ chối yêu cầu này?')) return;
+        await callAction(`${API_SR}/${currentRequestId}/reject`,
+            { rejectReason: reason }, 'Đã từ chối yêu cầu.');
+    }
+
+    async function doMarkDone() {
+        if (!uploadedImageBase64) {
+            showDetailAlert('Vui lòng upload ảnh xác nhận hoàn thành', 'warning'); return;
+        }
+        const note = document.getElementById('doneNote').value.trim();
+        await callAction(`${API_SR}/${currentRequestId}/done`,
+            { completionImage: uploadedImageBase64, note }, 'Đã xác nhận hoàn thành!');
+    }
+
+    async function callAction(url, body, successMsg) {
+        showLoading();
+        try {
+            const res = await apiRequest(url, {
+                method: 'POST',
+                body: JSON.stringify(body)
+            });
+            if (res.ok) {
+                showDetailAlert(successMsg, 'success');
+                loadStats();
+                loadList(currentPage);
+                // Reload detail
+                setTimeout(async () => {
+                    const [detailRes, staffRes] = await Promise.all([
+                        apiRequest(`${API_SR}/${currentRequestId}`),
+                        apiRequest(`${API_SR}/assignable-staff`)
+                    ]);
+                    populateDetail(await detailRes.json(), await staffRes.json());
+                }, 300);
+            } else {
+                const err = await res.text();
+                showDetailAlert(err, 'danger');
+            }
+        } catch(e) {
+            showDetailAlert('Lỗi: ' + e.message, 'danger');
+        } finally { hideLoading(); }
+    }
+
+    // ── Image upload ──────────────────────────────────────────────────
+    function handleFileSelect(event) {
+        processFile(event.target.files[0]);
+    }
+
+    function handleDrop(event) {
+        event.preventDefault();
+        document.getElementById('uploadZone').classList.remove('drag-over');
+        const file = event.dataTransfer.files[0];
+        if (file) processFile(file);
+    }
+
+    function processFile(file) {
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+            showDetailAlert('Chỉ chấp nhận file ảnh (JPG, PNG, WEBP)', 'warning'); return;
+        }
+        if (file.size > 2 * 1024 * 1024) {
+            showDetailAlert('Ảnh quá lớn. Tối đa 2MB.', 'warning'); return;
+        }
+        const reader = new FileReader();
+        reader.onload = e => {
+            uploadedImageBase64 = e.target.result;
+            const preview = document.getElementById('uploadPreview');
+            preview.src = uploadedImageBase64;
+            preview.classList.remove('d-none');
+            document.getElementById('uploadPlaceholder').classList.add('d-none');
+            document.getElementById('uploadZone').style.borderColor = '#198754';
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────
+    function showDetailAlert(msg, type = 'danger') {
+        document.getElementById('detailAlert').innerHTML =
+            `<div class="alert alert-${type} alert-dismissible fade show py-2">
+                ${escHtml(msg)}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>`;
+    }
+
+    function showMgmtAlert(containerId, msg, type = 'danger') {
+        document.getElementById(containerId).innerHTML =
+            `<div class="alert alert-${type} alert-dismissible fade show">
+                ${escHtml(msg)}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>`;
+        setTimeout(() => {
+            document.getElementById(containerId).innerHTML = '';
+        }, 5000);
+    }
+
+    function escHtml(s) {
+        if (s == null) return '';
+        return String(s)
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+            .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
+    function fmtDate(s) {
+        if (!s) return '—';
+        return new Date(s).toLocaleString('vi-VN');
+    }
+</script>
+</body>
+</html>
