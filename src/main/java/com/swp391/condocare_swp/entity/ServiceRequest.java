@@ -8,11 +8,11 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
- * Entity bảng ServiceRequest
+ * Entity bảng service_request
  * Yêu cầu hỗ trợ / báo sự cố từ cư dân gửi lên Ban quản lý
  */
 @Entity
-@Table(name = "ServiceRequest")
+@Table(name = "service_request")   // tên bảng thực tế trong DB là chữ thường
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -64,6 +64,29 @@ public class ServiceRequest {
     @Column(name = "note", columnDefinition = "TEXT")
     private String note;
 
+    /**
+     * Ảnh xác nhận hoàn thành (Staff upload).
+     * Lưu dạng Base64 Data URL: "data:image/jpeg;base64,/9j/..."
+     * Dùng MEDIUMTEXT để chứa ảnh ~1MB.
+     */
+    @Column(name = "completion_image", columnDefinition = "MEDIUMTEXT")
+    private String completionImage;
+
+    /**
+     * Resident xác nhận đã được xử lý xong.
+     * false = chưa xác nhận, true = đã xác nhận.
+     */
+    @Column(name = "resident_confirmed", nullable = false)
+    private Boolean residentConfirmed = false;
+
+    /** Thời điểm resident bấm xác nhận */
+    @Column(name = "confirmed_at")
+    private LocalDateTime confirmedAt;
+
+    /** Lý do từ chối (khi status = REJECTED) */
+    @Column(name = "reject_reason", columnDefinition = "TEXT")
+    private String rejectReason;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -73,12 +96,15 @@ public class ServiceRequest {
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
+        if (residentConfirmed == null) residentConfirmed = false;
     }
 
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
+
+    // ── Enums ─────────────────────────────────────────────────
 
     public enum Category {
         ELECTRIC,   // Điện
@@ -92,7 +118,7 @@ public class ServiceRequest {
     public enum RequestStatus {
         PENDING,     // Chờ xử lý
         IN_PROGRESS, // Đang xử lý
-        DONE,        // Hoàn thành
+        DONE,        // Hoàn thành (staff đã upload ảnh)
         REJECTED     // Từ chối
     }
 

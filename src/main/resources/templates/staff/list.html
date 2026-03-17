@@ -308,7 +308,7 @@
 <script src="/js/common.js"></script>
 <script src="/js/staff-management.js"></script>
 <script>
-    // Auth check — dùng pattern giống resident-common.js
+    // Auth check
     (function() {
         const token = localStorage.getItem('token') || sessionStorage.getItem('token');
         if (!token) { window.location.href = '/login'; return; }

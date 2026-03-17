@@ -49,6 +49,13 @@ public interface StaffRepository extends JpaRepository<Staff, String>,
      * @return true nếu đã tồn tại
      */
     Boolean existsByEmail(String email);
+
+    /**
+     * Kiểm tra số điện thoại đã tồn tại chưa
+     * @param phone Phone
+     * @return true nếu đã tồn tại
+     */
+    Boolean existsByPhone(String phone);
     
     /**
      * Đếm số Staff theo status

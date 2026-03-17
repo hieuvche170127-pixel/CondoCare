@@ -107,4 +107,9 @@ public class PageController {
     /** GET /dashboard/invoices → Quản lý hóa đơn */
     @GetMapping("/dashboard/invoices")
     public String invoiceManagement()     { return "staff/invoices"; }
+
+    /** GET /dashboard/service-requests → Quan ly yeu cau ho tro */
+    @GetMapping("/dashboard/service-requests")
+    public String staffServiceRequests()  { return "staff/service-requests"; }
+
 }

@@ -98,6 +98,7 @@ public class StaffManagementService {
                 && staffRepo.existsByEmail(req.getEmail()))
             throw new RuntimeException("Email đã được sử dụng bởi nhân viên khác");
 
+
         Role role = roleRepo.findById(req.getRoleId())
                 .orElseThrow(() -> new RuntimeException("Role không tồn tại: " + req.getRoleId()));
 

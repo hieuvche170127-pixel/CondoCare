@@ -57,37 +57,26 @@ public class InvoiceManagementService {
             all = invoiceRepo.findAllByOrderByYearDescMonthDesc();
         }
 
-        // Lọc status
         if (status != null && !status.isBlank() && !status.equals("ALL")) {
             Invoice.InvoiceStatus s = Invoice.InvoiceStatus.valueOf(status);
             all = all.stream().filter(i -> i.getStatus() == s).toList();
         }
-        // Lọc tháng
-        if (month != null) {
-            all = all.stream().filter(i -> month.equals(i.getMonth())).toList();
-        }
-        // Lọc năm
-        if (year != null) {
-            all = all.stream().filter(i -> year.equals(i.getYear())).toList();
-        }
-        // Tìm kiếm keyword
+        if (month != null) all = all.stream().filter(i -> month.equals(i.getMonth())).toList();
+        if (year  != null) all = all.stream().filter(i -> year.equals(i.getYear())).toList();
         if (search != null && !search.isBlank()) {
             String kw = search.toLowerCase();
             all = all.stream().filter(i -> {
                 String aptNum  = i.getApartment() != null ? i.getApartment().getNumber().toLowerCase() : "";
                 String bldName = (i.getApartment() != null && i.getApartment().getBuilding() != null)
                         ? i.getApartment().getBuilding().getName().toLowerCase() : "";
-                return i.getId().toLowerCase().contains(kw)
-                        || aptNum.contains(kw)
-                        || bldName.contains(kw);
+                return i.getId().toLowerCase().contains(kw) || aptNum.contains(kw) || bldName.contains(kw);
             }).toList();
         }
 
-        // Phân trang thủ công
         int total  = all.size();
         int offset = (int) pageable.getOffset();
         int end    = Math.min(offset + pageable.getPageSize(), total);
-        List<Invoice> paged  = offset >= total ? List.of() : all.subList(offset, end);
+        List<Invoice> paged   = offset >= total ? List.of() : all.subList(offset, end);
         List<Map<String, Object>> content = paged.stream().map(this::mapToResponse).toList();
         return new PageImpl<>(content, pageable, total);
     }
@@ -109,31 +98,26 @@ public class InvoiceManagementService {
         Apartment apt = apartmentRepo.findById(req.getApartmentId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy căn hộ: " + req.getApartmentId()));
 
-        // Kiểm tra trùng
-        if (invoiceRepo.findByApartmentAndMonthAndYear(apt, req.getMonth(), req.getYear()).isPresent()) {
+        if (invoiceRepo.findByApartmentAndMonthAndYear(apt, req.getMonth(), req.getYear()).isPresent())
             throw new RuntimeException("Căn hộ " + apt.getNumber()
                     + " đã có hóa đơn tháng " + req.getMonth() + "/" + req.getYear());
-        }
 
-        // Chỉ số điện
         MeterReading electricReading = null;
         BigDecimal electricAmount = BigDecimal.ZERO;
         if (req.getElectricReadingId() != null && !req.getElectricReadingId().isBlank()) {
             electricReading = meterRepo.findById(req.getElectricReadingId())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy chỉ số điện"));
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy chỉ số điện: " + req.getElectricReadingId()));
             electricAmount = electricReading.getTotalAmountDecimal();
         }
 
-        // Chỉ số nước
         MeterReading waterReading = null;
         BigDecimal waterAmount = BigDecimal.ZERO;
         if (req.getWaterReadingId() != null && !req.getWaterReadingId().isBlank()) {
             waterReading = meterRepo.findById(req.getWaterReadingId())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy chỉ số nước"));
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy chỉ số nước: " + req.getWaterReadingId()));
             waterAmount = waterReading.getTotalAmountDecimal();
         }
 
-        // Phí dịch vụ
         Fees serviceFee = null;
         BigDecimal serviceAmount = BigDecimal.ZERO;
         if (req.getServiceFeeId() != null && !req.getServiceFeeId().isBlank()) {
@@ -142,7 +126,6 @@ public class InvoiceManagementService {
             serviceAmount = nvl(serviceFee.getAmount());
         }
 
-        // Phí xe
         Fees parkingFee = null;
         BigDecimal parkingAmount = BigDecimal.ZERO;
         if (req.getParkingFeeId() != null && !req.getParkingFeeId().isBlank()) {
@@ -156,7 +139,6 @@ public class InvoiceManagementService {
         String currentUsername = SecurityContextHolder.getContext().getAuthentication().getName();
         Staff creator = staffRepo.findByUsername(currentUsername).orElse(null);
 
-        // Due date: ngày 15 tháng sau
         int dueMonth = req.getMonth() == 12 ? 1 : req.getMonth() + 1;
         int dueYear  = req.getMonth() == 12 ? req.getYear() + 1 : req.getYear();
 
@@ -197,7 +179,7 @@ public class InvoiceManagementService {
         invoice.setStatus(s);
         if (s == Invoice.InvoiceStatus.PAID) invoice.setPaidAt(LocalDateTime.now());
         invoiceRepo.save(invoice);
-        logger.info("Invoice {} → {}", id, newStatus);
+        logger.info("Invoice {} -> {}", id, newStatus);
         return mapToResponse(invoice);
     }
 
@@ -228,7 +210,6 @@ public class InvoiceManagementService {
             m.put("previousIndex", r.getPreviousIndex());
             m.put("currentIndex",  r.getCurrentIndex());
             m.put("consumption",   r.getConsumption());
-            m.put("unitPrice",     0); // unitPrice không có trong DB schema - tính từ total/consumption
             m.put("totalAmount",   r.getTotalAmount());
             return m;
         }).toList();
@@ -270,7 +251,6 @@ public class InvoiceManagementService {
 
         MeterReading.MeterType meterType = MeterReading.MeterType.valueOf(typeStr.toUpperCase());
 
-        // Kiểm tra đã có chỉ số cho tháng này chưa
         meterRepo.findByApartmentAndMeterTypeAndMonthAndYear(apt, meterType, month, year)
                 .ifPresent(existing -> {
                     throw new RuntimeException(
@@ -375,16 +355,24 @@ public class InvoiceManagementService {
         try { return Double.parseDouble(v.toString()); } catch (Exception e) { return 0.0; }
     }
 
+    /**
+     * FIX: ID format MR + MM(2) + YYYY(4) + seq(5) = 13 chars → fits char(15)
+     * Yêu cầu: chạy fix_id_columns.sql trước để ALTER char(10) → char(15)
+     */
     private synchronized String generateMeterReadingId() {
-        String prefix = "MR" + String.format("%02d", LocalDate.now().getMonthValue())
-                + LocalDate.now().getYear();
+        String prefix = "MR"
+                + String.format("%02d", LocalDate.now().getMonthValue())
+                + LocalDate.now().getYear();  // MR032026 = 8 chars + 5 seq = 13 total
         for (int i = 1; i <= 99999; i++) {
             String id = prefix + String.format("%05d", i);
             if (!meterRepo.existsById(id)) return id;
         }
-        return "MR" + System.currentTimeMillis();
+        return "MR" + (System.currentTimeMillis() % 10000000000000L);
     }
 
+    /**
+     * Invoice ID: INV + YYYY(4) + MM(2) + seq(4) = 13 chars → fits varchar(15)
+     */
     private synchronized String generateInvoiceId() {
         String prefix = "INV" + LocalDate.now().getYear()
                 + String.format("%02d", LocalDate.now().getMonthValue());
@@ -392,6 +380,6 @@ public class InvoiceManagementService {
             String id = prefix + String.format("%04d", i);
             if (!invoiceRepo.existsById(id)) return id;
         }
-        return "INV" + System.currentTimeMillis();
+        return "INV" + (System.currentTimeMillis() % 100000000000L);
     }
 }
