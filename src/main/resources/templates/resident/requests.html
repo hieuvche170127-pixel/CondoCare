@@ -57,7 +57,7 @@
         <div class="content-card mb-3">
             <div class="d-flex flex-wrap gap-2 align-items-end">
                 <div>
-                    <label class="form-label small mb-1 fw-semibold">Tim kiem</label>
+                    <label class="form-label small mb-1 fw-semibold">Tìm kiếm</label>
                     <input type="text" id="filterKeyword" class="form-control form-control-sm"
                            placeholder="Tiêu đề, mô tả..." style="width:200px"
                            onkeydown="if(event.key==='Enter') applyFilter()">
@@ -105,13 +105,13 @@
                         <option value="ALL">Tất cả</option>
                         <option value="PENDING">Chờ xử lý</option>
                         <option value="IN_PROGRESS">Đang xử lý</option>
-                        <option value="DONE">Hoan thanh</option>
-                        <option value="REJECTED">Tu choi</option>
+                        <option value="DONE">Hoàn thành</option>
+                        <option value="REJECTED">Từ chối</option>
                     </select>
                 </div>
                 <div class="d-flex gap-2 mt-3">
                     <button class="btn btn-primary btn-sm" onclick="applyFilter()">
-                        <i class="fas fa-filter me-1"></i>Loc
+                        <i class="fas fa-filter me-1"></i>Lọc
                     </button>
                     <button class="btn btn-outline-secondary btn-sm" onclick="resetFilter()">
                         <i class="fas fa-redo me-1"></i>Đặt lại
@@ -124,7 +124,7 @@
             <div class="card-title"><i class="fas fa-list me-2"></i>Lịch sử yêu cầu của tôi</div>
             <div id="requestList">
                 <div class="empty-state"><i class="fas fa-spinner fa-spin d-block"></i>
-                    <p>Dang tai...</p></div>
+                    <p>Đăng tải...</p></div>
             </div>
         </div>
     </main>
@@ -142,42 +142,42 @@
                 <div id="formAlert"></div>
                 <form id="requestForm">
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Tieu de *</label>
+                        <label class="form-label fw-bold">Tiêu đề *</label>
                         <input type="text" class="form-control" id="reqTitle"
                                placeholder="Mo ta ngan gon van de, vi du: Bong den hanh lang hong" maxlength="255">
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Danh muc *</label>
+                            <label class="form-label fw-bold">Danh mục *</label>
                             <select class="form-select" id="reqCategory">
-                                <option value="ELECTRIC">Dien</option>
-                                <option value="WATER">Nuoc</option>
+                                <option value="ELECTRIC">Điện</option>
+                                <option value="WATER">Nước</option>
                                 <option value="INTERNET">Internet</option>
-                                <option value="HVAC">Dieu hoa / Thong gio</option>
-                                <option value="STRUCTURE">Ket cau toa nha</option>
-                                <option value="OTHER" selected>Khac</option>
+                                <option value="HVAC">Điều hoà / Thông gió</option>
+                                <option value="STRUCTURE">Kết cấu toà nhà</option>
+                                <option value="OTHER" selected>Khác</option>
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Muc do uu tien</label>
+                            <label class="form-label fw-bold">Mức độ ưu tiên</label>
                             <select class="form-select" id="reqPriority">
-                                <option value="LOW">Thap - Khong gap</option>
-                                <option value="MEDIUM" selected>Trung binh</option>
-                                <option value="HIGH">Cao - Can xu ly som</option>
+                                <option value="LOW">Thấp - Không gấp</option>
+                                <option value="MEDIUM" selected>Trung bình</option>
+                                <option value="HIGH">Cao - Cần sử lý sớm</option>
                             </select>
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Mo ta chi tiet *</label>
+                        <label class="form-label fw-bold">Mô tả chi tiết *</label>
                         <textarea class="form-control" id="reqDescription" rows="5"
-                                  placeholder="Mo ta chi tiet van de: xay ra khi nao, anh huong nhu the nao..."></textarea>
+                                  placeholder="Mô tả chi tiết vấn đềL xảy ra khi nào, ảnh hưởng như thế nào..."></textarea>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Huy</button>
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Huỷ</button>
                 <button class="btn btn-primary" id="btnSubmitRequest">
-                    <i class="fas fa-paper-plane me-1"></i> Gui yeu cau
+                    <i class="fas fa-paper-plane me-1"></i> Gửi yêu cầu
                 </button>
             </div>
         </div>
@@ -189,7 +189,7 @@
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-file-alt me-2"></i>Chi tiet yeu cau</h5>
+                <h5 class="modal-title"><i class="fas fa-file-alt me-2"></i>Chi tiết yêu cầu</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -208,13 +208,13 @@
 
                 <!-- Ghi chu tu staff -->
                 <div id="dtNoteSection" class="d-none mb-3">
-                    <h6 class="fw-semibold"><i class="fas fa-comment-alt me-1 text-primary"></i>Phan hoi tu Ban quan ly</h6>
+                    <h6 class="fw-semibold"><i class="fas fa-comment-alt me-1 text-primary"></i>Phản hồi từ ban quản lý</h6>
                     <div class="alert alert-info py-2" id="dtNote"></div>
                 </div>
 
                 <!-- Ly do tu choi -->
                 <div id="dtRejectSection" class="d-none mb-3">
-                    <h6 class="fw-semibold"><i class="fas fa-times-circle me-1 text-danger"></i>Ly do tu choi</h6>
+                    <h6 class="fw-semibold"><i class="fas fa-times-circle me-1 text-danger"></i>Lý do từ chối</h6>
                     <div class="alert alert-danger py-2" id="dtRejectReason"></div>
                 </div>
 
@@ -226,7 +226,7 @@
                     </small>
                 </div>
 
-                <!-- Ảnh xác nhận hoan thanh -->
+                <!-- Ảnh xác nhận hoàn thành -->
                 <div id="dtImageSection" class="d-none mb-3">
                     <h6 class="fw-semibold text-success">
                         <i class="fas fa-camera me-1"></i>Ảnh xác nhận hoàn thành từ nhân viên
@@ -239,7 +239,7 @@
                     <div class="d-flex align-items-start gap-3">
                         <i class="fas fa-tools fa-2x text-success mt-1 flex-shrink-0"></i>
                         <div class="flex-grow-1">
-                            <h6 class="fw-bold mb-1">Nhấn vien da hoan thanh yeu cau cua ban</h6>
+                            <h6 class="fw-bold mb-1">Nhân viên đã hoàn thành yêu cầu của bạn</h6>
                             <p class="small text-muted mb-2">
                                 Vui lòng kiểm tra và xác nhận nếu vấn đề đã được giải quyết thỏa đáng.
                             </p>
@@ -254,13 +254,13 @@
                 <div id="dtConfirmedBadge" class="d-none">
                     <div class="alert alert-success py-2">
                         <i class="fas fa-check-double me-1"></i>
-                        <strong>Ban da xác nhận yêu cầu này.</strong>
+                        <strong>Bạn đã xác nhận yêu cầu này.</strong>
                         <span id="dtConfirmedAt" class="text-muted ms-2 small"></span>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Dong</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
             </div>
         </div>
     </div>
@@ -271,16 +271,16 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
             <div class="modal-header bg-success text-white">
-                <h5 class="modal-title"><i class="fas fa-check-circle me-2"></i>Xác nhận hoan thanh</h5>
+                <h5 class="modal-title"><i class="fas fa-check-circle me-2"></i>Xác nhận hoàn thành</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p>Ban xác nhận rang yêu cầu hỗ trợ này <strong>đã được xử lý thỏa đáng</strong>?</p>
-                <p class="text-muted small">Hanh dong nay khong the hoan tac.</p>
+                <p>Ban xác nhận rằng yêu cầu hỗ trợ này <strong>đã được xử lý thỏa đáng</strong>?</p>
+                <p class="text-muted small">Hành động này không thể hoàn tác.</p>
                 <div id="confirmModalAlert"></div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Chua, kiem tra lai</button>
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Chưa, kiểm tra lại</button>
                 <button class="btn btn-success" id="btnConfirmYes">
                     <i class="fas fa-check me-1"></i>Xác nhận
                 </button>
@@ -368,8 +368,8 @@
         const STATUS_MAP = {
             PENDING:     { cls: 'bg-warning text-dark', label: 'Chờ xử lý' },
             IN_PROGRESS: { cls: 'bg-primary',           label: 'Đang xử lý' },
-            DONE:        { cls: 'bg-success',            label: 'Hoan thanh' },
-            REJECTED:    { cls: 'bg-danger',             label: 'Tu choi' },
+            DONE:        { cls: 'bg-success',            label: 'Hoàn thành' },
+            REJECTED:    { cls: 'bg-danger',             label: 'Từ chối' },
         };
 
         document.getElementById('requestList').innerHTML = list.map(sr => {
@@ -453,13 +453,13 @@
         const STATUS_MAP = {
             PENDING:     { cls: 'bg-warning text-dark', label: 'Chờ xử lý' },
             IN_PROGRESS: { cls: 'bg-primary',           label: 'Đang xử lý' },
-            DONE:        { cls: 'bg-success',            label: 'Hoan thanh' },
-            REJECTED:    { cls: 'bg-danger',             label: 'Tu choi' },
+            DONE:        { cls: 'bg-success',            label: 'Hoàn thành' },
+            REJECTED:    { cls: 'bg-danger',             label: 'Từ chối' },
         };
         const PRIORITY_MAP = {
-            HIGH:   { cls: 'bg-danger',           label: 'Uu tien Cao' },
-            MEDIUM: { cls: 'bg-warning text-dark', label: 'Uu tien Trung binh' },
-            LOW:    { cls: 'bg-success',           label: 'Uu tien Thap' },
+            HIGH:   { cls: 'bg-danger',           label: 'Ưu tiên Cao' },
+            MEDIUM: { cls: 'bg-warning text-dark', label: 'Ưu tiên Trung bình' },
+            LOW:    { cls: 'bg-success',           label: 'Ưu tiên thấp' },
         };
         const s = STATUS_MAP[sr.status]   || { cls:'bg-secondary', label:sr.status };
         const p = PRIORITY_MAP[sr.priority]|| { cls:'bg-secondary', label:sr.priority };
@@ -544,12 +544,12 @@
         const priority    = document.getElementById('reqPriority').value;
         if (!title || !description) {
             document.getElementById('formAlert').innerHTML =
-                `<div class="alert alert-warning">Vui long dien day du Tieu de va Mo ta!</div>`;
+                `<div class="alert alert-warning">Vui lòng điền đầy đủ Tiêu đề và Mô tả</div>`;
             return;
         }
         document.getElementById('formAlert').innerHTML = '';
         this.disabled = true;
-        this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Dang gui...';
+        this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang gửi...';
         showLoading();
         try {
             const response = await apiRequest(`${API_BASE_URL}/resident/requests`, {
@@ -571,7 +571,7 @@
         } finally {
             hideLoading();
             this.disabled = false;
-            this.innerHTML = '<i class="fas fa-paper-plane me-1"></i> Gui yeu cau';
+            this.innerHTML = '<i class="fas fa-paper-plane me-1"></i> Gửi yêu cầu';
         }
     });
 
