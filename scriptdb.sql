@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS `Building` (
 -- Table: Apartment
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `Apartment` (
-                                           `ID` char(4) NOT NULL,
+    `ID` char(10) NOT NULL,
     `number` char(4) NOT NULL,
     `floor` int(10) NOT NULL,
     `area` float NOT NULL,
