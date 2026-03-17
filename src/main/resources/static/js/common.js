@@ -276,3 +276,60 @@ function saveLoginSession(token, userInfo, remember = false) {
     saveToken(token, remember);
     saveUserInfo(userInfo, remember);
 }
+/**
+ * Staff sidebar mobile toggle — tự động inject hamburger button cho staff pages.
+ * Chạy khi DOM load, chỉ kích hoạt nếu có nav.sidebar (staff layout).
+ * Không cần sửa từng file HTML staff.
+ */
+document.addEventListener('DOMContentLoaded', function () {
+    const staffSidebar = document.querySelector('nav.sidebar');
+    if (!staffSidebar) return; // Không phải staff page → bỏ qua
+
+    // Thêm title attribute cho mỗi nav-link để tooltip hoạt động trên tablet
+    staffSidebar.querySelectorAll('.nav-link').forEach(link => {
+        const span = link.querySelector('span');
+        const text = span ? span.textContent.trim() : link.textContent.trim();
+        if (text && !link.getAttribute('title')) {
+            link.setAttribute('title', text);
+        }
+    });
+
+    // Inject hamburger button nếu chưa có
+    if (!document.getElementById('staffMobileToggle')) {
+        const btn = document.createElement('button');
+        btn.id        = 'staffMobileToggle';
+        btn.className = 'staff-mobile-toggle';
+        btn.innerHTML = '<i class="fas fa-bars"></i>';
+        btn.setAttribute('aria-label', 'Mở menu');
+        document.body.appendChild(btn);
+
+        btn.addEventListener('click', function () {
+            staffSidebar.classList.toggle('open');
+            // Đổi icon
+            const icon = btn.querySelector('i');
+            icon.className = staffSidebar.classList.contains('open')
+                ? 'fas fa-times'
+                : 'fas fa-bars';
+        });
+
+        // Đóng sidebar khi click ra ngoài
+        document.addEventListener('click', function (e) {
+            if (window.innerWidth <= 768
+                && staffSidebar.classList.contains('open')
+                && !staffSidebar.contains(e.target)
+                && e.target !== btn
+                && !btn.contains(e.target)) {
+                staffSidebar.classList.remove('open');
+                btn.querySelector('i').className = 'fas fa-bars';
+            }
+        });
+    }
+
+    // Thêm col classes cho tablet icon-only mode
+    const row = staffSidebar.closest('.row');
+    if (row) {
+        // Thêm class để CSS tablet nhắm đúng
+        staffSidebar.closest('[class*="col-md-3"]')?.classList.add('staff-sidebar-col');
+        row.querySelector('[class*="col-md-9"]')?.classList.add('staff-main-col');
+    }
+});

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yeu cau ho tro - Cu dan</title>
+    <title>Yêu cầu hỗ trợ - Cư dân</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
@@ -38,16 +38,16 @@
     <main class="resident-main">
         <div class="page-header">
             <div>
-                <h4><i class="fas fa-tools"></i> Yeu cau ho tro</h4>
+                <h4><i class="fas fa-tools"></i> Yêu cầu hỗ trợ</h4>
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb mb-0">
                         <li class="breadcrumb-item"><a href="/resident">Trang chu</a></li>
-                        <li class="breadcrumb-item active">Yeu cau ho tro</li>
+                        <li class="breadcrumb-item active">Yêu cầu hỗ trợ</li>
                     </ol>
                 </nav>
             </div>
             <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newRequestModal">
-                <i class="fas fa-plus"></i> Tao yeu cau moi
+                <i class="fas fa-plus"></i> Tạo yêu cầu mới
             </button>
         </div>
 
@@ -59,14 +59,14 @@
                 <div>
                     <label class="form-label small mb-1 fw-semibold">Tim kiem</label>
                     <input type="text" id="filterKeyword" class="form-control form-control-sm"
-                           placeholder="Tieu de, mo ta..." style="width:200px"
+                           placeholder="Tiêu đề, mô tả..." style="width:200px"
                            onkeydown="if(event.key==='Enter') applyFilter()">
                 </div>
                 <div>
-                    <label class="form-label small mb-1 fw-semibold">Loc theo</label>
+                    <label class="form-label small mb-1 fw-semibold">Lọc theo</label>
                     <select id="filterType" class="form-select form-select-sm" style="width:130px"
                             onchange="toggleFilterInputs()">
-                        <option value="all">Tat ca</option>
+                        <option value="all">Tất cả</option>
                         <option value="month">Thang</option>
                         <option value="quarter">Quy</option>
                         <option value="year">Nam</option>
@@ -100,11 +100,11 @@
                     </select>
                 </div>
                 <div>
-                    <label class="form-label small mb-1 fw-semibold">Trang thai</label>
+                    <label class="form-label small mb-1 fw-semibold">Trạng thái</label>
                     <select id="filterStatus" class="form-select form-select-sm" style="width:160px">
-                        <option value="ALL">Tat ca</option>
-                        <option value="PENDING">Cho xu ly</option>
-                        <option value="IN_PROGRESS">Dang xu ly</option>
+                        <option value="ALL">Tất cả</option>
+                        <option value="PENDING">Chờ xử lý</option>
+                        <option value="IN_PROGRESS">Đang xử lý</option>
                         <option value="DONE">Hoan thanh</option>
                         <option value="REJECTED">Tu choi</option>
                     </select>
@@ -114,14 +114,14 @@
                         <i class="fas fa-filter me-1"></i>Loc
                     </button>
                     <button class="btn btn-outline-secondary btn-sm" onclick="resetFilter()">
-                        <i class="fas fa-redo me-1"></i>Dat lai
+                        <i class="fas fa-redo me-1"></i>Đặt lại
                     </button>
                 </div>
             </div>
         </div>
 
         <div class="content-card">
-            <div class="card-title"><i class="fas fa-list me-2"></i>Lich su yeu cau cua toi</div>
+            <div class="card-title"><i class="fas fa-list me-2"></i>Lịch sử yêu cầu của tôi</div>
             <div id="requestList">
                 <div class="empty-state"><i class="fas fa-spinner fa-spin d-block"></i>
                     <p>Dang tai...</p></div>
@@ -130,12 +130,12 @@
     </main>
 </div>
 
-<!-- MODAL TAO YEU CAU MOI -->
+<!-- MODAL TẠO YÊU CẦU MỚI -->
 <div class="modal fade" id="newRequestModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="fas fa-tools me-2"></i>Tao yeu cau ho tro moi</h5>
+                <h5 class="modal-title"><i class="fas fa-tools me-2"></i>Tạo yêu cầu hỗ trợ mới</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -218,43 +218,43 @@
                     <div class="alert alert-danger py-2" id="dtRejectReason"></div>
                 </div>
 
-                <!-- Nhan vien phu trach -->
+                <!-- Nhân viên phụ trách -->
                 <div id="dtAssignedSection" class="d-none mb-3">
                     <small class="text-muted">
                         <i class="fas fa-user-cog me-1"></i>
-                        Nhan vien phu trach: <strong id="dtAssignedName"></strong>
+                        Nhân viên phụ trách: <strong id="dtAssignedName"></strong>
                     </small>
                 </div>
 
-                <!-- Anh xac nhan hoan thanh -->
+                <!-- Ảnh xác nhận hoan thanh -->
                 <div id="dtImageSection" class="d-none mb-3">
                     <h6 class="fw-semibold text-success">
-                        <i class="fas fa-camera me-1"></i>Anh xac nhan hoan thanh tu nhan vien
+                        <i class="fas fa-camera me-1"></i>Ảnh xác nhận hoàn thành từ nhân viên
                     </h6>
-                    <img id="dtImage" src="" alt="Anh xac nhan" class="completion-img">
+                    <img id="dtImage" src="" alt="Ảnh xác nhận" class="completion-img">
                 </div>
 
-                <!-- Banner xac nhan (khi DONE + chua confirm) -->
+                <!-- Banner xác nhận (khi DONE + chua confirm) -->
                 <div id="dtConfirmBanner" class="confirm-banner d-none">
                     <div class="d-flex align-items-start gap-3">
                         <i class="fas fa-tools fa-2x text-success mt-1 flex-shrink-0"></i>
                         <div class="flex-grow-1">
-                            <h6 class="fw-bold mb-1">Nhan vien da hoan thanh yeu cau cua ban</h6>
+                            <h6 class="fw-bold mb-1">Nhấn vien da hoan thanh yeu cau cua ban</h6>
                             <p class="small text-muted mb-2">
-                                Vui long kiem tra va xac nhan neu van de da duoc giai quyet thoa dang.
+                                Vui lòng kiểm tra và xác nhận nếu vấn đề đã được giải quyết thỏa đáng.
                             </p>
                             <button class="btn btn-success btn-sm" onclick="doConfirm()">
-                                <i class="fas fa-check-circle me-1"></i>Toi xac nhan da duoc xu ly xong
+                                <i class="fas fa-check-circle me-1"></i>Tôi xác nhận đã được xử lý xong
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <!-- Badge da xac nhan -->
+                <!-- Badge da xác nhận -->
                 <div id="dtConfirmedBadge" class="d-none">
                     <div class="alert alert-success py-2">
                         <i class="fas fa-check-double me-1"></i>
-                        <strong>Ban da xac nhan yeu cau nay.</strong>
+                        <strong>Ban da xác nhận yêu cầu này.</strong>
                         <span id="dtConfirmedAt" class="text-muted ms-2 small"></span>
                     </div>
                 </div>
@@ -266,23 +266,23 @@
     </div>
 </div>
 
-<!-- MODAL XAC NHAN -->
+<!-- MODAL XÁC NHẬN -->
 <div class="modal fade" id="confirmModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
             <div class="modal-header bg-success text-white">
-                <h5 class="modal-title"><i class="fas fa-check-circle me-2"></i>Xac nhan hoan thanh</h5>
+                <h5 class="modal-title"><i class="fas fa-check-circle me-2"></i>Xác nhận hoan thanh</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p>Ban xac nhan rang yeu cau ho tro nay <strong>da duoc xu ly thoa dang</strong>?</p>
+                <p>Ban xác nhận rang yêu cầu hỗ trợ này <strong>đã được xử lý thỏa đáng</strong>?</p>
                 <p class="text-muted small">Hanh dong nay khong the hoan tac.</p>
                 <div id="confirmModalAlert"></div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">Chua, kiem tra lai</button>
                 <button class="btn btn-success" id="btnConfirmYes">
-                    <i class="fas fa-check me-1"></i>Xac nhan
+                    <i class="fas fa-check me-1"></i>Xác nhận
                 </button>
             </div>
         </div>
@@ -360,14 +360,14 @@
                 <div class="empty-state">
                     <i class="fas fa-check-circle d-block mb-2"></i>
                     <h6>Chua co yeu cau nao</h6>
-                    <p>Nhan <strong>"Tao yeu cau moi"</strong> de gui yeu cau ho tro.</p>
+                    <p>Nhấn <strong>"Tạo yêu cầu mới"</strong> de gui yêu cầu hỗ trợ.</p>
                 </div>`;
             return;
         }
 
         const STATUS_MAP = {
-            PENDING:     { cls: 'bg-warning text-dark', label: 'Cho xu ly' },
-            IN_PROGRESS: { cls: 'bg-primary',           label: 'Dang xu ly' },
+            PENDING:     { cls: 'bg-warning text-dark', label: 'Chờ xử lý' },
+            IN_PROGRESS: { cls: 'bg-primary',           label: 'Đang xử lý' },
             DONE:        { cls: 'bg-success',            label: 'Hoan thanh' },
             REJECTED:    { cls: 'bg-danger',             label: 'Tu choi' },
         };
@@ -379,19 +379,19 @@
 
             const imgBadge = (sr.status === 'DONE' && sr.hasImage)
                 ? `<span class="badge bg-light text-dark border ms-1">
-                       <i class="fas fa-camera text-success me-1"></i>Co anh xac nhan
+                       <i class="fas fa-camera text-success me-1"></i>Có ảnh xác nhận
                    </span>` : '';
 
             const needConfirm = (sr.status === 'DONE' && !sr.residentConfirmed)
                 ? `<div class="mt-2">
                        <span class="badge bg-warning text-dark">
-                           <i class="fas fa-exclamation-circle me-1"></i>Can xac nhan cua ban
+                           <i class="fas fa-exclamation-circle me-1"></i>Cần xác nhận của bạn
                        </span>
                    </div>` : '';
 
             const confirmedBadge = sr.residentConfirmed
                 ? `<span class="badge bg-success ms-1">
-                       <i class="fas fa-check-double me-1"></i>Da xac nhan
+                       <i class="fas fa-check-double me-1"></i>Đã xác nhận
                    </span>` : '';
 
             const rejectSection = (sr.rejectReason)
@@ -424,7 +424,7 @@
                 ${needConfirm}
                 <div class="request-meta d-flex gap-3 flex-wrap align-items-center">
                     <span><i class="fas fa-calendar me-1"></i>${formatDate(sr.createdAt)}</span>
-                    ${sr.assignedTo ? `<span><i class="fas fa-user-cog me-1"></i>Phu trach: ${sr.assignedTo}</span>` : ''}
+                    ${sr.assignedTo ? `<span><i class="fas fa-user-cog me-1"></i>Phụ trách: ${sr.assignedTo}</span>` : ''}
                     ${sr.updatedAt  ? `<span><i class="fas fa-sync me-1"></i>Cap nhat: ${formatDate(sr.updatedAt)}</span>` : ''}
                 </div>
             </div>`;
@@ -451,8 +451,8 @@
 
     function populateDetail(sr) {
         const STATUS_MAP = {
-            PENDING:     { cls: 'bg-warning text-dark', label: 'Cho xu ly' },
-            IN_PROGRESS: { cls: 'bg-primary',           label: 'Dang xu ly' },
+            PENDING:     { cls: 'bg-warning text-dark', label: 'Chờ xử lý' },
+            IN_PROGRESS: { cls: 'bg-primary',           label: 'Đang xử lý' },
             DONE:        { cls: 'bg-success',            label: 'Hoan thanh' },
             REJECTED:    { cls: 'bg-danger',             label: 'Tu choi' },
         };
@@ -501,18 +501,18 @@
         }
     }
 
-    // Xac nhan tu banner trong detail modal
+    // Xác nhận tu banner trong detail modal
     function doConfirm() {
         document.getElementById('confirmModalAlert').innerHTML = '';
         detailModal.hide();
         setTimeout(() => confirmModal.show(), 300);
     }
 
-    // Goi API xac nhan
+    // Goi API xác nhận
     document.getElementById('btnConfirmYes').addEventListener('click', async function() {
         if (!activeRequestId) return;
         this.disabled = true;
-        this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Dang xu ly...';
+        this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang xử lý...';
         try {
             const res = await apiRequest(
                 `${API_BASE_URL}/resident/requests/${activeRequestId}/confirm`,
@@ -531,7 +531,7 @@
                 `<div class="alert alert-danger py-2">Loi: ${e.message}</div>`;
         } finally {
             this.disabled = false;
-            this.innerHTML = '<i class="fas fa-check me-1"></i>Xac nhan';
+            this.innerHTML = '<i class="fas fa-check me-1"></i>Xác nhận';
         }
     });
 
