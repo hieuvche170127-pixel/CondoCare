@@ -9,10 +9,42 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
     <style>
+        /* ── Stat cards — đồng bộ với dashboard ── */
+        .stat-card-dash {
+            background: #fff; border-radius: 16px; padding: 22px;
+            box-shadow: 0 2px 12px rgba(0,0,0,.07);
+            display: flex; align-items: center; gap: 18px;
+            transition: transform .2s, box-shadow .2s;
+            border-left: 4px solid; height: 100%;
+        }
+        .stat-card-dash:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+
+        .stat-card-dash.blue   { border-left-color: #1976d2; }
+        .stat-card-dash.yellow { border-left-color: #f59e0b; }
+        .stat-card-dash.indigo { border-left-color: #4f46e5; }
+        .stat-card-dash.green  { border-left-color: #388e3c; }
+        .stat-card-dash.red    { border-left-color: #c62828; }
+        .stat-card-dash.teal   { border-left-color: #00796b; }
+
+        .stat-icon-dash {
+            width: 56px; height: 56px; border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem; flex-shrink: 0;
+        }
+        .stat-icon-dash.blue   { background: #e3f2fd; color: #1976d2; }
+        .stat-icon-dash.yellow { background: #fef3c7; color: #d97706; }
+        .stat-icon-dash.indigo { background: #ede9fe; color: #4f46e5; }
+        .stat-icon-dash.green  { background: #e8f5e9; color: #388e3c; }
+        .stat-icon-dash.red    { background: #fce4ec; color: #c62828; }
+        .stat-icon-dash.teal   { background: #e0f2f1; color: #00796b; }
+
+        .stat-num { font-size: 1.8rem; font-weight: 800; line-height: 1; color: #1a237e; }
+        .stat-lbl { font-size: .8rem; color: #6c757d; margin-top: 4px; }
+
+        /* ── Misc ── */
         .priority-HIGH   { border-left: 4px solid #dc3545 !important; }
         .priority-MEDIUM { border-left: 4px solid #ffc107 !important; }
         .priority-LOW    { border-left: 4px solid #198754 !important; }
-        .stat-badge { font-size: 1.6rem; font-weight: 800; }
         .img-preview { max-width: 100%; max-height: 350px; object-fit: contain;
                        border: 2px dashed #dee2e6; border-radius: 8px; padding: 4px; }
         .upload-zone { border: 2px dashed #adb5bd; border-radius: 8px; padding: 2rem;
@@ -108,51 +140,57 @@
 
             <!-- Stats -->
             <div class="row g-3 mb-4" id="statsRow">
-                <div class="col-6 col-md-2">
-                    <div class="card text-center border-0 shadow-sm">
-                        <div class="card-body py-2">
-                            <div class="stat-badge text-secondary" id="statTotal">—</div>
-                            <small class="text-muted">Tổng</small>
+                <div class="col-6 col-xl-2">
+                    <div class="stat-card-dash blue">
+                        <div class="stat-icon-dash blue"><i class="fas fa-list-alt"></i></div>
+                        <div>
+                            <div class="stat-num" id="statTotal">—</div>
+                            <div class="stat-lbl">Tổng yêu cầu</div>
                         </div>
                     </div>
                 </div>
-                <div class="col-6 col-md-2">
-                    <div class="card text-center border-0 shadow-sm">
-                        <div class="card-body py-2">
-                            <div class="stat-badge text-warning" id="statPending">—</div>
-                            <small class="text-muted">Chờ xử lý</small>
+                <div class="col-6 col-xl-2">
+                    <div class="stat-card-dash yellow">
+                        <div class="stat-icon-dash yellow"><i class="fas fa-hourglass-half"></i></div>
+                        <div>
+                            <div class="stat-num" id="statPending">—</div>
+                            <div class="stat-lbl">Chờ xử lý</div>
                         </div>
                     </div>
                 </div>
-                <div class="col-6 col-md-2">
-                    <div class="card text-center border-0 shadow-sm">
-                        <div class="card-body py-2">
-                            <div class="stat-badge text-primary" id="statInProgress">—</div>
-                            <small class="text-muted">Đang xử lý</small>
+                <div class="col-6 col-xl-2">
+                    <div class="stat-card-dash indigo">
+                        <div class="stat-icon-dash indigo"><i class="fas fa-tools"></i></div>
+                        <div>
+                            <div class="stat-num" id="statInProgress">—</div>
+                            <div class="stat-lbl">Đang xử lý</div>
                         </div>
                     </div>
                 </div>
-                <div class="col-6 col-md-2">
-                    <div class="card text-center border-0 shadow-sm">
-                        <div class="card-body py-2">
-                            <div class="stat-badge text-success" id="statDone">—</div>
-                            <small class="text-muted">Hoàn thành</small>
+                <div class="col-6 col-xl-2">
+                    <div class="stat-card-dash green">
+                        <div class="stat-icon-dash green"><i class="fas fa-check-circle"></i></div>
+                        <div>
+                            <div class="stat-num" id="statDone">—</div>
+                            <div class="stat-lbl">Hoàn thành</div>
                         </div>
                     </div>
                 </div>
-                <div class="col-6 col-md-2">
-                    <div class="card text-center border-0 shadow-sm">
-                        <div class="card-body py-2">
-                            <div class="stat-badge text-danger" id="statRejected">—</div>
-                            <small class="text-muted">Từ chối</small>
+                <div class="col-6 col-xl-2">
+                    <div class="stat-card-dash red">
+                        <div class="stat-icon-dash red"><i class="fas fa-times-circle"></i></div>
+                        <div>
+                            <div class="stat-num" id="statRejected">—</div>
+                            <div class="stat-lbl">Từ chối</div>
                         </div>
                     </div>
                 </div>
-                <div class="col-6 col-md-2">
-                    <div class="card text-center border-0 shadow-sm">
-                        <div class="card-body py-2">
-                            <div class="stat-badge text-info" id="statAwaiting">—</div>
-                            <small class="text-muted">Chờ xác nhận</small>
+                <div class="col-6 col-xl-2">
+                    <div class="stat-card-dash teal">
+                        <div class="stat-icon-dash teal"><i class="fas fa-user-check"></i></div>
+                        <div>
+                            <div class="stat-num" id="statAwaiting">—</div>
+                            <div class="stat-lbl">Chờ xác nhận</div>
                         </div>
                     </div>
                 </div>
@@ -323,34 +361,19 @@
                             <button class="btn btn-primary" onclick="doAssign()">
                                 <i class="fas fa-user-check me-1"></i>Phân công & bắt đầu xử lý
                             </button>
-                            <button class="btn btn-outline-danger" data-bs-toggle="collapse"
-                                    data-bs-target="#rejectPanel">
+                            <button class="btn btn-outline-danger" onclick="doReject()">
                                 <i class="fas fa-times me-1"></i>Từ chối yêu cầu
                             </button>
                         </div>
                     </div>
-                    <!-- Collapse: lý do từ chối -->
-                    <div class="collapse mt-3" id="rejectPanel">
-                        <div class="card border-danger">
-                            <div class="card-body">
-                                <label class="form-label fw-semibold text-danger">Lý do từ chối <span class="text-danger">*</span></label>
-                                <textarea id="rejectReasonInput" class="form-control border-danger" rows="2"
-                                          placeholder="VD: Vấn đề này thuộc trách nhiệm cư dân tự xử lý..."></textarea>
-                                <button class="btn btn-danger mt-2" onclick="doReject()">
-                                    <i class="fas fa-times-circle me-1"></i>Xác nhận từ chối
-                                </button>
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
-                <!-- 2. TỪ CHỐI KHI ĐANG IN_PROGRESS (nếu cần) -->
+                <!-- 2. IN_PROGRESS: upload ảnh hoàn thành -->
                 <div id="panelInProgress" class="d-none">
                     <h6 class="fw-semibold text-primary mb-3">
                         <i class="fas fa-camera me-1"></i>Upload ảnh xác nhận hoàn thành
                     </h6>
                     <div class="row g-3">
-                        <!-- Upload zone -->
                         <div class="col-md-6">
                             <div class="upload-zone" id="uploadZone"
                                  onclick="document.getElementById('imageFileInput').click()"
@@ -364,7 +387,6 @@
                             <input type="file" id="imageFileInput" class="d-none"
                                    accept="image/*" onchange="handleFileSelect(event)">
                         </div>
-                        <!-- Preview -->
                         <div class="col-md-6 d-flex align-items-center justify-content-center">
                             <img id="uploadPreview" src="" alt="Preview" class="img-preview d-none">
                             <div id="uploadPlaceholder" class="text-center text-muted">
@@ -372,7 +394,6 @@
                                 <small>Ảnh preview sẽ hiển thị ở đây</small>
                             </div>
                         </div>
-                        <!-- Note -->
                         <div class="col-12">
                             <label class="form-label fw-semibold">Ghi chú hoàn thành</label>
                             <textarea id="doneNote" class="form-control" rows="2"
@@ -382,22 +403,9 @@
                             <button class="btn btn-success" onclick="doMarkDone()">
                                 <i class="fas fa-check me-1"></i>Xác nhận hoàn thành
                             </button>
-                            <button class="btn btn-outline-danger" data-bs-toggle="collapse"
-                                    data-bs-target="#rejectPanel2">
+                            <button class="btn btn-outline-danger" onclick="doReject2()">
                                 <i class="fas fa-times me-1"></i>Từ chối yêu cầu
                             </button>
-                        </div>
-                    </div>
-                    <div class="collapse mt-3" id="rejectPanel2">
-                        <div class="card border-danger">
-                            <div class="card-body">
-                                <label class="form-label fw-semibold text-danger">Lý do từ chối <span class="text-danger">*</span></label>
-                                <textarea id="rejectReasonInput2" class="form-control border-danger" rows="2"
-                                          placeholder="VD: Thiết bị cần nhà cung cấp chuyên nghiệp, không thuộc phạm vi xử lý..."></textarea>
-                                <button class="btn btn-danger mt-2" onclick="doReject2()">
-                                    <i class="fas fa-times-circle me-1"></i>Xác nhận từ chối
-                                </button>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -421,6 +429,45 @@
             </div><!-- /modal-body -->
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════ MODAL TỪ CHỐI ═══════════════════ -->
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="rejectModalLabel">
+                    <i class="fas fa-times-circle me-2"></i>Từ chối yêu cầu
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-1 text-muted small">Yêu cầu:</p>
+                <p class="fw-semibold mb-3" id="rejectModalTitle"></p>
+
+                <div id="rejectModalAlert" class="mb-2"></div>
+
+                <label class="form-label fw-semibold">
+                    Lý do từ chối <span class="text-danger">*</span>
+                </label>
+                <textarea id="rejectModalReason" class="form-control" rows="3"
+                          placeholder="Nhập lý do từ chối để thông báo cho cư dân...
+Ví dụ: Vấn đề này thuộc trách nhiệm cư dân tự xử lý theo nội quy."></textarea>
+                <div class="form-text text-muted mt-1">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Lý do sẽ được hiển thị cho cư dân. Vui lòng viết rõ ràng.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-arrow-left me-1"></i>Quay lại
+                </button>
+                <button type="button" class="btn btn-danger" id="btnConfirmReject">
+                    <i class="fas fa-times-circle me-1"></i>Xác nhận từ chối
+                </button>
             </div>
         </div>
     </div>
@@ -452,6 +499,8 @@
     let currentRequestId = null;
     let uploadedImageBase64 = null;
     let detailModal = null;
+    let rejectModal = null;
+    let rejectTargetId = null;   // ID của yêu cầu đang bị từ chối từ nút ngoài bảng
 
     // ── Init ─────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
@@ -459,6 +508,65 @@
         const info = getUserInfo();
         if (info) document.getElementById('sidebarUser').textContent = info.fullName || '';
         detailModal = new bootstrap.Modal(document.getElementById('detailModal'));
+        rejectModal = new bootstrap.Modal(document.getElementById('rejectModal'));
+
+        // Nút xác nhận từ chối trong modal
+        document.getElementById('btnConfirmReject').addEventListener('click', async () => {
+            const reason = document.getElementById('rejectModalReason').value.trim();
+            if (!reason) {
+                document.getElementById('rejectModalAlert').innerHTML =
+                    `<div class="alert alert-warning py-2 mb-0">
+                        <i class="fas fa-exclamation-triangle me-1"></i>Vui lòng nhập lý do từ chối.
+                    </div>`;
+                document.getElementById('rejectModalReason').focus();
+                return;
+            }
+            document.getElementById('rejectModalAlert').innerHTML = '';
+            const btn = document.getElementById('btnConfirmReject');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang xử lý...';
+            showLoading();
+            try {
+                const res = await apiRequest(`${API_SR}/${rejectTargetId}/reject`, {
+                    method: 'POST',
+                    body: JSON.stringify({ rejectReason: reason })
+                });
+                if (res.ok) {
+                    rejectModal.hide();
+                    showMgmtAlert('alertContainer', 'Đã từ chối yêu cầu thành công.', 'success');
+                    loadStats();
+                    loadList(currentPage);
+                    // Nếu detail modal đang mở cùng yêu cầu → reload nội dung
+                    if (currentRequestId === rejectTargetId) {
+                        setTimeout(async () => {
+                            const [detailRes, staffRes] = await Promise.all([
+                                apiRequest(`${API_SR}/${rejectTargetId}`),
+                                apiRequest(`${API_SR}/assignable-staff`)
+                            ]);
+                            populateDetail(await detailRes.json(), await staffRes.json());
+                        }, 300);
+                    }
+                } else {
+                    const err = await res.text();
+                    document.getElementById('rejectModalAlert').innerHTML =
+                        `<div class="alert alert-danger py-2 mb-0">${escHtml(err)}</div>`;
+                }
+            } catch(e) {
+                document.getElementById('rejectModalAlert').innerHTML =
+                    `<div class="alert alert-danger py-2 mb-0">Lỗi: ${escHtml(e.message)}</div>`;
+            } finally {
+                hideLoading();
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-times-circle me-1"></i>Xác nhận từ chối';
+            }
+        });
+
+        // Reset form khi đóng modal
+        document.getElementById('rejectModal').addEventListener('hidden.bs.modal', () => {
+            document.getElementById('rejectModalReason').value = '';
+            document.getElementById('rejectModalAlert').innerHTML = '';
+        });
+
         loadStats();
         loadList(0);
 
@@ -549,9 +657,17 @@
                 <td class="small">${sr.assignedToName ? escHtml(sr.assignedToName) : '<em class="text-muted">Chưa phân công</em>'}</td>
                 <td class="small text-muted">${fmtDate(sr.createdAt)}</td>
                 <td class="text-end">
-                    <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); openDetail('${sr.id}')">
+                    <button class="btn btn-sm btn-outline-primary me-1"
+                            onclick="event.stopPropagation(); openDetail('${sr.id}')"
+                            title="Xem chi tiết">
                         <i class="fas fa-eye"></i>
                     </button>
+                    ${(sr.status === 'PENDING' || sr.status === 'IN_PROGRESS') ? `
+                    <button class="btn btn-sm btn-outline-danger"
+                            onclick="event.stopPropagation(); openRejectModal('${sr.id}', '${escHtml(sr.title)}')"
+                            title="Từ chối yêu cầu">
+                        <i class="fas fa-times"></i>
+                    </button>` : ''}
                 </td>
             </tr>`;
         }).join('');
@@ -644,11 +760,9 @@
                     `<option value="${s.id}">${escHtml(s.fullName)} (${escHtml(s.roleName)}${s.department?' – '+escHtml(s.department):''})</option>`
                 ).join('');
             document.getElementById('assignNote').value = '';
-            document.getElementById('rejectReasonInput').value = '';
         } else if (sr.status === 'IN_PROGRESS') {
             document.getElementById('panelInProgress').classList.remove('d-none');
             document.getElementById('doneNote').value = '';
-            document.getElementById('rejectReasonInput2').value = '';
             // Reset upload zone
             uploadedImageBase64 = null;
             document.getElementById('uploadPreview').classList.add('d-none');
@@ -662,6 +776,19 @@
     }
 
     // ── Actions ───────────────────────────────────────────────────────
+
+    /**
+     * Mở modal từ chối từ nút ngoài bảng.
+     * @param {string} id     - ID yêu cầu
+     * @param {string} title  - Tiêu đề yêu cầu (để hiển thị trong modal)
+     */
+    function openRejectModal(id, title) {
+        rejectTargetId = id;
+        document.getElementById('rejectModalTitle').textContent = title;
+        document.getElementById('rejectModalReason').value = '';
+        document.getElementById('rejectModalAlert').innerHTML = '';
+        rejectModal.show();
+    }
     async function doAssign() {
         const assigneeId = document.getElementById('assigneeSelect').value;
         const note       = document.getElementById('assignNote').value.trim();
@@ -672,20 +799,18 @@
             { assigneeId, note }, 'Phân công thành công!');
     }
 
-    async function doReject() {
-        const reason = document.getElementById('rejectReasonInput').value.trim();
-        if (!reason) { showDetailAlert('Vui lòng nhập lý do từ chối', 'warning'); return; }
-        if (!confirm('Xác nhận từ chối yêu cầu này?')) return;
-        await callAction(`${API_SR}/${currentRequestId}/reject`,
-            { rejectReason: reason }, 'Đã từ chối yêu cầu.');
+    // doReject / doReject2 — gọi từ nút "Từ chối" bên trong detail modal
+    // Dùng chung openRejectModal để có form nhập lý do đẹp hơn confirm()
+    function doReject() {
+        const title = document.getElementById('dtTitle')?.textContent || '';
+        detailModal.hide();
+        setTimeout(() => openRejectModal(currentRequestId, title), 300);
     }
 
-    async function doReject2() {
-        const reason = document.getElementById('rejectReasonInput2').value.trim();
-        if (!reason) { showDetailAlert('Vui lòng nhập lý do từ chối', 'warning'); return; }
-        if (!confirm('Xác nhận từ chối yêu cầu này?')) return;
-        await callAction(`${API_SR}/${currentRequestId}/reject`,
-            { rejectReason: reason }, 'Đã từ chối yêu cầu.');
+    function doReject2() {
+        const title = document.getElementById('dtTitle')?.textContent || '';
+        detailModal.hide();
+        setTimeout(() => openRejectModal(currentRequestId, title), 300);
     }
 
     async function doMarkDone() {
