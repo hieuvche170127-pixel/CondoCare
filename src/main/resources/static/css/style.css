@@ -85,12 +85,20 @@ a:hover {
 }
 
 /* Main content area */
+.resident-wrapper {
+    display: flex;
+    min-height: 100vh;
+}
+
 .resident-main {
     margin-left: 260px;
     flex: 1;
     padding: 24px;
     min-height: 100vh;
+    transition: margin-left .3s ease;
 }
+
+
 
 /* ==================== BUTTONS ==================== */
 .btn {
@@ -506,35 +514,255 @@ a:hover {
 }
 
 /* ==================== RESPONSIVE ==================== */
+
+/*
+ * Breakpoint system:
+ *  ≤576px   → Phone nhỏ
+ *  577–768px → Phone lớn / tablet đứng
+ *  769–991px → Tablet nằm / laptop nhỏ  → sidebar icon-only
+ *  992–1199px→ Laptop                   → sidebar đầy đủ 220px
+ *  ≥1200px  → Desktop / màn rộng        → sidebar 260px (mặc định)
+ */
+
+/* ── TABLET NGANG (769px–991px): sidebar thu nhỏ còn icon ── */
+@media (min-width: 769px) and (max-width: 991px) {
+
+    /* --- RESIDENT sidebar --- */
+    .resident-sidebar {
+        width: 68px;
+        overflow: hidden;
+    }
+
+    .resident-sidebar .nav-link span,
+    .resident-sidebar h5,
+    .resident-sidebar small {
+        display: none !important;
+    }
+
+    .resident-sidebar .nav-link {
+        justify-content: center;
+        padding: 0.75rem;
+        text-align: center;
+    }
+
+    .resident-sidebar .nav-link i {
+        margin-right: 0;
+        font-size: 1.1rem;
+    }
+
+    .resident-sidebar .position-sticky > div:first-child {
+        padding: 0.5rem 0 !important;
+    }
+
+    .resident-main {
+        margin-left: 68px;
+    }
+
+    /* --- STAFF sidebar (Bootstrap col) --- */
+    /* Bootstrap col-md-3 sẽ chiếm ~25% — thu xuống còn icon-only */
+    .staff-sidebar-col {
+        flex: 0 0 68px !important;
+        max-width: 68px !important;
+        min-width: 68px !important;
+        width: 68px !important;
+    }
+
+    .staff-main-col {
+        flex: 0 0 calc(100% - 68px) !important;
+        max-width: calc(100% - 68px) !important;
+    }
+
+    /* Thu gọn sidebar staff */
+    nav.sidebar .nav-link span,
+    nav.sidebar .text-center > h5,
+    nav.sidebar .text-center > small {
+        display: none !important;
+    }
+
+    nav.sidebar .nav-link {
+        justify-content: center;
+        padding: 0.75rem 0.5rem;
+        text-align: center;
+    }
+
+    nav.sidebar .nav-link i {
+        margin-right: 0 !important;
+        font-size: 1.1rem;
+    }
+
+    nav.sidebar .text-center {
+        padding: 0.5rem 0 !important;
+    }
+
+    /* Stat cards: 2 cột */
+    .col-6.col-md-3,
+    .col-6.col-xl-3 {
+        flex: 0 0 50% !important;
+        max-width: 50% !important;
+    }
+
+    /* Page padding nhỏ hơn */
+    .resident-main,
+    .col-md-9.ms-sm-auto {
+        padding: 16px !important;
+    }
+
+    /* Ẩn hamburger trên tablet */
+    .mobile-toggle {
+        display: none !important;
+    }
+
+    /* Tooltip hiện tên menu khi hover icon-only */
+    .resident-sidebar .nav-link,
+    nav.sidebar .nav-link {
+        position: relative;
+    }
+
+    .resident-sidebar .nav-link:hover::after,
+    nav.sidebar .nav-link:hover::after {
+        content: attr(title);
+        position: absolute;
+        left: 70px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(26,35,126,.95);
+        color: #fff;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: .8rem;
+        white-space: nowrap;
+        z-index: 9999;
+        pointer-events: none;
+        box-shadow: 0 2px 8px rgba(0,0,0,.3);
+    }
+}
+
+/* ── LAPTOP (992px–1199px): sidebar 220px ── */
+@media (min-width: 992px) and (max-width: 1199px) {
+
+    .resident-sidebar {
+        width: 220px;
+    }
+
+    .resident-main {
+        margin-left: 220px;
+    }
+
+    .resident-sidebar .nav-link {
+        font-size: 0.85rem;
+        padding: 0.65rem 0.85rem;
+    }
+
+    /* Staff sidebar cũng hẹp hơn chút */
+    nav.sidebar .nav-link {
+        font-size: 0.85rem;
+        padding: 0.65rem 0.85rem;
+    }
+
+    /* Stat cards: 2–4 cột linh hoạt */
+    .col-6.col-xl-3 {
+        flex: 0 0 25% !important;
+        max-width: 25% !important;
+    }
+}
+
+/* ── DESKTOP RỘNG (≥1400px): tận dụng không gian ── */
+@media (min-width: 1400px) {
+
+    .resident-sidebar,
+    nav.sidebar {
+        width: 280px;
+    }
+
+    .resident-main {
+        margin-left: 280px;
+        padding: 32px;
+    }
+
+    .resident-sidebar .nav-link,
+    nav.sidebar .nav-link {
+        font-size: 0.95rem;
+        padding: 0.8rem 1.2rem;
+    }
+
+    /* Stat cards font lớn hơn */
+    .stat-card .stat-value,
+    .stat-number {
+        font-size: 1.9rem;
+    }
+
+    /* Khoảng cách content thoáng hơn */
+    .content-card,
+    .card {
+        padding: 28px;
+    }
+
+    /* Container rộng hơn cho staff (Bootstrap) */
+    .col-lg-10.ms-sm-auto {
+        padding: 32px !important;
+    }
+}
+
+/* ── PHONE + TABLET ĐỨNG (≤768px): mobile ── */
 @media (max-width: 768px) {
-    .hero-section h1 {
-        font-size: 2rem;
-    }
 
-    .hero-section p {
-        font-size: 1rem;
-    }
+    /* Hero section */
+    .hero-section h1 { font-size: 2rem; }
+    .hero-section p  { font-size: 1rem; }
 
-    .sidebar,
+    /* --- RESIDENT sidebar --- */
     .resident-sidebar {
         transform: translateX(-100%);
+        width: 260px; /* Giữ nguyên khi mở */
     }
 
-    .sidebar.open,
     .resident-sidebar.open {
         transform: translateX(0);
     }
 
-    .resident-main {
-        margin-left: 0;
+    /* Overlay khi sidebar mở */
+    .resident-sidebar.open::after {
+        content: '';
+        position: fixed;
+        top: 0; left: 260px; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.4);
+        z-index: -1;
     }
 
-    .mobile-toggle {
+    .resident-main {
+        margin-left: 0;
+        padding: 16px;
+    }
+
+    /* --- STAFF sidebar (Bootstrap col) --- */
+    nav.sidebar {
+        transform: translateX(-100%);
+        position: fixed !important;
+        width: 260px !important;
+        z-index: 1000;
+    }
+
+    nav.sidebar.open {
+        transform: translateX(0);
+    }
+
+    /* Main content chiếm full width khi sidebar ẩn */
+    .col-md-9.ms-sm-auto,
+    .col-lg-10.ms-sm-auto {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-left: 0 !important;
+        padding: 16px !important;
+    }
+
+    /* --- Hamburger menu --- */
+    .mobile-toggle,
+    .staff-mobile-toggle {
         display: flex !important;
         position: fixed;
         top: 12px;
         left: 12px;
-        z-index: 200;
+        z-index: 1100;
         background: var(--primary-color);
         color: #fff;
         border: none;
@@ -544,14 +772,104 @@ a:hover {
         align-items: center;
         justify-content: center;
         font-size: 1.1rem;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0,0,0,.3);
+    }
+
+    /* Stat cards: 2 cột */
+    .col-6.col-md-3,
+    .col-6.col-xl-3,
+    .col-xl-3 {
+        flex: 0 0 50% !important;
+        max-width: 50% !important;
+    }
+
+    /* Font size nhỏ hơn */
+    .stat-card .stat-value,
+    .stat-number {
+        font-size: 1.3rem;
+    }
+
+    .stat-label { font-size: .75rem; }
+
+    /* Page header dọc */
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 12px;
+        padding: 16px;
+        padding-top: 60px; /* chừa chỗ cho hamburger */
+    }
+
+    /* Table: scroll ngang */
+    .table-responsive {
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Card padding nhỏ hơn */
+    .content-card,
+    .card {
+        padding: 16px;
+        border-radius: 10px;
+    }
+
+    /* Ẩn breadcrumb trên phone */
+    .breadcrumb { display: none !important; }
+
+    /* Modal full screen trên phone */
+    .modal-dialog {
+        margin: 0.5rem;
+    }
+
+    .modal-dialog.modal-lg,
+    .modal-dialog.modal-xl {
+        max-width: calc(100vw - 1rem) !important;
+    }
+
+    /* Form layout dọc */
+    .row.g-2 > .col-md-3,
+    .row.g-2 > .col-md-2,
+    .row.g-2 > .col-auto {
+        width: 100% !important;
+        max-width: 100% !important;
     }
 }
 
+/* ── PHONE NHỎ (≤400px) ── */
+@media (max-width: 400px) {
+
+    .stat-card {
+        padding: 14px;
+        gap: 10px;
+    }
+
+    .stat-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1.1rem;
+    }
+
+    .stat-card .stat-value,
+    .stat-number {
+        font-size: 1.2rem;
+    }
+
+    .btn {
+        font-size: 0.85rem;
+        padding: 0.4rem 0.75rem;
+    }
+
+    h4 { font-size: 1.1rem; }
+}
+
+/* ── Ẩn hamburger trên desktop ── */
 @media (min-width: 769px) {
-    .mobile-toggle {
+    .mobile-toggle,
+    .staff-mobile-toggle {
         display: none !important;
     }
 }
+
 
 /* ==================== UTILITIES ==================== */
 .text-primary {
@@ -565,4 +883,3 @@ a:hover {
 .shadow {
     box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15) !important;
 }
-
