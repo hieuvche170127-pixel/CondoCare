@@ -169,15 +169,20 @@
                 const data = await response.json();
 
                 // Lưu token và user info
-                saveToken(data.token);
-                saveUserInfo({
-                    id: data.id,
-                    username: data.username,
-                    email: data.email,
-                    fullName: data.fullName,
-                    role: data.role,
-                    userType: data.userType
-                });
+                const remember = document.getElementById('rememberMe')?.checked || false;
+                saveLoginSession(
+                    data.token,
+                    {
+                        id:       data.id,
+                        username: data.username,
+                        email:    data.email,
+                        fullName: data.fullName,
+                        role:     data.role,
+                        roleName: data.role,
+                        userType: data.userType
+                    },
+                    remember
+                );
 
                 // Show success message
                 showAlert('Đăng nhập thành công! Đang chuyển hướng...', 'success');
@@ -187,7 +192,7 @@
                     if (userType === 'staff') {
                         window.location.href = '/dashboard';
                     } else {
-                        window.location.href = '/resident-dashboard';
+                        window.location.href = '/resident';
                     }
                 }, 1000);
 
