@@ -1,6 +1,8 @@
 package com.swp391.condocare_swp.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Past;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -55,6 +57,7 @@ public class Residents {
      * Ngày sinh
      */
     @Column(name = "dob")
+    @Past(message = "Ngày sinh không hợp lệ")
     private LocalDate dob;
     
     /**
@@ -67,13 +70,15 @@ public class Residents {
     /**
      * Số CMND/CCCD
      */
-    @Column(name = "id_number", length = 12, nullable = true)
+    @Column(name = "id_number", length = 12, nullable = false)
+    @Pattern(regexp = "^[0-9]{12}$", message = "CCCD phải bao gồm 12 chữ số")
     private String idNumber;
     
     /**
      * Số điện thoại
      */
     @Column(name = "phone", length = 20, nullable = false)
+    @Pattern(regexp = "^(0)[0-9]{9}$", message = "Số điện thoại không hợp lệ")
     private String phone;
     
     /**
@@ -94,7 +99,7 @@ public class Residents {
      * Many-to-One: Một Apartment có nhiều Residents
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "apartment_id", nullable = true)
+    @JoinColumn(name = "apartment_id", nullable = false)
     private Apartment apartment;
     
     /**

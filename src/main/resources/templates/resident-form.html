@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Thêm/Sửa Cư dân</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+
+<div class="container-fluid">
+    <div class="row">
+
+        <!-- SIDEBAR giữ nguyên như form Apartment -->
+
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+
+            <div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h2 th:text="${isEdit ? 'Chỉnh sửa Cư dân' : 'Thêm mới Cư dân'}"></h2>
+                <a th:href="@{/dashboard/residents}" class="btn btn-outline-secondary btn-sm">
+                    ← Quay lại
+                </a>
+            </div>
+
+            <div class="card shadow col-lg-8 mx-auto mb-5">
+                <div class="card-header bg-white">
+                    <h6 class="m-0 fw-bold">Thông tin Cư dân</h6>
+                </div>
+
+                <div class="card-body p-4">
+
+                    <form th:action="@{/dashboard/residents/save}"
+                          th:object="${resident}"
+                          method="POST"
+                          enctype="multipart/form-data">
+
+                        <input type="hidden" th:if="${isEdit}" th:field="*{id}">
+                        <input type="hidden" name="isEdit" th:value="${isEdit}">
+
+                        <!-- ERROR -->
+                        <div th:if="${errorMessage}" class="alert alert-danger">
+                            <span th:text="${errorMessage}"></span>
+                        </div>
+
+                        <!-- APARTMENT -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">
+                                Thuộc căn hộ <span class="text-danger">*</span>
+                            </label>
+
+                            <select class="form-select"
+                                    th:field="*{apartment.id}"
+                                    required>
+                                <option value="" disabled selected hidden="hidden">-- Chọn căn hộ --</option>
+                                <option th:each="a : ${apartment}"
+                                        th:value="${a.id}"
+                                        th:text="${a.number + ' - ' + a.building.name}">
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- NAME -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Họ và tên *</label>
+                            <input type="text"
+                                   class="form-control"
+                                   th:field="*{fullName}"
+                                   required>
+                        </div>
+
+                        <!-- DOB + GENDER -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Ngày sinh *</label>
+                                <input type="date"
+                                       class="form-control"
+                                       th:field="*{dob}"
+                                       required>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Giới tính</label>
+                                <select class="form-select"
+                                        th:field="*{gender}">
+                                    <option value="MALE">Nam</option>
+                                    <option value="FEMALE">Nữ</option>
+                                    <option value="OTHER">Khác</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- CCCD -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">CCCD / Passport *</label>
+                            <input type="text"
+                                   class="form-control"
+                                   th:field="*{idNumber}"
+                                   required>
+                        </div>
+
+                        <!-- PHONE + EMAIL -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Số điện thoại</label>
+                                <input type="text"
+                                       class="form-control"
+                                       th:field="*{phone}">
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Email</label>
+                                <input type="email"
+                                       class="form-control"
+                                       th:field="*{email}">
+                            </div>
+                        </div>
+
+<!--                        &lt;!&ndash; ROLE IN APARTMENT &ndash;&gt;-->
+<!--                        <div class="mb-3">-->
+<!--                            <label class="form-label fw-bold">Vai trò cư trú</label>-->
+<!--                            <select class="form-select"-->
+<!--                                    th:field="*{residentType}">-->
+<!--                                <option value="OWNER">Chủ hộ</option>-->
+<!--                                <option value="TENANT">Người thuê</option>-->
+<!--                                <option value="RELATIVE">Người thân</option>-->
+<!--                                <option value="TEMPORARY">Tạm trú</option>-->
+<!--                            </select>-->
+<!--                        </div>-->
+
+                        <!-- IMAGE -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Ảnh cư dân</label>
+                            <input type="file"
+                                   class="form-control"
+                                   name="imageFile"
+                                   accept="image/png, image/jpeg, image/webp">
+
+                            <div th:if="${isEdit and resident.image != null}"
+                                 class="mt-2">
+                                <img th:src="${resident.image}"
+                                     style="width:120px"
+                                     class="border rounded shadow">
+                            </div>
+                        </div>
+
+                        <!-- NOTE -->
+<!--                        <div class="mb-4">-->
+<!--                            <label class="form-label fw-bold">Ghi chú</label>-->
+<!--                            <textarea class="form-control"-->
+<!--                                      th:field="*{note}"-->
+<!--                                      rows="3"></textarea>-->
+<!--                        </div>-->
+
+                        <div class="text-end">
+                            <a th:href="@{/dashboard/residents}"
+                               class="btn btn-light me-2">
+                                Hủy
+                            </a>
+                            <button class="btn btn-primary">
+                                💾 Lưu cư dân
+                            </button>
+                        </div>
+
+                    </form>
+
+                </div>
+            </div>
+
+        </main>
+    </div>
+</div>
+
+</body>
+</html>
