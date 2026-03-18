@@ -20,6 +20,7 @@ public class Building {
      * ID của Building (Primary Key)
      */
     @Id
+//    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "ID", length = 10, nullable = false)
     private String id;
     

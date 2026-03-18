@@ -26,18 +26,20 @@ public class BuildingController {
     // required = false nghĩa là lúc mới vào trang không có keyword cũng không báo lỗi
     @RequestParam(value = "keyword", required = false) String keyword,
     @RequestParam(value = "pageNo", defaultValue = "1") int pageNo,
+    @RequestParam(value = "pagesize", defaultValue = "5") int pageSizeFe,
     Model model) {
 
-        int pageSize= 5;
+        int pageSize= pageSizeFe;
 
         Page<Building> page =buildingService.getBuildingsPaginated(keyword, pageNo, pageSize);
-        List<Building> buildings = buildingService.getBuildings(keyword);
+//        List<Building> buildings = buildingService.getBuildings(keyword);
 
         model.addAttribute("buildings", page.getContent());
         model.addAttribute("currentPage", pageNo);
         model.addAttribute("totalPages", page.getTotalPages());
         model.addAttribute("totalItems", page.getTotalElements());
         model.addAttribute("keyword", keyword);
+        model.addAttribute("pageSize",pageSize );
         return "building-list";
     }
     @GetMapping("/buildings/view/{id}")
