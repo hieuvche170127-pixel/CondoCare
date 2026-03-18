@@ -9,11 +9,17 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class ApartmentService {
 
     private final ApartmentRepository apartmentRepository;
+
+    public List<Apartment> getAllApartments() {
+        return apartmentRepository.findAll();
+    }
 
     // Lấy danh sách TẤT CẢ căn hộ (Có tìm kiếm theo số phòng và phân trang)
     public Page<Apartment> getApartmentsPaginated(String keyword, int pageNo, int pageSize) {
@@ -58,4 +64,9 @@ public class ApartmentService {
         // Gọi hàm Filter thông minh từ Repository
         return apartmentRepository.filterApartments(keyword, buildingId, status, rentalStatus, pageable);
     }
+    public List<Apartment> getApartmentsByBuilding(String buildingId) {
+        return apartmentRepository.findByBuildingId(buildingId);
+    }
+
+
 }

@@ -5,13 +5,18 @@ import com.swp391.condocare_swp.entity.Apartment;
 import com.swp391.condocare_swp.entity.Building;
 import com.swp391.condocare_swp.service.ApartmentService;
 import com.swp391.condocare_swp.service.BuildingService;
+import com.swp391.condocare_swp.service.CloudinaryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Controller;
 import org.springframework.stereotype.Service;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Controller
 @RequestMapping("/dashboard")
@@ -20,6 +25,7 @@ public class ApartmentController {
 
     private final ApartmentService apartmentService;
     private final BuildingService buildingService; // Dùng để load danh sách Tòa nhà vào form
+    private final CloudinaryService cloudinaryService;
 
     // 1. DANH SÁCH CĂN HỘ
     // Sửa lại hàm số 1 (DANH SÁCH CĂN HỘ) như sau:
@@ -87,10 +93,25 @@ public class ApartmentController {
     // 5. LƯU (CREATE & UPDATE) - CHỐNG TRÙNG LẶP
     @PostMapping("/apartments/save")
     public String saveApartment(@ModelAttribute("apartment") Apartment apartment,
+                                @RequestParam(value = "imageFile", required = false) MultipartFile imageFile,
                                 @RequestParam(value = "isEdit", defaultValue = "false") boolean isEdit,
                                 Model model, // Phải có model để trả lỗi về form
                                 RedirectAttributes redirectAttributes) {
         try {
+
+            // 1. Xử lý Upload Ảnh lên Cloudinary
+            if (imageFile != null && !imageFile.isEmpty()) {
+                String imageUrl = cloudinaryService.uploadImage(imageFile);
+                apartment.setImages(imageUrl); // Lưu URL trả về từ Cloudinary
+            } else if (isEdit) {
+                // Nếu đang Edit mà không upload ảnh mới -> Giữ lại ảnh cũ từ DB
+                Apartment existingApt = apartmentService.getApartmentById(apartment.getId());
+                if (existingApt != null) {
+                    apartment.setImages(existingApt.getImages());
+                }
+            }
+
+
             if (!isEdit) {
                 // KIỂM TRA TRÙNG LẶP KHI THÊM MỚI
                 boolean isDuplicate = apartmentService.checkDuplicateApartment(
@@ -120,6 +141,19 @@ public class ApartmentController {
             redirectAttributes.addFlashAttribute("errorMessage", "Lỗi hệ thống! Vui lòng kiểm tra lại dữ liệu.");
         }
         return "redirect:/dashboard/apartments";
+    }
+
+    // ==========================================
+    // API TRẢ VỀ THYMELEAF FRAGMENT (Cho AJAX Dropdown Form Hợp đồng)
+    // ==========================================
+    @GetMapping("/apartments/load-apartments")
+    public String loadApartmentsForDropdown(@RequestParam("buildingId") String buildingId,
+                                            @RequestParam(value = "selectedId", required = false) String selectedId,
+                                            Model model) {
+        List<Apartment> apartments = apartmentService.getApartmentsByBuilding(buildingId);
+        model.addAttribute("aptList", apartments);
+        model.addAttribute("selectedAptId", selectedId);
+        return "contract-form :: apartmentOptions";
     }
 
     // 6. XÓA CĂN HỘ
