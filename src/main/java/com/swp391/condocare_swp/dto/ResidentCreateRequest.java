@@ -11,7 +11,7 @@ public class ResidentCreateRequest {
     @Size(min = 3, max = 50, message = "Username phải từ 3-50 ký tự")
     private String username;
 
-    @NotBlank(message = "Password không được để trống")
+    // Không bắt buộc — nếu null/blank thì service tự sinh và gửi qua email
     @Size(min = 6, message = "Password phải ít nhất 6 ký tự")
     private String password;
 

@@ -456,27 +456,36 @@ const ResidentMgmt = {
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang lưu...';
         try {
+            const email = document.getElementById('rFormEmail').value.trim();
             const body = {
                 username:    document.getElementById('rFormUsername').value.trim(),
-                password:    document.getElementById('rFormPassword').value,
+                // Gửi password nếu admin nhập tay, để trống thì backend tự sinh
+                password:    document.getElementById('rFormPassword')?.value?.trim() || null,
                 fullName:    document.getElementById('rFormFullName').value.trim(),
                 type:        document.getElementById('rFormType').value,
                 dob:         document.getElementById('rFormDob').value || null,
                 gender:      document.getElementById('rFormGender').value,
                 idNumber:    document.getElementById('rFormIdNumber').value.trim(),
                 phone:       document.getElementById('rFormPhone').value.trim(),
-                email:       document.getElementById('rFormEmail').value.trim(),
+                email,
                 apartmentId: document.getElementById('rFormApartment').value.trim() || null,
             };
-            if (!body.username || !body.password || !body.fullName || !body.gender || !body.type) {
+            if (!body.username || !body.fullName || !body.gender || !body.type) {
                 showMgmtAlert('rCreateFormAlert', 'Vui lòng điền đầy đủ các trường bắt buộc (*)', 'warning');
+                return;
+            }
+            if (!email) {
+                showMgmtAlert('rCreateFormAlert',
+                    'Vui lòng nhập email để hệ thống gửi mật khẩu cho cư dân.', 'warning');
                 return;
             }
             const res = await apiRequest(API_RESIDENT, { method: 'POST', body: JSON.stringify(body) });
             if (res.ok) {
                 bootstrap.Modal.getInstance(document.getElementById('rCreateModal'))?.hide();
                 document.getElementById('rCreateForm')?.reset();
-                showMgmtAlert('rAlertContainer', 'Tạo cư dân thành công!', 'success');
+                document.getElementById('rFormPassword') && (document.getElementById('rFormPassword').value = '');
+                const msg = await res.text();
+                showMgmtAlert('rAlertContainer', msg, 'success');
                 this.loadList(0); this.loadStats();
             } else {
                 showMgmtAlert('rCreateFormAlert', await res.text(), 'danger');
@@ -570,3 +579,50 @@ const ResidentMgmt = {
         } finally { hideLoading(); }
     }
 };
+/* ──────────────────────────────────────────────────────────────────
+   AUTO-GEN PASSWORD KHI NHẬP EMAIL — RESIDENT CREATE FORM
+   Khi admin rời khỏi field rFormEmail → tự sinh password preview
+   Admin có thể để nguyên (backend sẽ dùng cùng password và gửi mail)
+   hoặc nhập tay đè lên.
+────────────────────────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+    const rEmailEl = document.getElementById('rFormEmail');
+    const rPwdEl   = document.getElementById('rFormPassword');
+    const rPwdDisp = document.getElementById('rFormPasswordDisplay');
+
+    if (rEmailEl && rPwdEl) {
+        rEmailEl.addEventListener('blur', () => {
+            if (rEmailEl.value.trim() && !rPwdEl.value.trim()) {
+                const pwd = generateLocalPassword();
+                rPwdEl.value = pwd;
+                rPwdEl.type  = 'text';
+                if (rPwdDisp) {
+                    rPwdDisp.innerHTML = `
+                      <div class="d-flex align-items-center gap-2 mt-1 flex-wrap">
+                        <span class="badge bg-success">
+                          <i class="fas fa-envelope me-1"></i>Sẽ gửi tới email cư dân
+                        </span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary py-0"
+                          onclick="navigator.clipboard.writeText('${pwd}');this.textContent='✓ Đã copy'">
+                          <i class="fas fa-copy"></i> Copy
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary py-0"
+                          onclick="
+                            const np=generateLocalPassword();
+                            document.getElementById('rFormPassword').value=np;
+                            document.getElementById('rFormPassword').type='text';
+                          ">
+                          <i class="fas fa-redo"></i> Sinh lại
+                        </button>
+                      </div>`;
+                    rPwdDisp.classList.remove('d-none');
+                }
+            }
+        });
+
+        rPwdEl.addEventListener('input', () => {
+            if (rPwdDisp && rPwdEl.value.trim())
+                rPwdDisp.classList.add('d-none');
+        });
+    }
+});
