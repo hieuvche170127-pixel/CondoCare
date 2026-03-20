@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import java.util.Map;
 
 @RestController
@@ -22,22 +23,25 @@ public class StaffManagementController {
     private static final Logger logger = LoggerFactory.getLogger(StaffManagementController.class);
     @Autowired private StaffManagementService service;
 
-    /** GET /api/staff-management/roles → danh sách roles cho dropdown */
+    /** GET /api/staff-management/roles — ADMIN + MANAGER (để dropdown khi tạo) */
     @GetMapping("/roles")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<?> getRoles() {
         try { return ResponseEntity.ok(service.getAllRoles()); }
         catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
     }
 
-    /** GET /api/staff-management/stats → thống kê nhanh */
+    /** GET /api/staff-management/stats — ADMIN + MANAGER */
     @GetMapping("/stats")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<?> getStats() {
         try { return ResponseEntity.ok(service.getStats()); }
         catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
     }
 
-    /** GET /api/staff-management?page=0&size=10&search=&roleId=&status=&sort=fullName&direction=asc */
+    /** GET /api/staff-management — ADMIN + MANAGER */
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<?> listStaff(
             @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "10") int size,
@@ -57,15 +61,17 @@ public class StaffManagementController {
         }
     }
 
-    /** GET /api/staff-management/{id} */
+    /** GET /api/staff-management/{id} — ADMIN + MANAGER */
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<?> getStaff(@PathVariable String id) {
         try { return ResponseEntity.ok(service.getStaffDetail(id)); }
         catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
     }
 
-    /** POST /api/staff-management */
+    /** POST /api/staff-management — chỉ ADMIN */
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> createStaff(@Valid @RequestBody StaffCreateRequest request) {
         try {
             return ResponseEntity.ok(service.createStaff(request));
@@ -75,8 +81,9 @@ public class StaffManagementController {
         }
     }
 
-    /** PUT /api/staff-management/{id} */
+    /** PUT /api/staff-management/{id} — chỉ ADMIN */
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateStaff(@PathVariable String id,
                                          @Valid @RequestBody StaffUpdateRequest request) {
         try {
@@ -87,8 +94,9 @@ public class StaffManagementController {
         }
     }
 
-    /** DELETE /api/staff-management/{id} */
+    /** DELETE /api/staff-management/{id} — chỉ ADMIN */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deleteStaff(@PathVariable String id) {
         try {
             return ResponseEntity.ok(service.deleteStaff(id));
