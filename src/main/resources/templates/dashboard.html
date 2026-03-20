@@ -482,6 +482,34 @@
             const greet = h < 12 ? 'Chào buổi sáng' : h < 18 ? 'Chào buổi chiều' : 'Chào buổi tối';
             document.getElementById('dashGreeting').textContent =
                 `${greet}, ${info.fullName || 'Quản trị viên'}! — ${now.toLocaleDateString('vi-VN', {weekday:'long', day:'2-digit', month:'2-digit', year:'numeric'})}`;
+
+            // ── Ẩn menu/nút theo role ─────────────────────────────
+            const role = info.role; // "ADMIN" | "MANAGER" | "STAFF"
+
+            if (role === 'STAFF') {
+                // STAFF không thấy menu Quản lý nhân viên (sẽ bị 403 khi gọi API)
+                document.querySelectorAll('a[href="/dashboard/staff"]').forEach(el =>
+                    el.closest('li, a.quick-link')?.remove()
+                );
+            }
+
+            if (role === 'STAFF') {
+                // STAFF chỉ được xem cư dân, không được tạo mới
+                // → ẩn quick link "Thêm cư dân mới"
+                document.querySelectorAll('a.quick-link').forEach(el => {
+                    if (el.textContent.includes('Thêm cư dân')) el.remove();
+                });
+            }
+
+            // Hiển thị badge role trên sidebar để nhận biết rõ
+            const roleLabel = { ADMIN: '👑 Admin', MANAGER: '🏢 Manager', STAFF: '🔧 Staff' };
+            const roleEl = document.getElementById('userFullName');
+            if (roleEl && roleLabel[role]) {
+                const badge = document.createElement('div');
+                badge.className = 'text-white-50 small mt-1';
+                badge.textContent = roleLabel[role];
+                roleEl.after(badge);
+            }
         }
     })();
 

@@ -276,6 +276,25 @@ function saveLoginSession(token, userInfo, remember = false) {
     saveToken(token, remember);
     saveUserInfo(userInfo, remember);
 }
+
+/**
+ * Lấy role của user đang đăng nhập.
+ * Staff  → "ADMIN" | "MANAGER" | "STAFF"
+ * Resident → "OWNER" | "TENANT" | "GUEST"
+ */
+function getRole() {
+    return getUserInfo()?.role || '';
+}
+
+/**
+ * Kiểm tra role hiện tại có nằm trong danh sách không.
+ * @param {...string} roles - Các role cần check
+ * @returns {boolean}
+ * @example  isRole('ADMIN','MANAGER')  → true nếu đang là ADMIN hoặc MANAGER
+ */
+function isRole(...roles) {
+    return roles.includes(getRole());
+}
 /**
  * Staff sidebar mobile toggle — tự động inject hamburger button cho staff pages.
  * Chạy khi DOM load, chỉ kích hoạt nếu có nav.sidebar (staff layout).

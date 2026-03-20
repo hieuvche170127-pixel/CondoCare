@@ -87,11 +87,58 @@ public class MomoController {
     }
 
     /**
-     * GET /api/momo/status/{invoiceId}
-     * Frontend polling sau khi user quay về từ MoMo
-     * Trả về: { invoiceId, status, paid, paidAt }
+     * GET /api/momo/return?orderId=...&resultCode=0&...
+     *
+     * MoMo redirect user về URL này sau khi thanh toán xong.
+     * Dùng khi KHÔNG có ngrok (localhost dev) — thay thế cho IPN.
+     *
+     * Security: dùng permitAll vì MoMo redirect trực tiếp,
+     * nhưng ta verify signature trước khi update DB.
      */
-    @GetMapping("/status/{invoiceId}")
+    @GetMapping("/return")
+    public ResponseEntity<?> handleReturn(
+            @RequestParam String orderId,
+            @RequestParam int resultCode,
+            @RequestParam String signature,
+            @RequestParam(required = false, defaultValue = "") String extraData,
+            @RequestParam(required = false, defaultValue = "") String message,
+            @RequestParam(required = false, defaultValue = "0") long amount,
+            @RequestParam(required = false, defaultValue = "0") long transId,
+            @RequestParam(required = false, defaultValue = "") String orderInfo,
+            @RequestParam(required = false, defaultValue = "") String orderType,
+            @RequestParam(required = false, defaultValue = "") String payType,
+            @RequestParam(required = false, defaultValue = "0") long responseTime,
+            @RequestParam(required = false, defaultValue = "") String requestId) {
+
+        logger.info("MoMo RETURN — orderId={}, resultCode={}", orderId, resultCode);
+
+        if (resultCode == 0) {
+            // Tạo MomoIpnRequest từ query params để tái sử dụng handleIpn
+            com.swp391.condocare_swp.dto.MomoIpnRequest ipn =
+                    new com.swp391.condocare_swp.dto.MomoIpnRequest();
+            ipn.setOrderId(orderId);
+            ipn.setResultCode(resultCode);
+            ipn.setSignature(signature);
+            ipn.setAmount(amount);
+            ipn.setTransId(transId);
+            ipn.setOrderInfo(orderInfo);
+            ipn.setOrderType(orderType);
+            ipn.setPayType(payType);
+            ipn.setResponseTime(responseTime);
+            ipn.setRequestId(requestId);
+            ipn.setMessage(message);
+            ipn.setExtraData(extraData);
+            ipn.setPartnerCode("MOMO");
+
+            momoService.handleIpn(ipn); // tái sử dụng logic verify + update DB
+        }
+
+        // Redirect về trang hóa đơn (dù thành công hay thất bại)
+        return ResponseEntity.status(302)
+                .header("Location", "http://localhost:8080/resident/invoices"
+                        + "?momoResult=" + resultCode)
+                .build();
+    }
     public ResponseEntity<?> checkStatus(@PathVariable String invoiceId) {
         try {
             return ResponseEntity.ok(momoService.checkPaymentStatus(invoiceId));

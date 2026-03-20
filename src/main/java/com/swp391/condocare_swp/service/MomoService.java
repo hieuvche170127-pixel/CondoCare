@@ -95,13 +95,17 @@ public class MomoService {
         String requestId = UUID.randomUUID().toString();
         long   amountLong = amount.longValue();
         String orderInfo  = "Thanh toan hoa don " + invoiceId;
-        String extraData  = "";                // base64 encode nếu cần truyền thêm data
-        String requestType = "payWithMethod";  // hỗ trợ cả QR lẫn ATM
+        String extraData  = "";
+        String requestType = "payWithMethod";
+
+        // FIX: Thêm timestamp suffix để tránh duplicate orderId
+        // khi user bấm thanh toán nhiều lần cho cùng 1 invoice
+        String orderId = invoiceId + "_" + System.currentTimeMillis();
 
         // 1. Build raw signature string (key=value theo thứ tự alphabet)
         String rawSignature = buildRawSignature(
                 accessKey, String.valueOf(amountLong), extraData,
-                ipnUrl, invoiceId, orderInfo, partnerCode,
+                ipnUrl, orderId, orderInfo, partnerCode,
                 redirectUrl, requestId, requestType
         );
 
@@ -115,7 +119,7 @@ public class MomoService {
         req.setStoreId("CondoCare_Main");
         req.setRequestId(requestId);
         req.setAmount(amountLong);
-        req.setOrderId(invoiceId);
+        req.setOrderId(orderId);           // dùng orderId có suffix timestamp
         req.setOrderInfo(orderInfo);
         req.setRedirectUrl(redirectUrl);
         req.setIpnUrl(ipnUrl);
@@ -191,14 +195,21 @@ public class MomoService {
         }
 
         // 3. Cập nhật Invoice → PAID
-        String invoiceId = ipn.getOrderId();
+        // orderId có dạng "INV202601A102_1234567890" → tách lấy invoiceId thực
+        String rawOrderId = ipn.getOrderId();
+        String invoiceId  = rawOrderId.contains("_")
+                ? rawOrderId.substring(0, rawOrderId.lastIndexOf('_'))
+                : rawOrderId;
+
         invoiceRepo.findById(invoiceId).ifPresentOrElse(invoice -> {
             if (invoice.getStatus() != Invoice.InvoiceStatus.PAID) {
                 invoice.setStatus(Invoice.InvoiceStatus.PAID);
                 invoice.setPaidAt(LocalDateTime.now());
                 invoiceRepo.save(invoice);
-                logger.info("Invoice {} marked PAID via MoMo IPN (transId={})",
-                        invoiceId, ipn.getTransId());
+                logger.info("Invoice {} marked PAID via MoMo IPN — transId={}, payType={}",
+                        invoiceId, ipn.getTransId(), ipn.getPayType());
+            } else {
+                logger.info("Invoice {} already PAID, skipping IPN update", invoiceId);
             }
         }, () -> logger.warn("MoMo IPN — Invoice not found: {}", invoiceId));
 
