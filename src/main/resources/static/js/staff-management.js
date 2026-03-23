@@ -350,6 +350,14 @@ const ResidentMgmt = {
         await this.loadStats();
         await this.loadList();
         this.bindEvents();
+
+        // ── Ẩn nút Thêm/Sửa/Xóa cư dân khi role = STAFF ─────────
+        if (isRole('STAFF')) {
+            // Ẩn nút "Thêm cư dân" trên header
+            document.querySelectorAll('[data-bs-target="#rCreateModal"]').forEach(el => el.remove());
+            // Đánh dấu để renderTable biết không render action buttons
+            this._readOnly = true;
+        }
     },
 
     async loadStats() {
@@ -417,6 +425,7 @@ const ResidentMgmt = {
                 <td><span class="badge ${statusBadge[r.status]||'bg-secondary'}">${r.status==='ACTIVE'?'Hoạt động':'Không HĐ'}</span></td>
                 <td>
                     <div class="d-flex gap-1">
+                        ${this._readOnly ? '' : `
                         <button class="btn btn-sm btn-outline-primary" title="Chỉnh sửa"
                             onclick="ResidentMgmt.openEdit('${r.id}')">
                             <i class="fas fa-edit"></i>
@@ -424,6 +433,10 @@ const ResidentMgmt = {
                         <button class="btn btn-sm btn-outline-danger" title="Vô hiệu hóa"
                             onclick="ResidentMgmt.confirmDeactivate('${r.id}','${escHtml(r.fullName)}')">
                             <i class="fas fa-ban"></i>
+                        </button>`}
+                        <button class="btn btn-sm btn-outline-secondary" title="Xem chi tiết"
+                            onclick="ResidentMgmt.openDetail('${r.id}')">
+                            <i class="fas fa-eye"></i>
                         </button>
                     </div>
                 </td>
@@ -495,6 +508,32 @@ const ResidentMgmt = {
         } finally {
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-save me-1"></i>Lưu';
+        }
+    },
+
+    // Xem chi tiết (chỉ đọc) — dùng cho STAFF
+    async openDetail(id) {
+        showLoading();
+        try {
+            const res  = await apiRequest(`${API_RESIDENT}/${id}`);
+            const data = await res.json();
+            hideLoading();
+            const typeLabel   = { OWNER:'Chủ sở hữu', TENANT:'Người thuê', GUEST:'Khách' };
+            const statusLabel = { ACTIVE:'Hoạt động', INACTIVE:'Không hoạt động' };
+            const apt = data.apartmentId
+                ? `${data.apartmentNumber} — ${data.buildingName || ''}`
+                : 'Chưa có căn hộ';
+            showMgmtAlert('rAlertContainer',
+                `<strong>${data.fullName}</strong> &nbsp;|&nbsp; `
+                + `${typeLabel[data.type]||data.type} &nbsp;|&nbsp; `
+                + `Căn hộ: ${apt} &nbsp;|&nbsp; `
+                + `SĐT: ${data.phone||'—'} &nbsp;|&nbsp; `
+                + `Email: ${data.email||'—'} &nbsp;|&nbsp; `
+                + `Trạng thái: ${statusLabel[data.status]||data.status}`,
+                'info');
+        } catch(e) {
+            hideLoading();
+            showMgmtAlert('rAlertContainer', 'Không thể tải chi tiết: ' + e.message, 'danger');
         }
     },
 

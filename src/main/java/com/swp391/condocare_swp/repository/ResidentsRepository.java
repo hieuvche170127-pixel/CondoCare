@@ -15,27 +15,27 @@ import java.util.Optional;
  */
 @Repository
 public interface ResidentsRepository extends JpaRepository<Residents, String>, JpaSpecificationExecutor<Residents> {
-    
+
     /**
      * Tìm Resident theo username
      */
     Optional<Residents> findByUsername(String username);
-    
+
     /**
      * Tìm Resident theo email
      */
     Optional<Residents> findByEmail(String email);
-    
+
     /**
      * Tìm Resident theo username hoặc email
      */
     Optional<Residents> findByUsernameOrEmail(String username, String email);
-    
+
     /**
      * Kiểm tra username đã tồn tại
      */
     Boolean existsByUsername(String username);
-    
+
     /**
      * Kiểm tra email đã tồn tại
      */
@@ -45,12 +45,12 @@ public interface ResidentsRepository extends JpaRepository<Residents, String>, J
      * Kiểm tra email đã tồn tại
      */
     Boolean existsByPhone(String phone);
-    
+
     /**
      * Kiểm tra số CMND/CCCD đã tồn tại
      */
     Boolean existsByIdNumber(String idNumber);
-    
+
     /**
      * Đếm số Resident theo status
      */
@@ -58,6 +58,12 @@ public interface ResidentsRepository extends JpaRepository<Residents, String>, J
 
     long countByType(Residents.ResidentType type);
 
+    /**
+     * Lấy 1 resident thuộc căn hộ — dùng trong MomoService để gán paid_by.
+     * Ưu tiên OWNER > TENANT > GUEST (JPA lấy theo thứ tự insert).
+     */
+    Optional<Residents> findFirstByApartment_Id(String apartmentId);
+  
     Residents findResidentsById (String id);
 
 

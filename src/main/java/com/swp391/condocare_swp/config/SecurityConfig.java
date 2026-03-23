@@ -87,8 +87,11 @@ public class SecurityConfig {
                         .authenticated()
 
                         // MOMO
-                        .requestMatchers("/api/auth/**", "/login", "/register").permitAll()
-                        .requestMatchers("/api/momo/ipn").permitAll()
+                        .requestMatchers("/api/momo/ipn",
+                                "/api/momo/return").permitAll()        // MoMo gọi/redirect về, không có JWT
+                        .requestMatchers("/api/momo/create-payment",
+                                "/api/momo/status/**")
+                        .hasAnyRole("OWNER", "TENANT", "GUEST") // chỉ resident mới thanh toán
 
                         .anyRequest().authenticated()
                 )
