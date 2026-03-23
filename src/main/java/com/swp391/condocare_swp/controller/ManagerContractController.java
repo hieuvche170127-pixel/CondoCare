@@ -1,5 +1,6 @@
 package com.swp391.condocare_swp.controller;
 
+import com.swp391.condocare_swp.entity.Apartment;
 import com.swp391.condocare_swp.entity.Contract;
 import com.swp391.condocare_swp.service.*;
 import lombok.RequiredArgsConstructor;
@@ -8,6 +9,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.util.List;
 
 @Controller
 @RequestMapping("/dashboard/contracts")
@@ -21,6 +24,13 @@ public class ManagerContractController {
     private final BuildingService buildingService;
 
     private String getCurrentManagerId() { return "S08"; } // Giả lập ID
+
+    @GetMapping("/api/apartments")
+    @ResponseBody
+    public List<Apartment> getApartmentsByBuilding(@RequestParam String buildingId) {
+        // Đảm bảo ApartmentService của bạn có hàm này: apartmentRepository.findByBuildingId(buildingId)
+        return apartmentService.getApartmentsByBuilding(buildingId);
+    }
 
     @GetMapping
     public String listContracts(@RequestParam(value = "apartmentId", required = false) String apartmentId,
@@ -44,6 +54,8 @@ public class ManagerContractController {
 
     @GetMapping("/add")
     public String showAddForm(Model model) {
+        Contract contract = new Contract();
+        contract.setApartment(new Apartment());
         model.addAttribute("contract", new Contract());
         model.addAttribute("isEdit", false);
         loadFormData(model);

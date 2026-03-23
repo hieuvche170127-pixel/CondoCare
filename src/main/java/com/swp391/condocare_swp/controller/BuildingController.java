@@ -26,18 +26,20 @@ public class BuildingController {
     // required = false nghĩa là lúc mới vào trang không có keyword cũng không báo lỗi
     @RequestParam(value = "keyword", required = false) String keyword,
     @RequestParam(value = "pageNo", defaultValue = "1") int pageNo,
+    @RequestParam(value = "pagesize", defaultValue = "5") int pageSizeFe,
     Model model) {
 
-        int pageSize= 5;
+        int pageSize= pageSizeFe;
 
         Page<Building> page =buildingService.getBuildingsPaginated(keyword, pageNo, pageSize);
-        List<Building> buildings = buildingService.getBuildings(keyword);
+//        List<Building> buildings = buildingService.getBuildings(keyword);
 
         model.addAttribute("buildings", page.getContent());
         model.addAttribute("currentPage", pageNo);
         model.addAttribute("totalPages", page.getTotalPages());
         model.addAttribute("totalItems", page.getTotalElements());
         model.addAttribute("keyword", keyword);
+        model.addAttribute("pageSize",pageSize );
         return "building-list";
     }
     @GetMapping("/buildings/view/{id}")
@@ -81,15 +83,6 @@ public class BuildingController {
                                RedirectAttributes redirectAttributes) {
         try {
             if (!isEdit) {
-                // NẾU LÀ THÊM MỚI: Kiểm tra xem ID đã tồn tại trong DB chưa
-                if (buildingService.getBuildingById(building.getId()) != null) {
-                    // Nếu trùng ID, trả lại form, hiển thị lỗi và giữ nguyên dữ liệu user vừa nhập
-                    model.addAttribute("errorMessage", "Thêm thất bại! Tòa nhà với ID '" + building.getId() + "' đã tồn tại.");
-                    model.addAttribute("managers", staffService.getAllStaffs());
-                    model.addAttribute("isEdit", false);
-                    return "building-form";
-                }
-
                 // Nếu an toàn, tiến hành lưu
                 buildingService.saveBuilding(building);
                 redirectAttributes.addFlashAttribute("successMessage", "Thêm mới Tòa nhà thành công!");

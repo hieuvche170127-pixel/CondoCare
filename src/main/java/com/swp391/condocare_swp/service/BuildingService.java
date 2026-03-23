@@ -7,12 +7,25 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+
+import java.security.SecureRandom;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class BuildingService {
     private final BuildingRepository buildingRepository;
+    private static final String CHARACTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    private static final SecureRandom RANDOM = new SecureRandom();
+
+    private String generateRandomId() {
+        StringBuilder sb = new StringBuilder("BLD");
+        for (int i = 0; i <7; i++) {
+            sb.append(CHARACTERS.charAt(RANDOM.nextInt(CHARACTERS.length())));
+        }
+        return sb.toString();
+    }
+
 
     public List<Building> getAllBuildingList() {
         return buildingRepository.findAll();
@@ -41,6 +54,19 @@ public class BuildingService {
 
     // Thêm hoặc Cập nhật tòa nhà
     public void saveBuilding(Building building) {
+        if (building.getId() == null || building.getId().trim().isEmpty()) {
+            String newId;
+            boolean isUnique = false;
+
+            while (!isUnique) {
+                newId = generateRandomId();
+                if (!buildingRepository.existsById(newId)) {
+                    building.setId(newId);
+                    isUnique = true;
+                }
+            }
+        }
+
         buildingRepository.save(building);
     }
 

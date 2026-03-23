@@ -1,8 +1,11 @@
 package com.swp391.condocare_swp.repository;
 
 import com.swp391.condocare_swp.entity.Residents;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -60,4 +63,13 @@ public interface ResidentsRepository extends JpaRepository<Residents, String>, J
      * Ưu tiên OWNER > TENANT > GUEST (JPA lấy theo thứ tự insert).
      */
     Optional<Residents> findFirstByApartment_Id(String apartmentId);
+  
+    Residents findResidentsById (String id);
+
+
+    @Query("SELECT r FROM Residents r WHERE " +
+            "LOWER(r.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "LOWER(r.idNumber) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "r.phone LIKE CONCAT('%', :keyword, '%')")
+    Page<Residents> searchByKeyword(String keyword, Pageable pageable);
 }

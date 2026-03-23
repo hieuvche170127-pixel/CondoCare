@@ -19,7 +19,7 @@ public class Vehicle {
     @Column(length = 100, nullable = false)
     private String type;
 
-    @Column(name = "license_plate", length = 100)
+    @Column(name = "license_plate", length = 100, unique = true)
     private String licensePlate;
 
     @Column(name = "registered_at")
