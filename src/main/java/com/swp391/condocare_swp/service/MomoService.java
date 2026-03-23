@@ -5,6 +5,9 @@ import com.swp391.condocare_swp.dto.MomoCreatePaymentRequest;
 import com.swp391.condocare_swp.dto.MomoCreatePaymentResponse;
 import com.swp391.condocare_swp.dto.MomoIpnRequest;
 import com.swp391.condocare_swp.entity.Invoice;
+import com.swp391.condocare_swp.entity.Payments;
+import com.swp391.condocare_swp.repository.PaymentsRepository;
+import com.swp391.condocare_swp.repository.ResidentsRepository;
 import com.swp391.condocare_swp.repository.InvoiceRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,7 +78,9 @@ public class MomoService {
     @Value("${momo.ipn-url:http://localhost:8080/api/momo/ipn}")
     private String ipnUrl;
 
-    @Autowired private InvoiceRepository invoiceRepo;
+    @Autowired private InvoiceRepository   invoiceRepo;
+    @Autowired private PaymentsRepository  paymentsRepo;
+    @Autowired private ResidentsRepository residentsRepo;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final HttpClient   httpClient   = HttpClient.newHttpClient();
@@ -208,6 +213,44 @@ public class MomoService {
                 invoiceRepo.save(invoice);
                 logger.info("Invoice {} marked PAID via MoMo IPN — transId={}, payType={}",
                         invoiceId, ipn.getTransId(), ipn.getPayType());
+
+                // Lưu bản ghi Payments để có lịch sử đối soát MoMo
+                // (chỉ lưu nếu chưa có record cho invoice này)
+                try {
+                    if (!paymentsRepo.existsByInvoiceId(invoiceId)) {
+                        Payments payment = new Payments();
+                        payment.setId("PMT_" + System.currentTimeMillis());
+                        payment.setInvoiceId(invoiceId);
+                        payment.setAmount(invoice.getTotalAmount());
+                        payment.setPaidAt(LocalDateTime.now());
+                        payment.setMethod("MOMO");
+                        payment.setMomoTransId(String.valueOf(ipn.getTransId()));
+                        payment.setMomoOrderId(ipn.getOrderId());
+                        payment.setNote("MoMo - " + (ipn.getPayType() != null ? ipn.getPayType() : "online"));
+
+                        // Tìm resident của căn hộ để gán paid_by
+                        String aptId = invoice.getApartment() != null
+                                ? invoice.getApartment().getId() : null;
+                        if (aptId != null) {
+                            residentsRepo.findFirstByApartment_Id(aptId)
+                                    .ifPresent(r -> payment.setPaidBy(r.getId()));
+                        }
+
+                        if (payment.getPaidBy() != null) {
+                            paymentsRepo.save(payment);
+                            logger.info("Payment record saved for invoice {} — transId={}",
+                                    invoiceId, ipn.getTransId());
+                        } else {
+                            logger.warn("Skipped Payments save — no resident found for apartment {}",aptId);
+                        }
+                    } else {
+                        logger.info("Payment record already exists for invoice {}, skipping", invoiceId);
+                    }
+                } catch (Exception ex) {
+                    // Không để lỗi Payments rollback Invoice đã PAID
+                    logger.warn("Could not save Payments record for invoice {}: {}",
+                            invoiceId, ex.getMessage());
+                }
             } else {
                 logger.info("Invoice {} already PAID, skipping IPN update", invoiceId);
             }

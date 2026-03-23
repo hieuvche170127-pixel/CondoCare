@@ -428,6 +428,14 @@
                     const info = JSON.parse(localStorage.getItem('userInfo') || sessionStorage.getItem('userInfo') || '{}');
                     const el = document.getElementById('sidebarUser');
                     if (el) el.textContent = info.fullName || info.username || '';
+
+                    // ── Ẩn nút Tạo/Xóa/Mark Paid khi role = STAFF ────────
+                    if (info.role === 'STAFF') {
+                        // Ẩn nút "Tạo hóa đơn" trên header
+                        document.querySelector('[onclick="InvoiceMgmt.openCreate()"]')?.remove();
+                        // Đánh dấu read-only để renderTable ẩn action buttons
+                        window._invoiceReadOnly = true;
+                    }
                 } catch(e) {}
             })();
             document.getElementById('logoutBtn').addEventListener('click', e => {
@@ -538,12 +546,12 @@
                                 onclick="InvoiceMgmt.openDetail('${i.id}')">
                                 <i class="fas fa-eye"></i>
                             </button>
-                            ${i.status !== 'PAID' ? `
+                            ${(!window._invoiceReadOnly && i.status !== 'PAID') ? `
                             <button class="btn btn-sm btn-outline-success" title="Đánh dấu đã thanh toán"
                                 onclick="InvoiceMgmt.markPaid('${i.id}')">
                                 <i class="fas fa-check"></i>
                             </button>` : ''}
-                            ${i.status !== 'PAID' ? `
+                            ${(!window._invoiceReadOnly && i.status !== 'PAID') ? `
                             <button class="btn btn-sm btn-outline-danger" title="Xóa"
                                 onclick="InvoiceMgmt.confirmDelete('${i.id}')">
                                 <i class="fas fa-trash"></i>
@@ -895,7 +903,7 @@
                             <div>${d.createdBy}</div></div>
                     </div>`;
                 // Footer buttons
-                if (d.status !== 'PAID') {
+                if (d.status !== 'PAID' && !window._invoiceReadOnly) {
                     footer.innerHTML = `
                         <button class="btn btn-success me-2" onclick="InvoiceMgmt.markPaid('${d.id}', true)">
                             <i class="fas fa-check me-1"></i>Đánh dấu đã thanh toán
