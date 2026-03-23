@@ -1,6 +1,8 @@
 package com.swp391.condocare_swp.config;
 
+import com.swp391.condocare_swp.security.CustomUserDetailsService;
 import com.swp391.condocare_swp.security.JwtAuthenticationFilter;
+import com.swp391.condocare_swp.security.JwtTokenProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -35,8 +37,10 @@ public class SecurityConfig {
     }
 
     @Bean
-    public JwtAuthenticationFilter jwtAuthenticationFilter() {
-        return new JwtAuthenticationFilter();
+    public JwtAuthenticationFilter jwtAuthenticationFilter(
+            JwtTokenProvider tokenProvider,
+            CustomUserDetailsService customUserDetailsService) {
+        return new JwtAuthenticationFilter(tokenProvider, customUserDetailsService);
     }
 
     @Bean
@@ -46,7 +50,9 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http,
+                                           JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {   // ← THÊM DÒNG NÀY (quan trọng)
+
         http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session ->
@@ -60,11 +66,13 @@ public class SecurityConfig {
                                 "/css/**", "/js/**", "/images/**", "/favicon.ico", "/api/auth/**"
                         ).permitAll()
 
-                        // STAFF PAGES
-                        .requestMatchers("/dashboard", "/dashboard/**")
-                        .hasAnyRole("ADMIN", "MANAGER", "STAFF")
+                        // === TRANG HTML ĐƯỢC PHÉP TRUY CẬP (JS tự check login) ===
+                        .requestMatchers("/dashboard", "/dashboard/**",
+                                "/resident", "/resident/**",
+                                "/profile", "/profile/**")
+                        .permitAll()
 
-                        // STAFF API — guard chung, @PreAuthorize xử lý chi tiết
+                        // STAFF API
                         .requestMatchers("/api/staff-management/**")
                         .hasAnyRole("ADMIN", "MANAGER")
                         .requestMatchers("/api/resident-management/**")
@@ -76,29 +84,24 @@ public class SecurityConfig {
                         .requestMatchers("/api/dashboard/**")
                         .hasAnyRole("ADMIN", "MANAGER", "STAFF")
 
-                        // RESIDENT PAGES + API
-                        .requestMatchers("/resident", "/resident/**")
-                        .hasAnyRole("OWNER", "TENANT", "GUEST")
+                        // RESIDENT API
                         .requestMatchers("/api/resident/**")
                         .hasAnyRole("OWNER", "TENANT", "GUEST")
 
-                        // PROFILE — tất cả đã đăng nhập
-                        .requestMatchers("/profile", "/profile/**", "/api/profile/**")
+                        // PROFILE API
+                        .requestMatchers("/api/profile/**")
                         .authenticated()
 
                         // MOMO
-                        .requestMatchers("/api/momo/ipn",
-                                "/api/momo/return").permitAll()        // MoMo gọi/redirect về, không có JWT
-                        .requestMatchers("/api/momo/create-payment",
-                                "/api/momo/status/**")
-                        .hasAnyRole("OWNER", "TENANT", "GUEST") // chỉ resident mới thanh toán
+                        .requestMatchers("/api/momo/ipn", "/api/momo/return").permitAll()
+                        .requestMatchers("/api/momo/create-payment", "/api/momo/status/**")
+                        .hasAnyRole("OWNER", "TENANT", "GUEST")
 
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form.disable())
                 .httpBasic(basic -> basic.disable())
-                .addFilterBefore(jwtAuthenticationFilter(),
-                        UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);  // ← Giờ không lỗi nữa
 
         return http.build();
     }

@@ -35,20 +35,17 @@ public class CustomUserDetailsService implements UserDetailsService {
      */
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        // Thử tìm trong Staff trước
-        Staff staff = staffRepository.findByUsername(username).orElse(null);
-
+        // Tìm Staff theo username HOẶC email
+        Staff staff = staffRepository.findByUsernameOrEmail(username, username).orElse(null);
         if (staff != null) {
-            // Nếu tìm thấy Staff, tạo UserDetails cho Staff
             return buildUserDetailsFromStaff(staff);
         }
 
-        // Nếu không tìm thấy Staff, tìm trong Residents
-        Residents resident = residentsRepository.findByUsername(username)
+        // Tìm Resident theo username HOẶC email
+        Residents resident = residentsRepository.findByUsernameOrEmail(username, username)
                 .orElseThrow(() -> new UsernameNotFoundException(
-                        "User not found with username: " + username));
+                        "User not found: " + username));
 
-        // Tạo UserDetails cho Resident
         return buildUserDetailsFromResident(resident);
     }
 
@@ -76,22 +73,21 @@ public class CustomUserDetailsService implements UserDetailsService {
      * Tạo UserDetails từ Staff
      */
     private UserDetails buildUserDetailsFromStaff(Staff staff) {
-        // Tạo list authorities từ Role
         List<GrantedAuthority> authorities = new ArrayList<>();
         authorities.add(new SimpleGrantedAuthority("ROLE_" + staff.getRole().getName()));
 
-        // Return Spring Security User object
         return User.builder()
                 .username(staff.getUsername())
                 .password(staff.getPassword())
                 .authorities(authorities)
                 .accountExpired(false)
-                .accountLocked(staff.getStatus() != Staff.StaffStatus.ACTIVE)
+                // Chỉ lock khi RESIGNED — ON_LEAVE vẫn cho authenticate,
+                // AuthService sẽ kiểm tra và trả về message rõ ràng hơn
+                .accountLocked(staff.getStatus() == Staff.StaffStatus.RESIGNED)
                 .credentialsExpired(false)
-                .disabled(staff.getStatus() != Staff.StaffStatus.ACTIVE)
+                .disabled(staff.getStatus() == Staff.StaffStatus.RESIGNED)
                 .build();
     }
-
     /**
      * Tạo UserDetails từ Resident
      */
