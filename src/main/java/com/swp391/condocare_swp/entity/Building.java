@@ -1,9 +1,7 @@
 package com.swp391.condocare_swp.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 /**
  * Entity đại diện cho bảng Building trong database
@@ -11,7 +9,7 @@ import lombok.NoArgsConstructor;
  */
 @Entity
 @Table(name = "Building")
-@Data
+@Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class Building {
@@ -20,6 +18,7 @@ public class Building {
      * ID của Building (Primary Key)
      */
     @Id
+//    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "ID", length = 10, nullable = false)
     private String id;
     
@@ -61,13 +60,13 @@ public class Building {
     @Column(name = "status", nullable = false, columnDefinition = "ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE'")
     private BuildingStatus status = BuildingStatus.ACTIVE;
 
-    // Tự động gán giá trị mặc định nếu người dùng quên truyền vào khi tạo mới
-    @PrePersist
-    protected void onCreate() {
-        if (this.status == null) {
-            this.status = BuildingStatus.ACTIVE;
-        }
-    }
+//    // Tự động gán giá trị mặc định nếu người dùng quên truyền vào khi tạo mới
+//    @PrePersist
+//    protected void onCreate() {
+//        if (this.status == null) {
+//            this.status = BuildingStatus.ACTIVE;
+//        }
+//    }
 
     // Định nghĩa Enum
     public enum BuildingStatus { ACTIVE, INACTIVE }

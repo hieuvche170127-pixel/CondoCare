@@ -3,110 +3,156 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chi tiết Căn hộ - Apartment Manager</title>
+    <title>Chi tiết Căn hộ - Quản lý Chung cư</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .detail-label { font-weight: 600; color: #6c757d; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .detail-value { font-size: 1.05rem; font-weight: 500; color: #212529; }
+        .section-title { font-size: 1.1rem; font-weight: 700; color: #0d6efd; border-bottom: 2px solid #e9ecef; padding-bottom: 10px; margin-bottom: 20px; }
+        .apt-image { width: 100%; height: 280px; object-fit: cover; border-radius: 12px; border: 4px solid #fff; box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15); }
+        .no-image-box { width: 100%; height: 280px; border-radius: 12px; background-color: #f8f9fa; display: flex; align-items: center; justify-content: center; border: 2px dashed #dee2e6; color: #adb5bd; flex-direction: column; }
+    </style>
 </head>
-<body>
+<body class="bg-light">
 <div id="loading" class="loading"><div class="spinner"></div></div>
 
 <div class="container-fluid">
     <div class="row">
-        <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse">
+        <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse bg-dark">
             <div class="position-sticky pt-3">
                 <div class="text-center mb-4">
-                    <h4 class="text-white"><i class="fas fa-building"></i> Dashboard</h4>
-                    <small class="text-white-50" id="userFullName"></small>
+                    <h4 class="text-white"><i class="fas fa-building text-primary"></i> CondoCare</h4>
+                    <small class="text-white-50" id="userFullName">Quản trị viên</small>
                 </div>
 
                 <ul class="nav flex-column">
-                    <li class="nav-item"><a class="nav-link" href="/dashboard"><i class="fas fa-tachometer-alt"></i> Tổng quan</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/dashboard/buildings"><i class="fas fa-building"></i> Tòa nhà</a></li>
-                    <li class="nav-item"><a class="nav-link active" href="/dashboard/apartments"><i class="fas fa-home"></i> Căn hộ</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/dashboard/residents"><i class="fas fa-users"></i> Cư dân</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/dashboard/contracts"><i class="fas fa-file-signature"></i> Hợp đồng</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/dashboard/fees"><i class="fas fa-file-invoice-dollar"></i> Phí dịch vụ</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/dashboard/invoices"><i class="fas fa-receipt"></i> Hóa đơn</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/dashboard/reports"><i class="fas fa-chart-bar"></i> Báo cáo</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/dashboard/settings"><i class="fas fa-cog"></i> Cài đặt</a></li>
-                    <li class="nav-item mt-4"><a class="nav-link" href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Đăng xuất</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="/dashboard"><i class="fas fa-tachometer-alt me-2"></i> Tổng quan</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="/dashboard/buildings"><i class="fas fa-building me-2"></i> Tòa nhà</a></li>
+                    <li class="nav-item"><a class="nav-link active bg-primary text-white rounded mx-2" href="/dashboard/apartments"><i class="fas fa-home me-2"></i> Căn hộ</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="/dashboard/residents"><i class="fas fa-users me-2"></i> Cư dân</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="/dashboard/contracts"><i class="fas fa-file-signature me-2"></i> Hợp đồng</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="/dashboard/fees"><i class="fas fa-file-invoice-dollar me-2"></i> Phí dịch vụ</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="/dashboard/invoices"><i class="fas fa-receipt me-2"></i> Hóa đơn</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="/dashboard/reports"><i class="fas fa-chart-bar me-2"></i> Báo cáo</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="/dashboard/settings"><i class="fas fa-cog me-2"></i> Cài đặt</a></li>
+                    <li class="nav-item mt-4"><a class="nav-link text-danger" href="#" id="logoutBtn"><i class="fas fa-sign-out-alt me-2"></i> Đăng xuất</a></li>
                 </ul>
             </div>
         </nav>
 
-        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
-            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                <h1 class="h2">Chi tiết Căn hộ</h1>
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 pb-5">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-4 pb-2 mb-4 border-bottom">
+                <h1 class="h2 fw-bold text-secondary">
+                    <i class="fas fa-info-circle text-info me-2"></i> Chi tiết Căn hộ <span class="text-primary" th:text="${apartment.number}"></span>
+                </h1>
                 <div class="btn-toolbar mb-2 mb-md-0">
-                    <div class="btn-group me-2">
-                        <a th:href="@{/dashboard/apartments/edit/{id}(id=${apartment.id})}" class="btn btn-sm btn-outline-warning">
-                            <i class="fas fa-edit"></i> Chỉnh sửa
+                    <div class="btn-group shadow-sm">
+                        <a th:href="@{/dashboard/apartments/edit/{id}(id=${apartment.id})}" class="btn btn-warning text-dark border-warning">
+                            <i class="fas fa-edit me-1"></i> Chỉnh sửa
                         </a>
-                        <a th:href="@{/dashboard/apartments}" class="btn btn-sm btn-outline-secondary">
-                            <i class="fas fa-arrow-left"></i> Quay lại
+                        <a th:href="@{/dashboard/apartments}" class="btn btn-light border">
+                            <i class="fas fa-list me-1"></i> Danh sách
                         </a>
                     </div>
                 </div>
             </div>
 
-            <div class="card shadow col-lg-8 mx-auto mb-5">
-                <div class="card-header bg-white">
-                    <h6 class="m-0 font-weight-bold">Thông tin chi tiết</h6>
-                </div>
-                <div class="card-body p-0">
-                    <table class="table table-bordered mb-0">
-                        <tbody>
-                        <tr>
-                            <th class="bg-light w-25">Mã ID</th>
-                            <td class="text-muted" th:text="${apartment.id}"></td>
-                        </tr>
-                        <tr>
-                            <th class="bg-light">Thuộc Tòa nhà</th>
-                            <td class="fw-bold" th:text="${apartment.building.name}"></td>
-                        </tr>
-                        <tr>
-                            <th class="bg-light">Số phòng / Tầng</th>
-                            <td>Phòng <strong class="text-primary" th:text="${apartment.number}"></strong> - Tầng <span th:text="${apartment.floor}"></span></td>
-                        </tr>
-                        <tr>
-                            <th class="bg-light">Diện tích</th>
-                            <td th:text="${apartment.area} + ' m²'"></td>
-                        </tr>
-                        <tr>
-                            <th class="bg-light">Tài chính</th>
-                            <td>
-                                <div>Giá bán: <span th:text="${apartment.salePrice != null ? #numbers.formatDecimal(apartment.salePrice, 0, 'COMMA', 0, 'POINT') + ' VNĐ' : 'Chưa cập nhật'}"></span></div>
-                                <div>Giá thuê: <span th:text="${apartment.rentPrice != null ? #numbers.formatDecimal(apartment.rentPrice, 0, 'COMMA', 0, 'POINT') + ' VNĐ/tháng' : 'Chưa cập nhật'}"></span></div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th class="bg-light">Trạng thái ở</th>
-                            <td>
-                                <span class="badge" th:classappend="${apartment.status.name() == 'EMPTY' ? 'bg-warning text-dark' : (apartment.status.name() == 'OCCUPIED' ? 'bg-success' : 'bg-secondary')}" th:text="${apartment.status.name() == 'EMPTY' ? 'Trống' : (apartment.status.name() == 'OCCUPIED' ? 'Đang ở' : 'Bảo trì')}"></span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th class="bg-light">Hình thức sở hữu</th>
-                            <td>
-                                <span class="badge" th:classappend="${apartment.rentalStatus.name() == 'AVAILABLE' ? 'bg-primary' : (apartment.rentalStatus.name() == 'RENTED' ? 'bg-info text-dark' : 'bg-dark')}" th:text="${apartment.rentalStatus.name() == 'AVAILABLE' ? 'Có thể thuê' : (apartment.rentalStatus.name() == 'RENTED' ? 'Đang thuê' : 'Chủ ở')}"></span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th class="bg-light">Tổng số cư dân</th>
-                            <td th:text="${apartment.totalResident} + ' người'"></td>
-                        </tr>
-                        <tr>
-                            <th class="bg-light">Tổng số xe đăng ký</th>
-                            <td th:text="${apartment.totalVehicle} + ' xe'"></td>
-                        </tr>
-                        <tr>
-                            <th class="bg-light">Mô tả thêm</th>
-                            <td th:text="${apartment.description}"></td>
-                        </tr>
-                        </tbody>
-                    </table>
+            <div class="card shadow-sm col-lg-10 mx-auto border-0 mb-5">
+                <div class="card-body p-4 p-md-5">
+
+                    <div class="section-title"><i class="fas fa-home me-2"></i>1. Thông tin chung</div>
+
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-8">
+                            <div class="row g-4">
+                                <div class="col-md-4">
+                                    <div class="detail-label">Mã ID</div>
+                                    <div class="detail-value text-muted"><i class="fas fa-hashtag me-1"></i><span th:text="${apartment.id}"></span></div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="detail-label">Tòa nhà</div>
+                                    <div class="detail-value fw-bold text-primary" th:text="${apartment.building.name}"></div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="detail-label">Số Phòng (Tầng)</div>
+                                    <div class="detail-value text-danger fw-bold"><span th:text="${apartment.number}"></span> <span class="badge bg-light text-dark border ms-1 fw-normal" th:text="'Tầng ' + ${apartment.floor}"></span></div>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <div class="detail-label">Diện tích</div>
+                                    <div class="detail-value"><span th:text="${apartment.area}"></span> m²</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="detail-label">Giá Bán</div>
+                                    <div class="detail-value text-success">
+                                        <span th:if="${apartment.salePrice != null && apartment.salePrice.compareTo(T(java.math.BigDecimal).ZERO) > 0}" th:text="${#numbers.formatDecimal(apartment.salePrice, 0, 'COMMA', 0, 'POINT')} + ' đ'"></span>
+                                        <span th:if="${apartment.salePrice == null || apartment.salePrice == 0}" class="text-muted fs-6 fst-italic">Chưa cập nhật</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="detail-label">Giá Thuê</div>
+                                    <div class="detail-value text-success">
+                                        <span th:if="${apartment.rentPrice != null && apartment.rentPrice.compareTo(T(java.math.BigDecimal).ZERO) > 0}" th:text="${#numbers.formatDecimal(apartment.rentPrice, 0, 'COMMA', 0, 'POINT')} + ' đ/tháng'"></span>
+                                        <span th:if="${apartment.rentPrice == null || apartment.rentPrice == 0}" class="text-muted fs-6 fst-italic">Chưa cập nhật</span>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <div class="detail-label">Trạng thái ở</div>
+                                    <div class="mt-1">
+                                        <span class="badge rounded-pill"
+                                              th:classappend="${apartment.status.name() == 'EMPTY' ? 'bg-warning text-dark' : (apartment.status.name() == 'OCCUPIED' ? 'bg-success' : 'bg-danger')}"
+                                              th:text="${apartment.status.name() == 'EMPTY' ? 'Trống' : (apartment.status.name() == 'OCCUPIED' ? 'Đang ở' : 'Bảo trì')}"></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="detail-label">Hình thức sở hữu</div>
+                                    <div class="mt-1">
+                                        <span class="badge border"
+                                              th:classappend="${apartment.rentalStatus.name() == 'AVAILABLE' ? 'border-primary text-primary' : (apartment.rentalStatus.name() == 'RENTED' ? 'border-success text-success' : 'border-secondary text-secondary')}"
+                                              th:text="${apartment.rentalStatus.name() == 'AVAILABLE' ? 'Có thể thuê/bán' : (apartment.rentalStatus.name() == 'RENTED' ? 'Đã thuê' : 'Chủ ở')}"></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="detail-label">Thống kê</div>
+                                    <div class="detail-value text-muted fs-6">
+                                        <i class="fas fa-users me-1"></i> <span th:text="${apartment.totalResident}"></span> &nbsp;|&nbsp;
+                                        <i class="fas fa-car me-1"></i> <span th:text="${apartment.totalVehicle}"></span>
+                                    </div>
+                                </div>
+
+                                <div class="col-12" th:if="${apartment.description != null && !apartment.description.isEmpty()}">
+                                    <div class="detail-label">Mô tả thêm</div>
+                                    <div class="detail-value bg-light p-3 rounded mt-1 border" th:text="${apartment.description}"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div th:if="${apartment.images != null && !#strings.isEmpty(apartment.images)}">
+                                <img th:src="${#strings.arraySplit(apartment.images, ',')[0]}"
+                                     alt="Ảnh chính" class="apt-image mb-3" id="mainImage">
+
+                                <div class="d-flex flex-wrap gap-2" th:if="${#strings.arraySplit(apartment.images, ',').length > 1}">
+                                    <div th:each="url : ${#strings.arraySplit(apartment.images, ',')}">
+                                        <img th:src="${url}"
+                                             class="img-thumbnail"
+                                             style="width: 70px; height: 70px; object-fit: cover; cursor: pointer;"
+                                             onclick="changeMainImage(this.src)">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div th:unless="${apartment.images != null && !#strings.isEmpty(apartment.images)}" class="no-image-box">
+                                <i class="fas fa-images fa-3x mb-2"></i>
+                                <span>Chưa có hình ảnh</span>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </main>
@@ -115,5 +161,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="/js/common.js"></script>
+<script>
+    function changeMainImage(src) {
+        document.getElementById('mainImage').src = src;
+    }
+</script>
 </body>
 </html>
