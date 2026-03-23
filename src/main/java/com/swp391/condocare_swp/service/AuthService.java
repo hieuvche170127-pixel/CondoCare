@@ -30,7 +30,7 @@ public class AuthService {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
 
-    private static final Set<String> VALID_STAFF_ROLE_IDS = Set.of("R01", "R02", "R03");
+    private static final Set<String> VALID_STAFF_ROLE_IDS = Set.of("R001", "R002", "R003");
 
     @Autowired
     private AuthenticationManager authenticationManager;
