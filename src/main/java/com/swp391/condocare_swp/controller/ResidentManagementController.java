@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/resident-management")
@@ -20,15 +21,17 @@ public class ResidentManagementController {
     private static final Logger logger = LoggerFactory.getLogger(ResidentManagementController.class);
     @Autowired private ResidentManagementService service;
 
-    /** GET /api/resident-management/stats */
+    /** GET /api/resident-management/stats — ADMIN, MANAGER, STAFF */
     @GetMapping("/stats")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
     public ResponseEntity<?> getStats() {
         try { return ResponseEntity.ok(service.getStats()); }
         catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
     }
 
-    /** GET /api/resident-management?page=0&size=10&search=&type=&status=&apartmentId= */
+    /** GET /api/resident-management — ADMIN, MANAGER, STAFF */
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
     public ResponseEntity<?> listResidents(
             @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "10") int size,
@@ -48,15 +51,17 @@ public class ResidentManagementController {
         }
     }
 
-    /** GET /api/resident-management/{id} */
+    /** GET /api/resident-management/{id} — ADMIN, MANAGER, STAFF */
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
     public ResponseEntity<?> getResident(@PathVariable String id) {
         try { return ResponseEntity.ok(service.getResidentDetail(id)); }
         catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
     }
 
-    /** POST /api/resident-management */
+    /** POST /api/resident-management — chỉ ADMIN, MANAGER */
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<?> createResident(@Valid @RequestBody ResidentCreateRequest request) {
         try { return ResponseEntity.ok(service.createResident(request)); }
         catch (Exception e) {
@@ -65,8 +70,9 @@ public class ResidentManagementController {
         }
     }
 
-    /** PUT /api/resident-management/{id} */
+    /** PUT /api/resident-management/{id} — chỉ ADMIN, MANAGER */
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<?> updateResident(@PathVariable String id,
                                             @Valid @RequestBody ResidentUpdateRequest request) {
         try { return ResponseEntity.ok(service.updateResident(id, request)); }
@@ -76,8 +82,9 @@ public class ResidentManagementController {
         }
     }
 
-    /** DELETE /api/resident-management/{id} → soft delete (INACTIVE) */
+    /** DELETE /api/resident-management/{id} — chỉ ADMIN, MANAGER */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<?> deactivateResident(@PathVariable String id) {
         try { return ResponseEntity.ok(service.deactivateResident(id)); }
         catch (Exception e) {

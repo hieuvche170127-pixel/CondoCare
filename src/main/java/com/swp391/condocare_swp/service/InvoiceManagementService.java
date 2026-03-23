@@ -128,10 +128,15 @@ public class InvoiceManagementService {
 
         Fees parkingFee = null;
         BigDecimal parkingAmount = BigDecimal.ZERO;
-        if (req.getParkingFeeId() != null && !req.getParkingFeeId().isBlank()) {
-            parkingFee = feesRepo.findById(req.getParkingFeeId())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy phí xe"));
-            parkingAmount = nvl(parkingFee.getAmount());
+        if (req.getParkingFeeIds() != null && !req.getParkingFeeIds().isEmpty()) {
+            for (String feeId : req.getParkingFeeIds()) {
+                if (feeId == null || feeId.isBlank()) continue;
+                Fees f = feesRepo.findById(feeId)
+                        .orElseThrow(() -> new RuntimeException("Không tìm thấy phí xe: " + feeId));
+                parkingAmount = parkingAmount.add(nvl(f.getAmount()));
+                // FK đại diện = phần tử đầu tiên có giá trị
+                if (parkingFee == null) parkingFee = f;
+            }
         }
 
         BigDecimal total = electricAmount.add(waterAmount).add(serviceAmount).add(parkingAmount);
@@ -335,7 +340,8 @@ public class InvoiceManagementService {
             m.put("waterReading", wr);
         }
         if (i.getServiceFee() != null) m.put("serviceFeeName", i.getServiceFee().getName());
-        if (i.getParkingFee()  != null) m.put("parkingFeeName",  i.getParkingFee().getName());
+        if (i.getParkingFee() != null) m.put("parkingFeeName",
+                i.getParkingFee().getName() + " (+ các phí xe khác đã gộp)");
         return m;
     }
 

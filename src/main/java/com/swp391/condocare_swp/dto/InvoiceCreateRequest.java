@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
+import java.util.List;
 
 @Data
 public class InvoiceCreateRequest {
@@ -25,5 +26,11 @@ public class InvoiceCreateRequest {
     private String electricReadingId;
     private String waterReadingId;
     private String serviceFeeId;
-    private String parkingFeeId;
+
+    /**
+     * Danh sách ID các phí gửi xe (xe máy, ô tô, xe đạp điện...).
+     * Thay thế parkingFeeId đơn lẻ — Service sẽ cộng gộp thành 1 tổng parkingAmount
+     * và lưu FK đại diện là phần tử đầu tiên (nếu có).
+     */
+    private List<String> parkingFeeIds;
 }

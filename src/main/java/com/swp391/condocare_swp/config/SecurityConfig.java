@@ -10,98 +10,90 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
- * Configuration class cho Spring Security
+ * SecurityConfig — phân quyền theo 2 tầng:
+ *
+ *  Tầng 1 (SecurityConfig): kiểm tra URL → phải là STAFF hoặc RESIDENT
+ *  Tầng 2 (@PreAuthorize): kiểm tra method → ADMIN/MANAGER/STAFF cụ thể
+ *
+ * Roles:
+ *  Staff    → ROLE_ADMIN, ROLE_MANAGER, ROLE_STAFF   (từ Role.name)
+ *  Resident → ROLE_OWNER, ROLE_TENANT, ROLE_GUEST    (từ Residents.type)
  */
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity // Cho phép dùng @PreAuthorize, @Secured...
+@EnableMethodSecurity
 public class SecurityConfig {
 
-    /**
-     * Bean để mã hóa password
-     * Sử dụng BCrypt - thuật toán mã hóa một chiều an toàn
-     */
     @Bean
     public PasswordEncoder passwordEncoder() {
-//        return new BCryptPasswordEncoder();
-        return NoOpPasswordEncoder.getInstance();
+        return new BCryptPasswordEncoder();
     }
 
-    /**
-     * Bean để tạo JWT Authentication Filter
-     */
     @Bean
     public JwtAuthenticationFilter jwtAuthenticationFilter() {
         return new JwtAuthenticationFilter();
     }
 
-    /**
-     * Bean AuthenticationManager
-     * Dùng để authenticate user
-     */
     @Bean
     public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration authenticationConfiguration) throws Exception {
-        return authenticationConfiguration.getAuthenticationManager();
+            AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
     }
 
-    /**
-     * Cấu hình Security Filter Chain
-     * Định nghĩa các rule authorization và authentication
-     */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                // Disable CSRF vì dùng JWT (stateless)
                 .csrf(csrf -> csrf.disable())
-
-                // Cấu hình session management
                 .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
-
-                // Cấu hình CORS
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .cors(cors -> cors.disable())
-
-                // Cấu hình authorization
                 .authorizeHttpRequests(auth -> auth
-                        // Cho phép truy cập public (không cần đăng nhập)
+
+                        // PUBLIC
                         .requestMatchers(
-                                "/",
-                                "/api/auth/**",
-                                "/login",
-                                "/register",
-                                "/forgot-password",
-                                "/reset-password",
-                                "/css/**",
-                                "/js/**",
-                                "/images/**"
+                                "/", "/login", "/register", "/forgot-password", "/reset-password",
+                                "/css/**", "/js/**", "/images/**", "/favicon.ico", "/api/auth/**"
                         ).permitAll()
 
-                        // Dashboard chỉ cho Staff
-                        .requestMatchers("/dashboard/**", "/api/dashboard/**").permitAll()
+                        // STAFF PAGES
+                        .requestMatchers("/dashboard", "/dashboard/**")
+                        .hasAnyRole("ADMIN", "MANAGER", "STAFF")
 
-                        // Profile -
-                        .requestMatchers("/profile", "/profile/**", "/api/profile/**").permitAll()
+                        // STAFF API — guard chung, @PreAuthorize xử lý chi tiết
+                        .requestMatchers("/api/staff-management/**")
+                        .hasAnyRole("ADMIN", "MANAGER")
+                        .requestMatchers("/api/resident-management/**")
+                        .hasAnyRole("ADMIN", "MANAGER", "STAFF")
+                        .requestMatchers("/api/invoice-management/**")
+                        .hasAnyRole("ADMIN", "MANAGER", "STAFF")
+                        .requestMatchers("/api/staff/requests/**")
+                        .hasAnyRole("ADMIN", "MANAGER", "STAFF")
+                        .requestMatchers("/api/dashboard/**")
+                        .hasAnyRole("ADMIN", "MANAGER", "STAFF")
 
-                        // Resident Dashboard -
-                        .requestMatchers("/resident", "/resident/**", "/api/resident/**").permitAll()
+                        // RESIDENT PAGES + API
+                        .requestMatchers("/resident", "/resident/**")
+                        .hasAnyRole("OWNER", "TENANT", "GUEST")
+                        .requestMatchers("/api/resident/**")
+                        .hasAnyRole("OWNER", "TENANT", "GUEST")
 
-                        // Tất cả request khác cần authenticate
-                        .anyRequest().permitAll()
+                        // PROFILE — tất cả đã đăng nhập
+                        .requestMatchers("/profile", "/profile/**", "/api/profile/**")
+                        .authenticated()
+
+                        // MOMO
+                        .requestMatchers("/api/auth/**", "/login", "/register").permitAll()
+                        .requestMatchers("/api/momo/ipn").permitAll()
+
+                        .anyRequest().authenticated()
                 )
-
-                // Disable form login và http basic
                 .formLogin(form -> form.disable())
                 .httpBasic(basic -> basic.disable())
-
-                // Thêm JWT filter trước UsernamePasswordAuthenticationFilter
                 .addFilterBefore(jwtAuthenticationFilter(),
                         UsernamePasswordAuthenticationFilter.class);
 
