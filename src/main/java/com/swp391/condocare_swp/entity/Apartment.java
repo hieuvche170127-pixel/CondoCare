@@ -1,16 +1,16 @@
 package com.swp391.condocare_swp.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+
+import java.math.BigDecimal;
 
 /**
  * Entity đại diện cho bảng Apartment trong database
  */
 @Entity
 @Table(name = "Apartment")
-@Data
+@Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class Apartment {
@@ -19,7 +19,7 @@ public class Apartment {
      * ID của Apartment (Primary Key)
      */
     @Id
-    @Column(name = "ID", length = 20, nullable = false)
+    @Column(name = "ID", length = 10, nullable = false)
     private String id;
     
     /**
@@ -40,11 +40,17 @@ public class Apartment {
     @Column(name = "area", nullable = false)
     private Float area;
 
-    @Column(name = "sale_price")
-    private Float salePrice;
+//    @Column(name = "sale_price")
+//    private Float salePrice;
+//
+//    @Column(name = "rent_price")
+//    private Float rentPrice;
 
-    @Column(name = "rent_price")
-    private Float rentPrice;
+    @Column(name = "sale_price", precision = 19, scale = 2)
+    private BigDecimal salePrice;
+
+    @Column(name = "rent_price", precision = 19, scale = 2)
+    private BigDecimal rentPrice;
 
     /**
      * Tòa nhà chứa căn hộ
@@ -92,15 +98,15 @@ public class Apartment {
     @Column(name = "total_vehicle")
     private Integer totalVehicle = 0;
 
-    @PrePersist
-    protected void onCreate() {
-        if (this.id == null || this.id.isEmpty()) {
-            String bId = (this.building != null && this.building.getId() != null) ? this.building.getId() : "UNK";
-            this.id = bId + this.floor + this.number;
-        }
-        if (status == null) status = ApartmentStatus.EMPTY;
-        if (rentalStatus == null) rentalStatus = RentalStatus.AVAILABLE;
-    }
+//    @PrePersist
+//    protected void onCreate() {
+//        if (this.id == null || this.id.isEmpty()) {
+//            String bId = (this.building != null && this.building.getId() != null) ? this.building.getId() : "UNK";
+//            this.id = bId + this.floor + this.number;
+//        }
+//        if (status == null) status = ApartmentStatus.EMPTY;
+//        if (rentalStatus == null) rentalStatus = RentalStatus.AVAILABLE;
+//    }
 
     /**
      * Enum cho Apartment Status

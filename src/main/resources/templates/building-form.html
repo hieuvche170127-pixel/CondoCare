@@ -23,11 +23,11 @@
 
                 <ul class="nav flex-column">
                     <li class="nav-item"><a class="nav-link" href="/dashboard"><i class="fas fa-tachometer-alt"></i> Tổng quan</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/dashboard/buildings"><i class="fas fa-building"></i> Tòa nhà</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/dashboard/buildings"><i class="fas fa-building"></i> Tòa nhà</a></li>
                     <li class="nav-item"><a class="nav-link" href="/dashboard/apartments"><i class="fas fa-home"></i> Căn hộ</a></li>
                     <li class="nav-item"><a class="nav-link" href="/dashboard/residents"><i class="fas fa-users"></i> Cư dân</a></li>
                     <li class="nav-item"><a class="nav-link" href="/dashboard/access-cards"><i class="fas fa-id-card"></i> Thẻ ra vào</a></li>
-                    <li class="nav-item"><a class="nav-link active" href="/dashboard/vehicles"><i class="fas fa-motorcycle"></i> Phương tiện</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/dashboard/vehicles"><i class="fas fa-motorcycle"></i> Phương tiện</a></li>
                     <li class="nav-item"><a class="nav-link" href="/dashboard/contracts"><i class="fas fa-file-signature"></i> Hợp đồng</a></li>
                     <li class="nav-item"><a class="nav-link" href="/dashboard/fees"><i class="fas fa-file-invoice-dollar"></i> Phí dịch vụ</a></li>
                     <li class="nav-item"><a class="nav-link" href="/dashboard/invoices"><i class="fas fa-receipt"></i> Hóa đơn</a></li>
@@ -65,7 +65,7 @@
                         <div class="row mb-3">
                             <div class="col-md-4">
                                 <label class="form-label fw-bold">Mã Tòa nhà (ID) <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" th:field="*{id}" th:readonly="${isEdit}" required placeholder="VD: B01">
+                                <input type="text" class="form-control bg-light" th:field="*{id}" readonly required placeholder="VD: B01">
                             </div>
                             <div class="col-md-8">
                                 <label class="form-label fw-bold">Tên Tòa nhà <span class="text-danger">*</span></label>
