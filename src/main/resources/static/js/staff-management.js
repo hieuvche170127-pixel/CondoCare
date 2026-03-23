@@ -25,17 +25,35 @@ const API_RESIDENT = `${API_BASE_URL}/resident-management`;
 /* ══════════════════════════════════════════════════
    HELPERS CHUNG
 ══════════════════════════════════════════════════ */
+// Thời gian tự động ẩn (ms) theo từng loại alert
+const ALERT_TIMEOUT = {
+    success: 4000,   // 4 giây
+    info:    6000,   // 6 giây
+    warning: 8000,   // 8 giây
+    danger:  0,      // 0 = không tự ẩn (lỗi cần người dùng đọc kỹ)
+};
+
 function showMgmtAlert(containerId, message, type = 'success') {
     const icons = { success: 'fa-check-circle', danger: 'fa-exclamation-circle', warning: 'fa-exclamation-triangle', info: 'fa-info-circle' };
-    document.getElementById(containerId).innerHTML = `
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    container.innerHTML = `
         <div class="alert alert-${type} alert-dismissible fade show">
             <i class="fas ${icons[type] || icons.info} me-2"></i>${message}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>`;
-    // Auto-dismiss after 4s for success
-    if (type === 'success') setTimeout(() => {
-        document.getElementById(containerId).innerHTML = '';
-    }, 4000);
+
+    const delay = ALERT_TIMEOUT[type] ?? 5000;
+    if (delay > 0) {
+        setTimeout(() => {
+            const alert = container.querySelector('.alert');
+            if (alert) {
+                alert.classList.remove('show');          // trigger Bootstrap fade-out
+                setTimeout(() => container.innerHTML = '', 300); // xoá sau khi fade xong
+            }
+        }, delay);
+    }
 }
 
 function formatDate(val) {
@@ -369,6 +387,7 @@ const ResidentMgmt = {
             if (document.getElementById('rStatInactive')) document.getElementById('rStatInactive').textContent = data.inactive || 0;
             if (document.getElementById('rStatOwners'))   document.getElementById('rStatOwners').textContent   = data.owners   || 0;
             if (document.getElementById('rStatTenants'))  document.getElementById('rStatTenants').textContent  = data.tenants  || 0;
+            if (document.getElementById('rStatGuests'))   document.getElementById('rStatGuests').textContent   = data.guests   || 0;
         } catch(e) { console.error('Load resident stats error', e); }
     },
 
