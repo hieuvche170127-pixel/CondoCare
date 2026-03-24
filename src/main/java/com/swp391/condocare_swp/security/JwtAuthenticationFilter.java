@@ -1,12 +1,6 @@
 package com.swp391.condocare_swp.security;
 
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.servlet.http.Cookie;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -14,84 +8,76 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
-/**
- * Filter để xử lý JWT authentication cho mỗi request
- * Kế thừa OncePerRequestFilter để đảm bảo filter chỉ chạy 1 lần cho mỗi request
- */
+// Đã bỏ @Component vì bạn đã khai báo @Bean ở SecurityConfig
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
-    
-    private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
-    
-    @Autowired
-    private JwtTokenProvider tokenProvider;
-    
-    @Autowired
-    private CustomUserDetailsService customUserDetailsService;
 
-    public JwtAuthenticationFilter(JwtTokenProvider tokenProvider,
-                                   CustomUserDetailsService customUserDetailsService) {
+    // Khai báo final để bắt buộc khởi tạo qua constructor
+    private final JwtTokenProvider tokenProvider;
+    private final CustomUserDetailsService customUserDetailsService;
+
+    // THÊM CONSTRUCTOR NÀY ĐỂ KHỚP VỚI SECURITY CONFIG
+    public JwtAuthenticationFilter(JwtTokenProvider tokenProvider, CustomUserDetailsService customUserDetailsService) {
         this.tokenProvider = tokenProvider;
         this.customUserDetailsService = customUserDetailsService;
     }
-    
-    /**
-     * Method chính để filter request
-     */
+
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
         try {
-            // Lấy JWT token từ request
+            // Lấy jwt từ request
             String jwt = getJwtFromRequest(request);
-            
-            // Nếu có token và token hợp lệ
+
+            // Kiểm tra token có hợp lệ không
             if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt)) {
-                // Lấy username từ token
+                // Lấy username (hoặc email) từ chuỗi jwt
                 String username = tokenProvider.getUsernameFromToken(jwt);
-                
-                // Load user details từ username
                 UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
-                
-                // Tạo Authentication object
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(
-                                userDetails,
-                                null,
-                                userDetails.getAuthorities()
-                        );
-                
-                // Set thêm thông tin request vào authentication
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                
-                // Set authentication vào SecurityContext
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-                
-                logger.debug("Set Authentication for user: {}", username);
+
+                // Tạo đối tượng Authentication và set vào SecurityContext
+                if (userDetails != null) {
+                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                            userDetails, null, userDetails.getAuthorities());
+
+                    // Lưu thêm các chi tiết của request (như IP, Session ID nếu có)
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+                    // Nạp vào SecurityContextHolder
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
             }
         } catch (Exception ex) {
-            logger.error("Could not set user authentication in security context", ex);
+            logger.error("Không thể thiết lập xác thực người dùng trong security context", ex);
         }
-        
-        // Tiếp tục filter chain
+
+        // Cho phép request đi tiếp
         filterChain.doFilter(request, response);
     }
-    
-    /**
-     * Lấy JWT token từ Authorization header
-     * Format: Bearer <token>
-     */
+
     private String getJwtFromRequest(HttpServletRequest request) {
+        // 1. Cố gắng lấy từ Header trước (Dành cho API / fetch / axios)
         String bearerToken = request.getHeader("Authorization");
-        
-        // Kiểm tra xem header Authorization có chứa Bearer token không
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
-            // Trả về token (bỏ "Bearer " prefix)
             return bearerToken.substring(7);
         }
-        
+
+        // 2. Nếu Header không có, thử lấy từ Cookie (Dành cho Spring MVC duyệt web thông thường)
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("JWT_TOKEN".equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+
         return null;
     }
 }
