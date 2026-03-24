@@ -587,20 +587,35 @@ const ResidentMgmt = {
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang lưu...';
         try {
+            // nb: chuỗi rỗng → null, tránh backend ConstraintViolationException
+            const nb = v => (v == null || String(v).trim() === '') ? null : String(v).trim();
             const body = {
-                fullName:      document.getElementById('rEditFullName').value.trim(),
-                email:         document.getElementById('rEditEmail').value.trim(),
-                phone:         document.getElementById('rEditPhone').value.trim(),
-                idNumber:      document.getElementById('rEditIdNumber').value.trim(),
-                dob:           document.getElementById('rEditDob').value || null,
+                fullName:      nb(document.getElementById('rEditFullName').value),
+                email:         nb(document.getElementById('rEditEmail').value),
+                phone:         nb(document.getElementById('rEditPhone').value),
+                idNumber:      nb(document.getElementById('rEditIdNumber').value),
+                dob:           nb(document.getElementById('rEditDob').value),
                 gender:        document.getElementById('rEditGender').value,
                 type:          document.getElementById('rEditType').value,
                 status:        document.getElementById('rEditStatus').value,
-                apartmentId:   document.getElementById('rEditApartment').value.trim(),
-                tempResidence: document.getElementById('rEditTempResidence').value.trim(),
-                tempAbsence:   document.getElementById('rEditTempAbsence').value.trim(),
-                newPassword:   document.getElementById('rEditNewPassword').value || null,
+                apartmentId:   nb(document.getElementById('rEditApartment').value),
+                tempResidence: nb(document.getElementById('rEditTempResidence').value),
+                tempAbsence:   nb(document.getElementById('rEditTempAbsence').value),
+                newPassword:   nb(document.getElementById('rEditNewPassword').value),
             };
+            // Validate phía client trước khi gửi
+            if (!body.fullName) {
+                showMgmtAlert('rEditFormAlert', 'Họ và tên không được để trống', 'warning');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save me-1"></i>Lưu thay đổi';
+                return;
+            }
+            if (!body.phone) {
+                showMgmtAlert('rEditFormAlert', 'Số điện thoại không được để trống', 'warning');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save me-1"></i>Lưu thay đổi';
+                return;
+            }
             const res = await apiRequest(`${API_RESIDENT}/${this.currentEditId}`, { method: 'PUT', body: JSON.stringify(body) });
             if (res.ok) {
                 bootstrap.Modal.getInstance(document.getElementById('rEditModal'))?.hide();

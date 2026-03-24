@@ -107,6 +107,20 @@ public class InvoiceManagementController {
     }
 
     /**
+     * GET /api/invoice-management/meter-readings/prev-index?apartmentId=A01&month=3&year=2026
+     * Lấy chỉ số điện/nước của tháng trước để tự động điền vào form tạo hóa đơn.
+     * Trả về: { electric: { currentIndex, ... }, water: { currentIndex, ... } }
+     */
+    @GetMapping("/meter-readings/prev-index")
+    public ResponseEntity<?> getPrevMonthIndex(
+            @RequestParam String apartmentId,
+            @RequestParam Integer month,
+            @RequestParam Integer year) {
+        try { return ResponseEntity.ok(service.getPrevMonthIndex(apartmentId, month, year)); }
+        catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
+    }
+
+    /**
      * GET /api/invoice-management/meter-readings?apartmentId=A01&month=3&year=2026
      * Lấy chỉ số điện/nước để điền vào form tạo hóa đơn
      */
