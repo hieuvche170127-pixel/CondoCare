@@ -203,6 +203,42 @@ public class InvoiceManagementService {
     }
 
     /* ══════════════════════════════════════════════════════
+       LẤY CHỈ SỐ THÁNG TRƯỚC (để tự động điền chỉ số cũ)
+    ══════════════════════════════════════════════════════ */
+    public Map<String, Object> getPrevMonthIndex(String apartmentId, Integer month, Integer year) {
+        Apartment apt = apartmentRepo.findById(apartmentId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy căn hộ: " + apartmentId));
+
+        // Tính tháng trước
+        int prevMonth = month == 1 ? 12 : month - 1;
+        int prevYear  = month == 1 ? year - 1 : year;
+
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        meterRepo.findByApartmentAndMeterTypeAndMonthAndYear(apt, MeterReading.MeterType.ELECTRIC, prevMonth, prevYear)
+                .ifPresent(r -> {
+                    Map<String, Object> e = new LinkedHashMap<>();
+                    e.put("id",           r.getId());
+                    e.put("currentIndex", r.getCurrentIndex());
+                    e.put("month",        prevMonth);
+                    e.put("year",         prevYear);
+                    result.put("electric", e);
+                });
+
+        meterRepo.findByApartmentAndMeterTypeAndMonthAndYear(apt, MeterReading.MeterType.WATER, prevMonth, prevYear)
+                .ifPresent(r -> {
+                    Map<String, Object> w = new LinkedHashMap<>();
+                    w.put("id",           r.getId());
+                    w.put("currentIndex", r.getCurrentIndex());
+                    w.put("month",        prevMonth);
+                    w.put("year",         prevYear);
+                    result.put("water", w);
+                });
+
+        return result;
+    }
+
+    /* ══════════════════════════════════════════════════════
        DROPDOWN DATA
     ══════════════════════════════════════════════════════ */
     public List<Map<String, Object>> getMeterReadings(String apartmentId, Integer month, Integer year) {
