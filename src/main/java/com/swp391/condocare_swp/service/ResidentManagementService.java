@@ -124,10 +124,18 @@ public class ResidentManagementService {
         r.setEmail(req.getEmail());
         r.setStatus(Residents.ResidentStatus.ACTIVE);
 
+        // [FIX] Gán căn hộ và cập nhật đồng bộ Apartment
         if (req.getApartmentId() != null && !req.getApartmentId().isBlank()) {
             Apartment apt = apartmentRepo.findById(req.getApartmentId())
                     .orElseThrow(() -> new RuntimeException("Căn hộ không tồn tại: " + req.getApartmentId()));
             r.setApartment(apt);
+
+            // Cập nhật ngược lại Apartment
+            apt.setTotalResident(apt.getTotalResident() + 1);
+            apt.setStatus(Apartment.ApartmentStatus.OCCUPIED);
+            apartmentRepo.save(apt);
+            logger.info("Apartment {} status → OCCUPIED, totalResident → {}",
+                    apt.getId(), apt.getTotalResident());
         }
 
         residentRepo.save(r);
@@ -164,28 +172,61 @@ public class ResidentManagementService {
                 && residentRepo.existsByEmail(newEmail))
             throw new RuntimeException("Email đã được sử dụng bởi cư dân khác");
 
-        if (req.getFullName()   != null) r.setFullName(req.getFullName());
-        if (req.getType()       != null) r.setType(Residents.ResidentType.valueOf(req.getType()));
-        if (req.getDob()        != null) r.setDob(req.getDob());
-        if (req.getGender()     != null) r.setGender(Residents.Gender.valueOf(req.getGender()));
-        if (req.getIdNumber()   != null) r.setIdNumber(req.getIdNumber());
-        if (req.getPhone()      != null) r.setPhone(req.getPhone());
+        if (req.getFullName() != null && !req.getFullName().isBlank())
+            r.setFullName(req.getFullName().trim());
+        if (req.getType()   != null) r.setType(Residents.ResidentType.valueOf(req.getType()));
+        if (req.getDob()    != null) r.setDob(req.getDob());
+        if (req.getGender() != null) r.setGender(Residents.Gender.valueOf(req.getGender()));
+
+        String newIdNumber = blankToNull(req.getIdNumber());
+        String newPhone    = blankToNull(req.getPhone());
+        String newTempRes  = blankToNull(req.getTempResidence());
+        String newTempAbs  = blankToNull(req.getTempAbsence());
+
+        // idNumber: chỉ update nếu client gửi lên (không phải field bị bỏ qua hoàn toàn)
+        if (req.getIdNumber() != null) r.setIdNumber(newIdNumber);
+        // phone: chỉ set null nếu client chủ động xoá, giữ nguyên nếu không gửi
+        if (req.getPhone() != null) {
+            if (newPhone == null) throw new RuntimeException("Số điện thoại không được để trống");
+            r.setPhone(newPhone);
+        }
         // Dùng newEmail đã chuẩn hoá thay vì req.getEmail() trực tiếp
         r.setEmail(newEmail);
-        if (req.getStatus()     != null) r.setStatus(Residents.ResidentStatus.valueOf(req.getStatus()));
-        if (req.getTempResidence() != null) r.setTempResidence(req.getTempResidence());
-        if (req.getTempAbsence()   != null) r.setTempAbsence(req.getTempAbsence());
+        if (req.getStatus() != null) r.setStatus(Residents.ResidentStatus.valueOf(req.getStatus()));
+        if (req.getTempResidence() != null) r.setTempResidence(newTempRes);
+        if (req.getTempAbsence()   != null) r.setTempAbsence(newTempAbs);
         if (req.getNewPassword() != null && !req.getNewPassword().isBlank())
             r.setPassword(passwordEncoder.encode(req.getNewPassword()));
 
-        // Xử lý apartment: null = không đổi, "" = bỏ liên kết, id = đổi căn hộ
+        // [FIX] Xử lý apartment: null = không đổi, "" = bỏ liên kết, id = đổi căn hộ
         if (req.getApartmentId() != null) {
+            Apartment oldApt = r.getApartment(); // căn hộ cũ (có thể null)
+
             if (req.getApartmentId().isBlank()) {
+                // Bỏ liên kết → giảm total_resident và reset status căn hộ cũ nếu cần
+                if (oldApt != null) {
+                    decreaseApartmentResident(oldApt);
+                }
                 r.setApartment(null);
+
             } else {
-                Apartment apt = apartmentRepo.findById(req.getApartmentId())
+                Apartment newApt = apartmentRepo.findById(req.getApartmentId())
                         .orElseThrow(() -> new RuntimeException("Căn hộ không tồn tại"));
-                r.setApartment(apt);
+
+                boolean isSameApt = oldApt != null && oldApt.getId().equals(newApt.getId());
+                if (!isSameApt) {
+                    // Giảm căn hộ cũ
+                    if (oldApt != null) {
+                        decreaseApartmentResident(oldApt);
+                    }
+                    // Tăng căn hộ mới
+                    newApt.setTotalResident(newApt.getTotalResident() + 1);
+                    newApt.setStatus(Apartment.ApartmentStatus.OCCUPIED);
+                    apartmentRepo.save(newApt);
+                    logger.info("Apartment {} status → OCCUPIED, totalResident → {}",
+                            newApt.getId(), newApt.getTotalResident());
+                }
+                r.setApartment(newApt);
             }
         }
 
@@ -206,6 +247,22 @@ public class ResidentManagementService {
     }
 
     /* ── HELPERS ── */
+
+    /**
+     * Giảm total_resident của căn hộ đi 1.
+     * Nếu về 0 thì đổi status về EMPTY.
+     */
+    private void decreaseApartmentResident(Apartment apt) {
+        int newCount = Math.max(0, apt.getTotalResident() - 1);
+        apt.setTotalResident(newCount);
+        if (newCount == 0) {
+            apt.setStatus(Apartment.ApartmentStatus.EMPTY);
+            logger.info("Apartment {} status → EMPTY", apt.getId());
+        }
+        apartmentRepo.save(apt);
+        logger.info("Apartment {} totalResident → {}", apt.getId(), newCount);
+    }
+
     private Map<String, Object> mapToResponse(Residents r) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id",        r.getId());
@@ -233,6 +290,11 @@ public class ResidentManagementService {
             m.put("buildingName", null);
         }
         return m;
+    }
+
+    /** Trả về null nếu chuỗi null hoặc rỗng/khoảng trắng, ngược lại trả về chuỗi đã trim. */
+    private static String blankToNull(String s) {
+        return (s == null || s.isBlank()) ? null : s.trim();
     }
 
     private synchronized String generateResidentId() {
