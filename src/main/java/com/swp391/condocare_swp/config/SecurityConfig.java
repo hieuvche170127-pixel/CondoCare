@@ -16,16 +16,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-/**
- * SecurityConfig — phân quyền theo 2 tầng:
- *
- *  Tầng 1 (SecurityConfig): kiểm tra URL → phải là STAFF hoặc RESIDENT
- *  Tầng 2 (@PreAuthorize): kiểm tra method → ADMIN/MANAGER/STAFF cụ thể
- *
- * Roles:
- *  Staff    → ROLE_ADMIN, ROLE_MANAGER, ROLE_STAFF   (từ Role.name)
- *  Resident → ROLE_OWNER, ROLE_TENANT, ROLE_GUEST    (từ Residents.type)
- */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -51,8 +41,7 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http,
-                                           JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {   // ← THÊM DÒNG NÀY (quan trọng)
-
+                                           JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session ->
@@ -60,19 +49,21 @@ public class SecurityConfig {
                 .cors(cors -> cors.disable())
                 .authorizeHttpRequests(auth -> auth
 
-                        // PUBLIC
+                        // ── PUBLIC ──────────────────────────────────────────────────
                         .requestMatchers(
                                 "/", "/login", "/register", "/forgot-password", "/reset-password",
-                                "/css/**", "/js/**", "/images/**", "/favicon.ico", "/api/auth/**"
+                                "/css/**", "/js/**", "/images/**", "/favicon.ico",
+                                "/api/auth/**"
                         ).permitAll()
 
-                        // === TRANG HTML ĐƯỢC PHÉP TRUY CẬP (JS tự check login) ===
-                        .requestMatchers("/dashboard", "/dashboard/**",
-                                "/resident", "/resident/**",
-                                "/profile", "/profile/**")
-                        .permitAll()
+                        // ── TRANG HTML (JS tự check login) ──────────────────────────
+                        .requestMatchers(
+                                "/dashboard", "/dashboard/**",
+                                "/resident",  "/resident/**",
+                                "/profile",   "/profile/**"
+                        ).permitAll()
 
-                        // STAFF API
+                        // ── STAFF API ────────────────────────────────────────────────
                         .requestMatchers("/api/staff-management/**")
                         .hasAnyRole("ADMIN", "MANAGER")
                         .requestMatchers("/api/resident-management/**")
@@ -81,27 +72,29 @@ public class SecurityConfig {
                         .hasAnyRole("ADMIN", "MANAGER", "STAFF")
                         .requestMatchers("/api/staff/requests/**")
                         .hasAnyRole("ADMIN", "MANAGER", "STAFF")
+                        .requestMatchers("/api/staff/vehicles/**")
+                        .hasAnyRole("ADMIN", "MANAGER", "STAFF")
                         .requestMatchers("/api/dashboard/**")
                         .hasAnyRole("ADMIN", "MANAGER", "STAFF")
 
-                        // RESIDENT API
+                        // ── RESIDENT API ─────────────────────────────────────────────
                         .requestMatchers("/api/resident/**")
                         .hasAnyRole("OWNER", "TENANT", "GUEST")
 
-                        // PROFILE API
+                        // ── PROFILE API ──────────────────────────────────────────────
                         .requestMatchers("/api/profile/**")
                         .authenticated()
 
-                        // MOMO
+                        // ── MOMO (IPN không cần auth) ────────────────────────────────
                         .requestMatchers("/api/momo/ipn", "/api/momo/return").permitAll()
-                        .requestMatchers("/api/momo/create-payment", "/api/momo/status/**")
+                        .requestMatchers("/api/momo/**")
                         .hasAnyRole("OWNER", "TENANT", "GUEST")
 
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form.disable())
                 .httpBasic(basic -> basic.disable())
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);  // ← Giờ không lỗi nữa
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
