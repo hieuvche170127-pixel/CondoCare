@@ -5,8 +5,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
-import java.util.List;
-
 @Data
 public class UpdateProfileRequest {
 
@@ -22,19 +20,15 @@ public class UpdateProfileRequest {
     @Pattern(regexp = "^[0-9]{10,11}$", message = "Số điện thoại phải có 10-11 chữ số")
     private String phone;
 
-    private String dob;     // "yyyy-MM-dd" — optional
-    private String gender;  // "M" | "F"   — optional
+    private String dob;    // "yyyy-MM-dd" — optional
+    private String gender; // "M" | "F"   — optional
 
     // ── Resident only ─────────────────────────────────────────
+    // Chỉ cho phép cập nhật khi status = PENDING (chưa xác minh)
     private String idNumber;
-    private String tempResidence;
-    private String tempAbsence;
 
-    /**
-     * Danh sách feeId mà resident MUỐN SỬ DỤNG (checkbox đã tick).
-     * - Có trong list + đang tắt  → bật lại  (set effectiveTo = null)
-     * - Không có trong list + đang bật → tắt (set effectiveTo = today)
-     * - null → không thay đổi fee nào
-     */
-    private List<String> selectedFeeIds;
+    // ĐÃ XÓA so với version cũ:
+    // - selectedFeeIds  → đăng ký xe dùng API riêng: POST /api/vehicles
+    // - tempResidence   → không còn trong schema mới (Residents.java)
+    // - tempAbsence     → không còn trong schema mới (Residents.java)
 }

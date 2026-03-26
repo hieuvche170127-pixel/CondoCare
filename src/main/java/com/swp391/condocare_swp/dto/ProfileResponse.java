@@ -26,35 +26,61 @@ public class ProfileResponse {
     // ── Staff only ────────────────────────────────────────────
     private String position;
     private String department;
-    private String staffStatus;
+    private String staffStatus;   // ACTIVE | RESIGNED | ON_LEAVE  (Staff.StaffStatus)
     private String roleName;
 
     // ── Resident only ─────────────────────────────────────────
     private String idNumber;
-    private String residentType;    // OWNER | TENANT | GUEST
-    private String residentStatus;  // ACTIVE | INACTIVE
-    private String tempResidence;
-    private String tempAbsence;
+    private String residentType;   // OWNER | TENANT | GUEST       (Residents.ResidentType)
+    private String residentStatus; // PENDING | ACTIVE | INACTIVE  (Residents.ResidentStatus)
 
-    // ── Apartment (Resident) ──────────────────────────────────
+    // ── Apartment ─────────────────────────────────────────────
     private String apartmentId;
     private String apartmentNumber;
     private String buildingName;
     private Double apartmentArea;
 
-    // ── Fees của căn hộ (Resident) ────────────────────────────
-    private List<FeeInfo> fees;
+    // ── Thẻ từ (hiện sau khi ACTIVE) ─────────────────────────
+    private String accessCardNumber;
+    private String accessCardStatus; // ACTIVE | BLOCKED | LOST    (AccessCard.CardStatus)
+
+    // ── Xe đã đăng ký ────────────────────────────────────────
+    private List<VehicleInfo> vehicles;
+
+    // ── Phí dịch vụ tòa nhà (để resident xem) ────────────────
+    private List<FeeTemplateInfo> feeTemplates;
+
+    // ═════════════════════════════════════════════════════════
 
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
-    public static class FeeInfo {
-        private String  id;
-        private String  name;
-        private String  type;        // SERVICE | PARKING | MANAGEMENT | OTHER
-        private String  vehicleType; // "motorbike" | "car" | "ebike" | null
-        private double  amount;
-        private boolean active;      // true = effectiveTo IS NULL (đang dùng)
+    public static class VehicleInfo {
+        private String id;
+        private String type;          // Vehicle.VehicleType: MOTORBIKE|CAR|BICYCLE|ELECTRIC_BIKE|OTHER
+        private String licensePlate;
+        private String brand;
+        private String model;
+        private String color;
+        private String durationType;  // MONTHLY | QUARTERLY | YEARLY
+        private String registeredAt;
+        private String expiredAt;
+        private String pendingStatus; // PENDING | APPROVED | REJECTED
+        private String status;        // ACTIVE | INACTIVE | LOST | REVOKED
+        private String rejectReason;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class FeeTemplateInfo {
+        private String id;
+        private String name;
+        private String type;          // SERVICE | PARKING
+        private String unit;          // PER_APT | PER_M2 | FIXED
+        private double amount;
+        private String effectiveFrom; // "yyyy-MM-dd"
     }
 }

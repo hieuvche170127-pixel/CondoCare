@@ -12,37 +12,30 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
 
+/**
+ * Scheduler tự động cập nhật hóa đơn UNPAID → OVERDUE khi quá hạn.
+ * Chạy mỗi ngày lúc 00:30.
+ */
 @Component
 public class InvoiceScheduler {
 
     private static final Logger logger = LoggerFactory.getLogger(InvoiceScheduler.class);
 
-    @Autowired
-    private InvoiceRepository invoiceRepository;
+    @Autowired private InvoiceRepository invoiceRepo;
 
-    /**
-     * Chạy mỗi ngày lúc 00:30 AM
-     * Cập nhật status UNPAID → OVERDUE nếu quá hạn
-     */
     @Scheduled(cron = "0 30 0 * * *")
     @Transactional
     public void updateOverdueInvoices() {
-        logger.info("Running scheduled job: Update overdue invoices");
-
         LocalDate today = LocalDate.now();
-
-        // Tìm tất cả invoice UNPAID và quá due_date
-        List<Invoice> unpaidInvoices = invoiceRepository
+        List<Invoice> overdue = invoiceRepo
                 .findByStatusAndDueDateBefore(Invoice.InvoiceStatus.UNPAID, today);
 
-        logger.info("Found {} overdue invoices", unpaidInvoices.size());
+        overdue.forEach(inv -> {
+            inv.setStatus(Invoice.InvoiceStatus.OVERDUE);
+            invoiceRepo.save(inv);
+        });
 
-        for (Invoice invoice : unpaidInvoices) {
-            invoice.setStatus(Invoice.InvoiceStatus.OVERDUE);
-            invoiceRepository.save(invoice);
-            logger.info("Updated invoice {} to OVERDUE", invoice.getId());
-        }
-
-        logger.info("Completed updating overdue invoices");
+        if (!overdue.isEmpty())
+            logger.info("Scheduler: {} invoice(s) → OVERDUE", overdue.size());
     }
 }
