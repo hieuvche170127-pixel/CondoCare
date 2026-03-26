@@ -10,7 +10,6 @@
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/resident.css">
     <style>
-        /* ── Avatar card ─────────────────────────────────── */
         .avatar-card {
             background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
             border-radius: 16px; color: #fff;
@@ -30,17 +29,13 @@
             display: inline-block; margin-top: .55rem;
             padding: .2rem .7rem; border-radius: 20px;
             background: rgba(255,255,255,.18);
-            font-size: .75rem; font-weight: 600; letter-spacing: .3px;
+            font-size: .75rem; font-weight: 600;
         }
-
-        /* ── Quick-info list ─────────────────────────────── */
         .qi-item { padding: .5rem 0; border-bottom: 1px solid #f0f2f5; }
         .qi-item:last-child { border-bottom: none; }
         .qi-label { font-size: .72rem; color: #9ca3af; font-weight: 700;
                     text-transform: uppercase; letter-spacing: .4px; margin-bottom: .1rem; }
         .qi-value { font-size: .9rem; color: #1f2937; font-weight: 500; }
-
-        /* ── Section divider ─────────────────────────────── */
         .sec-divider {
             display: flex; align-items: center; gap: .5rem;
             font-size: .72rem; font-weight: 700; color: #9ca3af;
@@ -48,34 +43,6 @@
             margin: 1.2rem 0 .7rem;
         }
         .sec-divider::after { content:''; flex:1; height:1px; background:#e5e7eb; }
-
-        /* ── Vehicle toggle cards ────────────────────────── */
-        .vcard {
-            border: 2px solid #e5e7eb; border-radius: 12px;
-            padding: .85rem .6rem; text-align: center;
-            cursor: pointer; transition: all .18s ease;
-            background: #fafafa; position: relative; user-select: none;
-        }
-        .vcard:hover { border-color: #4f46e5; background: #f5f3ff; }
-        .vcard.on    { border-color: #4f46e5; background: linear-gradient(135deg,#ede9fe,#f5f3ff); }
-        .vcard .vc-icon  { font-size: 1.6rem; display: block; margin-bottom: .3rem; }
-        .vcard .vc-name  { font-size: .78rem; font-weight: 600; color: #374151; line-height: 1.3; }
-        .vcard .vc-price { font-size: .72rem; color: #9ca3af; margin-top: .15rem; }
-        .vcard .vc-tick  {
-            position: absolute; top: 5px; right: 7px;
-            color: #4f46e5; font-size: .9rem; display: none;
-        }
-        .vcard.on .vc-tick { display: block; }
-
-        /* ── Apt banner ──────────────────────────────────── */
-        .apt-banner {
-            background: linear-gradient(90deg,#eff6ff,#dbeafe);
-            border-left: 4px solid #3b82f6;
-            border-radius: 10px; padding: .75rem 1rem;
-            display: flex; align-items: center; gap: .85rem;
-        }
-
-        /* ── Profile tabs ────────────────────────────────── */
         .ptabs .nav-link {
             color: #6b7280; font-weight: 600;
             border: none; border-bottom: 2px solid transparent;
@@ -83,6 +50,61 @@
         }
         .ptabs .nav-link.active { color: #4f46e5; border-bottom-color: #4f46e5; background: none; }
         .ptabs .nav-link:hover  { color: #4f46e5; }
+
+        /* Access card display */
+        .access-card-display {
+            background: linear-gradient(135deg, #1e3a5f 0%, #2d5a8e 100%);
+            border-radius: 14px; color: #fff;
+            padding: 1.25rem 1.5rem; position: relative; overflow: hidden;
+        }
+        .access-card-display::before {
+            content: '';
+            position: absolute; top: -20px; right: -20px;
+            width: 100px; height: 100px; border-radius: 50%;
+            background: rgba(255,255,255,.07);
+        }
+        .access-card-display::after {
+            content: '';
+            position: absolute; bottom: -30px; left: 30px;
+            width: 80px; height: 80px; border-radius: 50%;
+            background: rgba(255,255,255,.05);
+        }
+        .card-chip {
+            width: 36px; height: 28px; border-radius: 6px;
+            background: linear-gradient(135deg,#f6d365,#fda085);
+            margin-bottom: .6rem;
+        }
+        .card-number-display {
+            font-family: 'Courier New', monospace;
+            font-size: 1.1rem; letter-spacing: 3px;
+            color: rgba(255,255,255,.9);
+        }
+        .card-label { font-size: .65rem; color: rgba(255,255,255,.6); text-transform: uppercase; letter-spacing: 1px; }
+        .card-value { font-size: .85rem; color: #fff; font-weight: 600; }
+
+        /* Vehicle registration cards */
+        .vehicle-reg-card {
+            border: 2px solid #e5e7eb; border-radius: 12px;
+            padding: 1rem; transition: all .2s; cursor: pointer;
+            background: #fafafa; position: relative;
+        }
+        .vehicle-reg-card:hover { border-color: #6366f1; background: #f5f3ff; }
+        .vehicle-reg-card.selected { border-color: #4f46e5; background: linear-gradient(135deg,#ede9fe,#f5f3ff); }
+        .vehicle-reg-card .check-icon {
+            position: absolute; top: 8px; right: 10px;
+            color: #4f46e5; font-size: 1.1rem; display: none;
+        }
+        .vehicle-reg-card.selected .check-icon { display: block; }
+        .veh-icon { font-size: 2rem; margin-bottom: .4rem; }
+        .veh-name { font-size: .85rem; font-weight: 700; color: #1f2937; }
+        .veh-price { font-size: .78rem; color: #6b7280; }
+
+        /* Pending vehicle badge */
+        .pending-vehicle-item {
+            border: 1px solid #fde68a;
+            border-radius: 10px; padding: .75rem 1rem;
+            background: #fffbeb; margin-bottom: .5rem;
+        }
     </style>
 </head>
 <body>
@@ -93,7 +115,6 @@
 <script src="/js/common.js"></script>
 <script src="/js/resident-common.js"></script>
 <script>
-    /* ─── Render layout skeleton theo userType ──────────────────── */
     const _ui = getUserInfo();
     if (!_ui) { window.location.href = '/login'; }
 
@@ -109,12 +130,10 @@
                 <div class="page-header mb-3">
                     <div>
                         <h4><i class="fas fa-user-circle text-primary me-2"></i>Thông tin cá nhân</h4>
-                        <nav aria-label="breadcrumb">
-                            <ol class="breadcrumb mb-0">
-                                <li class="breadcrumb-item"><a href="/resident">Trang chủ</a></li>
-                                <li class="breadcrumb-item active">Thông tin cá nhân</li>
-                            </ol>
-                        </nav>
+                        <nav aria-label="breadcrumb"><ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item"><a href="/resident">Trang chủ</a></li>
+                            <li class="breadcrumb-item active">Thông tin cá nhân</li>
+                        </ol></nav>
                     </div>
                 </div>
                 <div id="alertContainer"></div>
@@ -130,7 +149,7 @@
             <div class="text-center mb-4">
                 <i class="fas fa-building fa-2x mb-2 text-white-50"></i>
                 <div class="fw-bold">CondoCare</div>
-                <small class="text-white-50" id="sidebarUser">${_ui.fullName || ''}</small>
+                <small class="text-white-50">${_ui.fullName || ''}</small>
             </div>
             <ul class="nav flex-column gap-1 flex-grow-1">
                 <li><a href="/dashboard" class="nav-link text-white-50"><i class="fas fa-chart-bar me-2"></i>Tổng quan</a></li>
@@ -140,11 +159,9 @@
             <a href="#" id="logoutBtn" class="nav-link text-danger-emphasis"><i class="fas fa-sign-out-alt me-2"></i>Đăng xuất</a>
         </nav>
         <div class="resident-main">
-            <div class="d-flex align-items-center mb-4">
-                <div>
-                    <h4 class="fw-bold mb-0"><i class="fas fa-user-circle text-primary me-2"></i>Thông tin cá nhân</h4>
-                    <small class="text-muted">Xem và cập nhật thông tin tài khoản</small>
-                </div>
+            <div class="mb-4">
+                <h4 class="fw-bold mb-0"><i class="fas fa-user-circle text-primary me-2"></i>Thông tin cá nhân</h4>
+                <small class="text-muted">Xem và cập nhật thông tin tài khoản</small>
             </div>
             <div id="alertContainer"></div>
             <div id="profileContent"></div>
@@ -155,5 +172,248 @@
     }
 </script>
 <script src="/js/profile.js"></script>
+<script>
+    /* ══════════════════════════════════════════════════
+       OVERRIDE renderProfile để thêm thẻ từ ra vào
+       và tab đăng ký gửi xe cải tiến
+    ══════════════════════════════════════════════════ */
+    const _origRender = window.renderProfile;
+    window.renderProfile = function(p) {
+        _origRender(p);
+        // Sau khi render xong, inject thêm thẻ từ vào qi list nếu là resident
+        if (p.userType === 'resident') {
+            injectAccessCardInfo(p);
+            injectVehicleRegistration(p);
+        }
+    };
+
+    function injectAccessCardInfo(p) {
+        // Tìm quick-info container và thêm thẻ từ
+        const qiContainer = document.querySelector('.card-body.p-3');
+        if (!qiContainer) return;
+        const card = p.accessCard;
+        const cardHtml = card ? `
+            <div class="qi-item">
+                <div class="qi-label"><i class="fas fa-id-card me-1"></i>Thẻ ra vào</div>
+                <div class="qi-value">
+                    <div class="access-card-display mt-1">
+                        <div class="card-chip"></div>
+                        <div class="card-number-display">${card.cardNumber || '****  ****'}</div>
+                        <div class="d-flex justify-content-between mt-2">
+                            <div>
+                                <div class="card-label">Chủ thẻ</div>
+                                <div class="card-value small">${p.fullName || '—'}</div>
+                            </div>
+                            <div class="text-end">
+                                <div class="card-label">Hết hạn</div>
+                                <div class="card-value small">${card.expiredAt
+                                    ? new Date(card.expiredAt).toLocaleDateString('vi-VN')
+                                    : '—'}</div>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <span class="badge ${card.status==='ACTIVE'?'bg-success':card.status==='BLOCKED'?'bg-danger':'bg-warning text-dark'}">
+                                ${card.status==='ACTIVE'?'Đang kích hoạt':card.status==='BLOCKED'?'Đã khóa':'Báo mất'}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>` : `
+            <div class="qi-item">
+                <div class="qi-label"><i class="fas fa-id-card me-1"></i>Thẻ ra vào</div>
+                <div class="qi-value">
+                    <span class="text-muted small"><i class="fas fa-info-circle me-1"></i>Chưa được cấp thẻ</span>
+                    <div class="form-text text-muted" style="font-size:.72rem;">
+                        Liên hệ Ban quản lý để được cấp thẻ từ ra vào
+                    </div>
+                </div>
+            </div>`;
+        qiContainer.insertAdjacentHTML('beforeend', cardHtml);
+    }
+
+    function injectVehicleRegistration(p) {
+        // Override tab dịch vụ xe với UI đăng ký xe mới
+        const tabServices = document.getElementById('tabServices');
+        if (!tabServices) return;
+
+        const vehicles = p.vehicles || [];
+        const fees = (p.fees || []).filter(f => f.type === 'PARKING');
+
+        const VEHICLE_TYPES = [
+            { type: 'MOTORBIKE',    icon: '🏍️', name: 'Xe máy',      desc: fees.find(f=>f.vehicleType==='MOTORBIKE') },
+            { type: 'CAR',          icon: '🚗', name: 'Ô tô',         desc: fees.find(f=>f.vehicleType==='CAR') },
+            { type: 'ELECTRIC_BIKE',icon: '🛴', name: 'Xe điện/đạp',  desc: fees.find(f=>f.vehicleType==='ELECTRIC_BIKE') },
+        ];
+
+        const fmtVND = n => n ? new Intl.NumberFormat('vi-VN',{style:'currency',currency:'VND'}).format(n) : '—';
+
+        // Danh sách xe đang đăng ký
+        const activeVehicles = vehicles.filter(v => v.status === 'ACTIVE' || v.pendingStatus === 'PENDING');
+
+        const vehicleListHtml = activeVehicles.length ? `
+            <div class="sec-divider"><i class="fas fa-list me-1"></i>Xe đang đăng ký</div>
+            ${activeVehicles.map(v => {
+                const isPending = v.pendingStatus === 'PENDING';
+                return `
+                <div class="${isPending?'pending-vehicle-item':'card border-0 shadow-sm p-3 mb-2 rounded-3'}">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <span class="fw-semibold">${v.brand||''} ${v.model||''}</span>
+                            ${v.licensePlate?`<span class="badge bg-light text-dark border ms-2 font-monospace">${v.licensePlate}</span>`:''}
+                            <div class="text-muted small mt-1">
+                                ${v.type==='MOTORBIKE'?'Xe máy':v.type==='CAR'?'Ô tô':v.type==='ELECTRIC_BIKE'?'Xe điện':'Xe đạp'}
+                                · ${v.color||''} · ${v.durationType==='MONTHLY'?'Theo tháng':v.durationType==='QUARTERLY'?'Theo quý':'Theo năm'}
+                            </div>
+                            ${v.expiredAt?`<div class="text-muted small">Hết hạn: ${new Date(v.expiredAt).toLocaleDateString('vi-VN')}</div>`:''}
+                        </div>
+                        <span class="badge ${isPending?'bg-warning text-dark':'bg-success'}">
+                            ${isPending?'Chờ duyệt':'Đang hoạt động'}
+                        </span>
+                    </div>
+                </div>`;
+            }).join('')}` : '';
+
+        tabServices.innerHTML = `
+            <!-- Apt info banner -->
+            ${p.apartmentId ? `
+            <div style="background:linear-gradient(90deg,#eff6ff,#dbeafe);border-left:4px solid #3b82f6;border-radius:10px;padding:.75rem 1rem;display:flex;align-items:center;gap:.85rem;" class="mb-3">
+                <i class="fas fa-building fa-2x text-primary opacity-75"></i>
+                <div>
+                    <div class="fw-bold">${p.apartmentNumber||p.apartmentId}
+                        ${p.buildingName?`<span class="text-muted fw-normal small">— ${p.buildingName}</span>`:''}
+                    </div>
+                    ${p.apartmentArea?`<div class="small text-muted">${p.apartmentArea} m²</div>`:''}
+                </div>
+            </div>` : ''}
+
+            ${vehicleListHtml}
+
+            <!-- Đăng ký xe mới -->
+            <div class="sec-divider mt-2"><i class="fas fa-plus me-1"></i>Đăng ký gửi xe mới</div>
+            <p class="text-muted small mb-3">Chọn loại xe muốn đăng ký và điền thông tin. Yêu cầu sẽ chờ Ban quản lý duyệt.</p>
+
+            <form id="vehicleRegForm">
+                <div class="row g-3 mb-3">
+                    ${VEHICLE_TYPES.map(vt => {
+                        const fee = vt.desc;
+                        return `
+                        <div class="col-4">
+                            <div class="vehicle-reg-card" onclick="selectVehicleType(this,'${vt.type}')">
+                                <i class="fas fa-check-circle check-icon"></i>
+                                <div class="text-center">
+                                    <div class="veh-icon">${vt.icon}</div>
+                                    <div class="veh-name">${vt.name}</div>
+                                    <div class="veh-price">${fee?fmtVND(fee.amount)+'/tháng':'Liên hệ BQL'}</div>
+                                </div>
+                            </div>
+                        </div>`;
+                    }).join('')}
+                </div>
+                <input type="hidden" id="selectedVehicleType" value="">
+
+                <!-- Form chi tiết -->
+                <div id="vehicleFormDetail" class="d-none">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Biển số xe</label>
+                            <input type="text" class="form-control" id="vehLicensePlate"
+                                   placeholder="VD: 29B1-12345 (để trống nếu xe đạp)">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Hãng xe</label>
+                            <input type="text" class="form-control" id="vehBrand" placeholder="Honda, Toyota...">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Model / Dòng xe</label>
+                            <input type="text" class="form-control" id="vehModel" placeholder="Wave, Fortuner...">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Màu xe</label>
+                            <input type="text" class="form-control" id="vehColor" placeholder="Đen, Trắng...">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Thời hạn đăng ký</label>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="durationType" id="durMonthly" value="MONTHLY" checked>
+                                <label class="btn btn-outline-primary" for="durMonthly">Theo tháng</label>
+                                <input type="radio" class="btn-check" name="durationType" id="durQuarterly" value="QUARTERLY">
+                                <label class="btn btn-outline-primary" for="durQuarterly">Theo quý</label>
+                                <input type="radio" class="btn-check" name="durationType" id="durYearly" value="YEARLY">
+                                <label class="btn btn-outline-primary" for="durYearly">Theo năm</label>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <button type="button" class="btn btn-primary px-4" onclick="submitVehicleReg()">
+                                <i class="fas fa-paper-plane me-1"></i>Gửi đăng ký gửi xe
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary ms-2" onclick="cancelVehicleForm()">
+                                Hủy
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Phí dịch vụ cố định -->
+            ${(p.fees||[]).filter(f=>f.type!=='PARKING').length ? `
+            <div class="sec-divider mt-3"><i class="fas fa-building me-1"></i>Phí dịch vụ cố định</div>
+            <div class="small text-muted mb-2">Các khoản phí bắt buộc áp dụng cho căn hộ của bạn mỗi tháng:</div>
+            ${(p.fees||[]).filter(f=>f.type!=='PARKING').map(f => `
+            <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                <div>
+                    <div class="fw-semibold small">${f.name}</div>
+                    <div class="text-muted" style="font-size:.75rem;">
+                        ${f.unit==='PER_M2'?`${fmtVND(f.amount)} × ${p.apartmentArea||0} m²`:
+                          f.unit==='PER_APT'?'Theo căn hộ':'Cố định'}
+                    </div>
+                </div>
+                <span class="badge bg-success-subtle text-success border border-success-subtle">${fmtVND(f.totalAmount||f.amount)}/tháng</span>
+            </div>`).join('')}` : ''}
+        `;
+    }
+
+    function selectVehicleType(card, type) {
+        document.querySelectorAll('.vehicle-reg-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        document.getElementById('selectedVehicleType').value = type;
+        document.getElementById('vehicleFormDetail').classList.remove('d-none');
+    }
+
+    function cancelVehicleForm() {
+        document.querySelectorAll('.vehicle-reg-card').forEach(c => c.classList.remove('selected'));
+        document.getElementById('selectedVehicleType').value = '';
+        document.getElementById('vehicleFormDetail').classList.add('d-none');
+    }
+
+    async function submitVehicleReg() {
+        const type = document.getElementById('selectedVehicleType').value;
+        if (!type) {
+            showAlert('Vui lòng chọn loại xe', 'warning'); return;
+        }
+        const durationType = document.querySelector('input[name="durationType"]:checked').value;
+        const payload = {
+            type,
+            licensePlate: document.getElementById('vehLicensePlate').value.trim() || null,
+            brand:        document.getElementById('vehBrand').value.trim() || null,
+            model:        document.getElementById('vehModel').value.trim() || null,
+            color:        document.getElementById('vehColor').value.trim() || null,
+            durationType,
+        };
+
+        showLoading();
+        try {
+            const res = await apiRequest(`${API_BASE_URL}/resident/vehicles`, {
+                method: 'POST', body: JSON.stringify(payload)
+            });
+            const msg = await res.text();
+            if (!res.ok) { showAlert('Lỗi: ' + msg, 'danger'); return; }
+            showAlert('✅ Gửi đăng ký thành công! Ban quản lý sẽ xem xét và duyệt.', 'success');
+            cancelVehicleForm();
+            loadProfile(); // reload lại
+        } catch(err) {
+            showAlert('Lỗi kết nối: ' + err.message);
+        } finally { hideLoading(); }
+    }
+</script>
 </body>
 </html>

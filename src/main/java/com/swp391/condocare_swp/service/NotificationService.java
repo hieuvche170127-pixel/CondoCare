@@ -9,7 +9,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * NotificationService — Luồng quản lý thông báo.
@@ -29,6 +31,7 @@ import java.util.*;
 public class NotificationService {
 
     private static final Logger logger = LoggerFactory.getLogger(NotificationService.class);
+    private static final AtomicLong counter = new AtomicLong(0);
 
     @Autowired private NotificationRepository notifRepo;
     @Autowired private ResidentsRepository    residentsRepo;
@@ -353,6 +356,10 @@ public class NotificationService {
     }
 
     private String generateId() {
-        return "NTF" + System.currentTimeMillis() + (int) (Math.random() * 1000);
+        String prefix = "NTF" + LocalDate.now().getYear()
+                + String.format("%02d", LocalDate.now().getMonthValue());
+
+        long seq = counter.incrementAndGet() % 10000;   // 0000 → 9999
+        return prefix + String.format("%04d", seq);
     }
 }

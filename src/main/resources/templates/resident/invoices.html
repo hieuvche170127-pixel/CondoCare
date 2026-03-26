@@ -9,22 +9,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/resident.css">
-
 </head>
 <body>
 <div id="loading" class="loading"><div class="spinner"></div></div>
 
 <div class="resident-wrapper">
-    <!-- Sidebar inject bởi renderResidentSidebar() -->
     <nav class="resident-sidebar" id="residentSidebar"></nav>
-
-    <button class="mobile-toggle" id="mobileToggle">
-        <i class="fas fa-bars"></i>
-    </button>
+    <button class="mobile-toggle" id="mobileToggle"><i class="fas fa-bars"></i></button>
 
     <main class="resident-main">
-
-        <!-- Page header -->
         <div class="page-header">
             <div>
                 <h4><i class="fas fa-file-invoice-dollar"></i> Hóa đơn của tôi</h4>
@@ -35,6 +28,14 @@
                     </ol>
                 </nav>
             </div>
+        </div>
+
+        <!-- Ghi chú mô hình B -->
+        <div class="alert alert-info alert-dismissible fade show py-2 mb-3" role="alert">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Lưu ý:</strong> Tiền điện và nước được <strong>EVN thu trực tiếp</strong>.
+            Hóa đơn này chỉ gồm <strong>phí dịch vụ quản lý</strong> và <strong>phí gửi xe</strong>.
+            <button type="button" class="btn-close py-2" data-bs-dismiss="alert"></button>
         </div>
 
         <div id="alertContainer"></div>
@@ -117,17 +118,19 @@
             </div>
         </div>
 
-        <!-- Table -->
+        <!-- Table — chỉ phí dịch vụ + phí xe (mô hình B) -->
         <div class="content-card p-0">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                     <tr>
                         <th class="ps-3">Kỳ</th>
-                        <th class="text-end">Tiền điện</th>
-                        <th class="text-end">Tiền nước</th>
-                        <th class="text-end">Dịch vụ</th>
-                        <th class="text-end">Phí xe</th>
+                        <th class="text-end">
+                            <i class="fas fa-building text-secondary me-1"></i>Phí dịch vụ
+                        </th>
+                        <th class="text-end">
+                            <i class="fas fa-parking text-secondary me-1"></i>Phí gửi xe
+                        </th>
                         <th class="text-end fw-bold">Tổng cộng</th>
                         <th>Trạng thái</th>
                         <th>Hạn TT</th>
@@ -135,19 +138,17 @@
                     </tr>
                     </thead>
                     <tbody id="invoiceTableBody">
-                    <tr><td colspan="9" class="text-center py-4 text-muted">
+                    <tr><td colspan="7" class="text-center py-4 text-muted">
                         <i class="fas fa-spinner fa-spin me-2"></i>Đang tải...
                     </td></tr>
                     </tbody>
                 </table>
             </div>
-            <!-- Pagination footer -->
             <div class="d-flex align-items-center justify-content-between px-3 py-2 border-top bg-light">
                 <small class="text-muted" id="pageInfo"></small>
                 <div id="paginationContainer"></div>
             </div>
         </div>
-
     </main>
 </div>
 
@@ -169,7 +170,7 @@
     </div>
 </div>
 
-<!-- ══ Modal MoMo Payment (REAL INTEGRATION) ══════════════════ -->
+<!-- Modal MoMo Payment -->
 <div class="modal fade" id="momoModal" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content overflow-hidden">
@@ -186,59 +187,43 @@
                         data-bs-dismiss="modal" onclick="momoCancelPolling()"></button>
             </div>
 
-            <!-- Loading khi đang gọi API tạo payment -->
             <div id="momoLoading" class="text-center py-5">
                 <div class="spinner-border mb-3" style="color:#ae2070;"></div>
                 <p class="text-muted">Đang kết nối MoMo...</p>
             </div>
 
-            <!-- Lỗi -->
             <div id="momoError" class="d-none text-center py-4 px-4">
-                <div class="text-danger mb-3" style="font-size:3rem;">
-                    <i class="fas fa-exclamation-circle"></i>
-                </div>
+                <div class="text-danger mb-3" style="font-size:3rem;"><i class="fas fa-exclamation-circle"></i></div>
                 <p class="fw-semibold mb-1">Không thể tạo thanh toán</p>
                 <p class="text-muted small" id="momoErrorMsg"></p>
                 <button class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal"
                         onclick="momoCancelPolling()">Đóng</button>
             </div>
 
-            <!-- Nội dung chính sau khi tạo payment thành công -->
             <div id="momoContent" class="d-none">
                 <div class="modal-body pt-3">
-
-                    <!-- Invoice info banner -->
                     <div class="rounded-3 p-3 mb-3 text-center"
                          style="background:linear-gradient(135deg,#fce4ec,#fff0f5);">
                         <div class="text-muted small" id="momoInvoiceLabel"></div>
                         <div class="fw-bold fs-4" style="color:#ae2070;" id="momoAmountDisplay"></div>
                     </div>
-
-                    <!-- Tab: QR / Deeplink -->
-                    <ul class="nav nav-pills nav-fill mb-3" id="momoTabs">
+                    <ul class="nav nav-pills nav-fill mb-3">
                         <li class="nav-item">
-                            <button class="nav-link active" id="tabQrBtn"
-                                    onclick="momoSwitchTab('qr')">
+                            <button class="nav-link active" id="tabQrBtn" onclick="momoSwitchTab('qr')">
                                 <i class="fas fa-qrcode me-1"></i>Quét QR
                             </button>
                         </li>
                         <li class="nav-item">
-                            <button class="nav-link" id="tabLinkBtn"
-                                    onclick="momoSwitchTab('link')">
+                            <button class="nav-link" id="tabLinkBtn" onclick="momoSwitchTab('link')">
                                 <i class="fas fa-mobile-alt me-1"></i>Mở App / Web
                             </button>
                         </li>
                     </ul>
-
-                    <!-- Tab QR -->
                     <div id="tabQr" class="text-center">
-                        <p class="text-muted small mb-2">
-                            Mở <strong>app MoMo</strong> → Quét mã QR bên dưới
-                        </p>
+                        <p class="text-muted small mb-2">Mở <strong>app MoMo</strong> → Quét mã QR bên dưới</p>
                         <div class="d-flex justify-content-center mb-2">
                             <div class="border rounded-3 p-2 shadow-sm" style="background:#fff;">
-                                <img id="momoQrImg" src="" alt="MoMo QR"
-                                     width="200" height="200" style="display:block;border-radius:4px;">
+                                <img id="momoQrImg" src="" alt="MoMo QR" width="200" height="200" style="display:block;border-radius:4px;">
                             </div>
                         </div>
                         <p class="text-muted" style="font-size:11px;">
@@ -246,8 +231,6 @@
                             Mã QR hết hạn sau <span id="momoCountdown" class="fw-bold text-danger">15:00</span>
                         </p>
                     </div>
-
-                    <!-- Tab Link/Deeplink -->
                     <div id="tabLink" class="d-none">
                         <div class="d-grid gap-2">
                             <a id="momoDeeplinkBtn" href="#" target="_blank"
@@ -261,39 +244,26 @@
                                 <i class="fas fa-globe me-2"></i>Thanh toán qua trình duyệt
                             </a>
                         </div>
-                        <p class="text-muted small text-center mt-3">
-                            Sau khi thanh toán, quay lại trang này để xem kết quả.
-                        </p>
+                        <p class="text-muted small text-center mt-3">Sau khi thanh toán, quay lại trang này để xem kết quả.</p>
                     </div>
-
-                    <!-- Trạng thái polling -->
-                    <div class="d-flex align-items-center gap-2 mt-3 p-2 rounded"
-                         style="background:#f8f9fa;">
+                    <div class="d-flex align-items-center gap-2 mt-3 p-2 rounded" style="background:#f8f9fa;">
                         <div class="spinner-border spinner-border-sm text-secondary" id="momoPollingSpinner"></div>
-                        <small class="text-muted" id="momoPollingStatus">
-                            Đang chờ xác nhận thanh toán...
-                        </small>
+                        <small class="text-muted" id="momoPollingStatus">Đang chờ xác nhận thanh toán...</small>
                     </div>
                 </div>
                 <div class="modal-footer border-0 pt-0">
                     <button class="btn btn-outline-secondary btn-sm"
-                            data-bs-dismiss="modal" onclick="momoCancelPolling()">
-                        Hủy
-                    </button>
+                            data-bs-dismiss="modal" onclick="momoCancelPolling()">Hủy</button>
                 </div>
             </div>
 
-            <!-- Thành công -->
             <div id="momoSuccess" class="d-none text-center py-5 px-4">
-                <div class="mb-3 animate__animated animate__bounceIn"
-                     style="color:#ae2070;font-size:4rem;">
+                <div class="mb-3" style="color:#ae2070;font-size:4rem;">
                     <i class="fas fa-check-circle"></i>
                 </div>
                 <h5 class="fw-bold mb-1">Thanh toán thành công!</h5>
-                <p class="text-muted small mb-0">Hóa đơn đã được cập nhật trạng thái
-                    <strong>Đã thanh toán</strong>.</p>
+                <p class="text-muted small mb-0">Hóa đơn đã được cập nhật trạng thái <strong>Đã thanh toán</strong>.</p>
             </div>
-
         </div>
     </div>
 </div>
@@ -302,10 +272,8 @@
 <script src="/js/common.js"></script>
 <script src="/js/resident-common.js"></script>
 <script>
-    // ── Khởi tạo ──────────────────────────────────────────────
     requireResidentLogin();
     renderResidentSidebar('invoices');
-
     document.getElementById('mobileToggle').addEventListener('click', () =>
         document.getElementById('residentSidebar').classList.toggle('open'));
 
@@ -313,24 +281,21 @@
     const fMonth = document.getElementById('filterMonth');
     for (let m = 1; m <= 12; m++) {
         const o = document.createElement('option');
-        o.value = m;
-        o.textContent = 'Tháng ' + m;
+        o.value = m; o.textContent = 'Tháng ' + m;
         fMonth.appendChild(o);
     }
 
-    // ── Pagination state ───────────────────────────────────────
-    const PAGE_SIZE = 5;
-    let _allInvoices = [];   // toàn bộ list sau filter
+    // ── Pagination state ──────────────────────────────────────
+    const PAGE_SIZE = 8;
+    let _allInvoices = [];
     let _currentPage = 0;
 
-    // ── Load danh sách ─────────────────────────────────────────
+    // ── Load ──────────────────────────────────────────────────
     async function loadInvoices(page = 0) {
         _currentPage = page;
         const status = document.getElementById('filterStatus').value;
         const month  = document.getElementById('filterMonth').value;
         const year   = document.getElementById('filterYear').value;
-
-        // Nếu chọn tháng mà chưa chọn năm → tự dùng năm hiện tại
         const resolvedYear = year || (month ? String(new Date().getFullYear()) : '');
 
         const params = new URLSearchParams({ filterType: 'all' });
@@ -345,73 +310,55 @@
         }
 
         const tbody = document.getElementById('invoiceTableBody');
-        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-muted">
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">
             <i class="fas fa-spinner fa-spin me-2"></i>Đang tải...</td></tr>`;
-
         showLoading();
         try {
-            const res  = await apiRequest(`${API_BASE_URL}/resident/invoices?${params}`);
+            const res = await apiRequest(`${API_BASE_URL}/resident/invoices?${params}`);
             if (!res.ok) throw new Error(await res.text());
             _allInvoices = await res.json();
             updateStats(_allInvoices);
             renderPage(_currentPage);
         } catch(e) {
-            tbody.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-4">
-                <i class="fas fa-exclamation-circle me-2"></i>Không thể tải dữ liệu: ${e.message}
-            </td></tr>`;
-            showResidentAlert('alertContainer', 'Không thể tải hóa đơn: ' + e.message);
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-4">
+                <i class="fas fa-exclamation-circle me-2"></i>${e.message}</td></tr>`;
         } finally { hideLoading(); }
     }
 
-    // ── Phân trang frontend ────────────────────────────────────
     function renderPage(page) {
         _currentPage = page;
         const total      = _allInvoices.length;
         const totalPages = Math.ceil(total / PAGE_SIZE);
         const start      = page * PAGE_SIZE;
         const end        = Math.min(start + PAGE_SIZE, total);
-        const pageItems  = _allInvoices.slice(start, end);
-
-        renderTable(pageItems);
-
-        // Info text
+        renderTable(_allInvoices.slice(start, end));
         document.getElementById('pageInfo').textContent =
-            total === 0 ? '' : `Hiển thị ${start + 1}–${end} / ${total} hóa đơn`;
-
-        // Pagination buttons
+            total === 0 ? '' : `Hiển thị ${start+1}–${end} / ${total} hóa đơn`;
         renderPaginationUI(page, totalPages);
     }
 
     function renderPaginationUI(cur, total) {
         const el = document.getElementById('paginationContainer');
         if (total <= 1) { el.innerHTML = ''; return; }
-
         const pages = [];
-        for (let i = Math.max(0, cur - 2); i <= Math.min(total - 1, cur + 2); i++) pages.push(i);
-
-        el.innerHTML = `
-            <nav><ul class="pagination pagination-sm mb-0">
-                <li class="page-item ${cur === 0 ? 'disabled' : ''}">
-                    <a class="page-link" href="#" onclick="renderPage(${cur-1});return false">‹</a>
-                </li>
-                ${pages.map(i => `
-                <li class="page-item ${i === cur ? 'active' : ''}">
-                    <a class="page-link" href="#" onclick="renderPage(${i});return false">${i + 1}</a>
-                </li>`).join('')}
-                <li class="page-item ${cur === total - 1 ? 'disabled' : ''}">
-                    <a class="page-link" href="#" onclick="renderPage(${cur+1});return false">›</a>
-                </li>
-            </ul></nav>`;
+        for (let i = Math.max(0, cur-2); i <= Math.min(total-1, cur+2); i++) pages.push(i);
+        el.innerHTML = `<nav><ul class="pagination pagination-sm mb-0">
+            <li class="page-item ${cur===0?'disabled':''}">
+                <a class="page-link" href="#" onclick="renderPage(${cur-1});return false">‹</a></li>
+            ${pages.map(i => `<li class="page-item ${i===cur?'active':''}">
+                <a class="page-link" href="#" onclick="renderPage(${i});return false">${i+1}</a></li>`).join('')}
+            <li class="page-item ${cur===total-1?'disabled':''}">
+                <a class="page-link" href="#" onclick="renderPage(${cur+1});return false">›</a></li>
+        </ul></nav>`;
     }
 
-    // ── Render bảng ────────────────────────────────────────────
+    // ── Render bảng — chỉ SERVICE + PARKING (không có điện/nước) ──
     function renderTable(list) {
         const tbody = document.getElementById('invoiceTableBody');
         if (!list || !list.length) {
-            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-muted">
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-5 text-muted">
                 <i class="fas fa-file-invoice fa-2x mb-2 d-block opacity-25"></i>
-                Không có hóa đơn nào
-            </td></tr>`;
+                Không có hóa đơn nào</td></tr>`;
             return;
         }
 
@@ -421,63 +368,58 @@
         tbody.innerHTML = list.map(inv => {
             const isOverdue = inv.status === 'OVERDUE';
             const isUnpaid  = inv.status === 'UNPAID';
-            // Escape JSON for onclick attribute
-            const invJson = JSON.stringify(inv).replace(/'/g, "\\'");
+            // serviceAmount: tổng các khoản SERVICE, parkingAmount: tổng PARKING
+            const svcAmt  = inv.serviceAmount  ?? inv.serviceAmt  ?? 0;
+            const pkgAmt  = inv.parkingAmount  ?? inv.parkingAmt  ?? 0;
+            const total   = inv.totalAmount    ?? inv.totalAmt    ?? 0;
             return `
-            <tr class="${isOverdue ? 'table-danger' : ''}">
+            <tr class="${isOverdue?'table-danger':''}">
                 <td class="ps-3">
                     <div class="fw-semibold">Tháng ${inv.month}/${inv.year}</div>
                     <small class="text-muted font-monospace">${inv.id}</small>
                 </td>
-                <td class="text-end">${fmtVND(inv.electricAmount ?? inv.electricAmt)}</td>
-                <td class="text-end">${fmtVND(inv.waterAmount    ?? inv.waterAmt)}</td>
-                <td class="text-end">${fmtVND(inv.serviceAmount  ?? inv.serviceAmt)}</td>
-                <td class="text-end">${fmtVND(inv.parkingAmount  ?? inv.parkingAmt)}</td>
-                <td class="text-end fw-bold ${isOverdue ? 'text-danger' : 'text-primary'}">
-                    ${fmtVND(inv.totalAmount ?? inv.totalAmt)}
+                <td class="text-end">${fmtVND(svcAmt)}</td>
+                <td class="text-end">${fmtVND(pkgAmt)}</td>
+                <td class="text-end fw-bold ${isOverdue?'text-danger':'text-primary'}">
+                    ${fmtVND(total)}
                 </td>
                 <td>
-                    <span class="badge ${statusCls[inv.status] || 'bg-secondary'}">
-                        ${statusLabel[inv.status] || inv.status}
+                    <span class="badge ${statusCls[inv.status]||'bg-secondary'}">
+                        ${statusLabel[inv.status]||inv.status}
                     </span>
                 </td>
                 <td>
-                    <small class="${isOverdue ? 'text-danger fw-semibold' : ''}">${inv.dueDate || '—'}</small>
-                    ${isOverdue ? '<br><small class="text-danger"><i class="fas fa-exclamation-triangle"></i> Quá hạn!</small>' : ''}
+                    <small class="${isOverdue?'text-danger fw-semibold':''}">${inv.dueDate||'—'}</small>
+                    ${isOverdue?'<br><small class="text-danger"><i class="fas fa-exclamation-triangle"></i> Quá hạn!</small>':''}
                 </td>
                 <td>
                     <div class="d-flex gap-1">
                         <button class="btn btn-sm btn-outline-info"
-                                onclick="openDetail(invoiceMap['${inv.id}'])"
-                                title="Xem chi tiết">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                        ${(isUnpaid || isOverdue) ? `
+                                onclick="openDetail(window.invoiceMap['${inv.id}'])"
+                                title="Xem chi tiết"><i class="fas fa-eye"></i></button>
+                        ${(isUnpaid||isOverdue)?`
                         <button class="btn btn-sm"
                                 style="background:#ae2070;color:#fff;border:none;"
                                 onclick="openMoMo('${inv.id}')"
                                 title="Thanh toán MoMo">
                             <i class="fas fa-mobile-alt"></i> MoMo
-                        </button>` : ''}
+                        </button>`:''}
                     </div>
                 </td>
             </tr>`;
         }).join('');
 
-        // Lưu map để dùng trong onclick (tránh escape JSON phức tạp)
         window.invoiceMap = {};
         list.forEach(inv => window.invoiceMap[inv.id] = inv);
     }
 
-    // ── Stat cards ─────────────────────────────────────────────
     function updateStats(list) {
         document.getElementById('statTotal').textContent   = list.length;
-        document.getElementById('statUnpaid').textContent  = list.filter(i => i.status === 'UNPAID').length;
-        document.getElementById('statPaid').textContent    = list.filter(i => i.status === 'PAID').length;
-        document.getElementById('statOverdue').textContent = list.filter(i => i.status === 'OVERDUE').length;
+        document.getElementById('statUnpaid').textContent  = list.filter(i=>i.status==='UNPAID').length;
+        document.getElementById('statPaid').textContent    = list.filter(i=>i.status==='PAID').length;
+        document.getElementById('statOverdue').textContent = list.filter(i=>i.status==='OVERDUE').length;
     }
 
-    // ── Reset filter ───────────────────────────────────────────
     function resetFilter() {
         document.getElementById('filterStatus').value = 'all';
         document.getElementById('filterMonth').value  = '';
@@ -485,17 +427,48 @@
         loadInvoices(0);
     }
 
-    // ── Modal chi tiết ─────────────────────────────────────────
+    // ── Modal chi tiết — hiển thị các dòng phí từ invoice_fee_detail ──
     function openDetail(inv) {
         if (!inv) return;
         const statusCls   = { UNPAID:'bg-warning text-dark', PAID:'bg-success', OVERDUE:'bg-danger' };
         const statusLabel = { UNPAID:'Chưa thanh toán', PAID:'Đã thanh toán', OVERDUE:'Quá hạn' };
+        const svcAmt = inv.serviceAmount ?? inv.serviceAmt ?? 0;
+        const pkgAmt = inv.parkingAmount ?? inv.parkingAmt ?? 0;
+        const total  = inv.totalAmount   ?? inv.totalAmt   ?? 0;
 
-        const elAmt = inv.electricAmount ?? inv.electricAmt ?? 0;
-        const waAmt = inv.waterAmount    ?? inv.waterAmt    ?? 0;
-        const svAmt = inv.serviceAmount  ?? inv.serviceAmt  ?? 0;
-        const pkAmt = inv.parkingAmount  ?? inv.parkingAmt  ?? 0;
-        const total = inv.totalAmount    ?? inv.totalAmt    ?? 0;
+        // Render fee details nếu backend trả về
+        const feeDetails = inv.feeDetails || inv.details || [];
+        const detailRows = feeDetails.length ? `
+            <div class="col-12">
+                <div class="fw-semibold small mb-2 text-muted">
+                    <i class="fas fa-list me-1"></i>Chi tiết các khoản phí
+                </div>
+                <table class="table table-sm table-bordered mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Tên khoản phí</th>
+                            <th class="text-center">Loại</th>
+                            <th class="text-end">Đơn giá</th>
+                            <th class="text-end">SL</th>
+                            <th class="text-end">Thành tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${feeDetails.map(d => `
+                        <tr>
+                            <td>${d.feeName||'—'}</td>
+                            <td class="text-center">
+                                <span class="badge ${d.feeType==='PARKING'?'bg-primary':'bg-secondary'} bg-opacity-75">
+                                    ${d.feeType==='PARKING'?'Gửi xe':'Dịch vụ'}
+                                </span>
+                            </td>
+                            <td class="text-end">${fmtVND(d.unitAmount)}</td>
+                            <td class="text-end">${d.quantity??1}</td>
+                            <td class="text-end fw-semibold">${fmtVND(d.amount)}</td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>
+            </div>` : '';
 
         document.getElementById('detailBody').innerHTML = `
             <div class="row g-3">
@@ -505,9 +478,8 @@
                 </div>
                 <div class="col-6">
                     <label class="text-muted small">Trạng thái</label>
-                    <div><span class="badge ${statusCls[inv.status] || 'bg-secondary'}">
-                        ${statusLabel[inv.status] || inv.status}
-                    </span></div>
+                    <div><span class="badge ${statusCls[inv.status]||'bg-secondary'}">
+                        ${statusLabel[inv.status]||inv.status}</span></div>
                 </div>
                 <div class="col-6">
                     <label class="text-muted small">Kỳ hóa đơn</label>
@@ -515,38 +487,29 @@
                 </div>
                 <div class="col-6">
                     <label class="text-muted small">Hạn thanh toán</label>
-                    <div class="${inv.status === 'OVERDUE' ? 'text-danger fw-semibold' : ''}">${inv.dueDate || '—'}</div>
+                    <div class="${inv.status==='OVERDUE'?'text-danger fw-semibold':''}">${inv.dueDate||'—'}</div>
                 </div>
                 <div class="col-12"><hr class="my-1"></div>
 
-                <div class="col-6 col-md-3">
-                    <div class="border rounded p-2 text-center">
-                        <div class="text-warning mb-1"><i class="fas fa-bolt fa-lg"></i></div>
-                        <div class="text-muted small">Tiền điện</div>
-                        <div class="fw-semibold">${fmtVND(elAmt)}</div>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="border rounded p-2 text-center">
-                        <div class="text-info mb-1"><i class="fas fa-tint fa-lg"></i></div>
-                        <div class="text-muted small">Tiền nước</div>
-                        <div class="fw-semibold">${fmtVND(waAmt)}</div>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="border rounded p-2 text-center">
+                <!-- Chỉ 2 nhóm phí theo mô hình B -->
+                <div class="col-6">
+                    <div class="border rounded p-3 text-center h-100">
                         <div class="text-secondary mb-1"><i class="fas fa-building fa-lg"></i></div>
-                        <div class="text-muted small">Phí quản lý</div>
-                        <div class="fw-semibold">${fmtVND(svAmt)}</div>
+                        <div class="text-muted small mb-1">Phí dịch vụ quản lý</div>
+                        <div class="fw-semibold">${fmtVND(svcAmt)}</div>
+                        <div class="text-muted" style="font-size:.7rem;">Vệ sinh, bảo trì, quản lý chung cư</div>
                     </div>
                 </div>
-                <div class="col-6 col-md-3">
-                    <div class="border rounded p-2 text-center">
-                        <div class="text-secondary mb-1"><i class="fas fa-parking fa-lg"></i></div>
-                        <div class="text-muted small">Phí xe</div>
-                        <div class="fw-semibold">${fmtVND(pkAmt)}</div>
+                <div class="col-6">
+                    <div class="border rounded p-3 text-center h-100">
+                        <div class="text-primary mb-1"><i class="fas fa-parking fa-lg"></i></div>
+                        <div class="text-muted small mb-1">Phí gửi xe</div>
+                        <div class="fw-semibold">${fmtVND(pkgAmt)}</div>
+                        <div class="text-muted" style="font-size:.7rem;">Xe máy, ô tô, xe điện</div>
                     </div>
                 </div>
+
+                ${detailRows}
 
                 <div class="col-12">
                     <div class="bg-primary bg-opacity-10 rounded p-3 text-center">
@@ -555,16 +518,25 @@
                     </div>
                 </div>
 
-                ${inv.paidAt ? `
+                <div class="col-12">
+                    <div class="alert alert-light py-2 mb-0 border">
+                        <small class="text-muted">
+                            <i class="fas fa-bolt me-1 text-warning"></i>Tiền điện &
+                            <i class="fas fa-tint me-1 text-info"></i>Tiền nước không có trong hóa đơn này.
+                            Hai khoản trên do <strong>EVN thu trực tiếp</strong>.
+                        </small>
+                    </div>
+                </div>
+
+                ${inv.paidAt?`
                 <div class="col-12">
                     <div class="alert alert-success py-2 mb-0">
                         <i class="fas fa-check-circle me-2"></i>
                         Đã thanh toán lúc <strong>${new Date(inv.paidAt).toLocaleString('vi-VN')}</strong>
                     </div>
-                </div>` : ''}
-
+                </div>`:''}
                 <div class="col-12">
-                    <small class="text-muted">Người tạo: ${inv.createdBy || 'Ban quản lý'}</small>
+                    <small class="text-muted">Người tạo: ${inv.createdBy||'Ban quản lý'}</small>
                 </div>
             </div>`;
 
@@ -575,58 +547,31 @@
                 <button class="btn btn-sm me-2" style="background:#ae2070;color:#fff;"
                         onclick="openMoMo('${inv.id}', true)">
                     <i class="fas fa-mobile-alt me-1"></i>Thanh toán MoMo
-                </button>
-                <button class="btn btn-success btn-sm me-2" onclick="markPaid('${inv.id}', true)">
-                    <i class="fas fa-check me-1"></i>Đánh dấu đã TT
                 </button>`;
         }
         footer.innerHTML += '<button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Đóng</button>';
-
         new bootstrap.Modal(document.getElementById('detailModal')).show();
     }
 
-    // ── Thanh toán ─────────────────────────────────────────────
-    async function markPaid(id, fromDetail = false) {
-        if (!confirm('Xác nhận thanh toán hóa đơn này?')) return;
-        showLoading();
-        try {
-            const res = await apiRequest(`${API_BASE_URL}/resident/invoices/${id}/pay`, { method: 'PUT' });
-            if (!res.ok) { showResidentAlert('alertContainer', await res.text()); return; }
-            if (fromDetail) bootstrap.Modal.getInstance(document.getElementById('detailModal'))?.hide();
-            showResidentAlert('alertContainer', 'Thanh toán thành công!', 'success');
-            loadInvoices(_currentPage);
-        } catch(e) {
-            showResidentAlert('alertContainer', 'Lỗi: ' + e.message);
-        } finally { hideLoading(); }
-    }
-
-    // ── Helper format tiền ────────────────────────────────────
+    // ── Helpers ───────────────────────────────────────────────
     function fmtVND(amount) {
-        if (amount == null || amount === 0) return '<span class="text-muted">—</span>';
-        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+        if (!amount || amount === 0) return '<span class="text-muted">—</span>';
+        return new Intl.NumberFormat('vi-VN', { style:'currency', currency:'VND' }).format(amount);
     }
 
-    // ══ MoMo Payment — REAL INTEGRATION ══════════════════════
-    let _momoInvoiceId    = null;
-    let _momoFromDetail   = false;
-    let _momoPollingTimer = null;
-    let _momoCountdownTimer = null;
-    const MOMO_TIMEOUT_SEC = 15 * 60; // 15 phút
+    // ══ MoMo Payment ══════════════════════════════════════════
+    let _momoInvoiceId = null, _momoPollingTimer = null, _momoCountdownTimer = null;
+    const MOMO_TIMEOUT_SEC = 15 * 60;
 
     async function openMoMo(invoiceId, fromDetail = false) {
-        _momoInvoiceId  = invoiceId;
-        _momoFromDetail = fromDetail;
-
-        // Reset modal về trạng thái loading
+        _momoInvoiceId = invoiceId;
         document.getElementById('momoLoading').classList.remove('d-none');
         document.getElementById('momoError').classList.add('d-none');
         document.getElementById('momoContent').classList.add('d-none');
         document.getElementById('momoSuccess').classList.add('d-none');
 
-        // Đóng detail modal nếu đang mở
         const detailModal = bootstrap.Modal.getInstance(document.getElementById('detailModal'));
         if (detailModal && fromDetail) detailModal.hide();
-
         const delay = detailModal && fromDetail ? 320 : 0;
         setTimeout(async () => {
             new bootstrap.Modal(document.getElementById('momoModal')).show();
@@ -637,54 +582,27 @@
     async function momoCallCreatePayment(invoiceId) {
         try {
             const res = await apiRequest(`${API_BASE_URL}/momo/create-payment`, {
-                method: 'POST',
-                body: JSON.stringify({ invoiceId })
+                method: 'POST', body: JSON.stringify({ invoiceId })
             });
-
-            if (!res.ok) {
-                const errMsg = await res.text();
-                momoShowError(errMsg || 'Không thể tạo thanh toán MoMo');
-                return;
-            }
-
+            if (!res.ok) { momoShowError(await res.text()); return; }
             const data = await res.json();
-            // data = { payUrl, qrCodeUrl, deeplink, shortLink, orderId, amount }
-
-            // Điền thông tin vào modal
-            const inv   = _allInvoices.find(i => i.id === invoiceId);
+            const inv  = _allInvoices.find(i => i.id === invoiceId);
             const total = inv ? (inv.totalAmount ?? 0) : data.amount;
             document.getElementById('momoInvoiceLabel').textContent =
                 `Hóa đơn ${invoiceId}` + (inv ? ` — Tháng ${inv.month}/${inv.year}` : '');
             document.getElementById('momoAmountDisplay').textContent =
                 new Intl.NumberFormat('vi-VN', { style:'currency', currency:'VND' }).format(total);
-
-            // QR code thật từ MoMo
-            if (data.qrCodeUrl) {
-                document.getElementById('momoQrImg').src = data.qrCodeUrl;
-            } else {
-                // fallback: dùng QR generator với payUrl
-                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.payUrl || '')}`;
-                document.getElementById('momoQrImg').src = qrUrl;
-            }
-
-            // Deeplink & payUrl
-            document.getElementById('momoDeeplinkBtn').href = data.deeplink || data.shortLink || data.payUrl || '#';
+            const qrSrc = data.qrCodeUrl ||
+                `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.payUrl||'')}`;
+            document.getElementById('momoQrImg').src = qrSrc;
+            document.getElementById('momoDeeplinkBtn').href = data.deeplink || data.payUrl || '#';
             document.getElementById('momoPayUrlBtn').href   = data.payUrl || '#';
-
-            // Hiện nội dung, mặc định tab QR
             document.getElementById('momoLoading').classList.add('d-none');
             document.getElementById('momoContent').classList.remove('d-none');
             momoSwitchTab('qr');
-
-            // Bắt đầu countdown 15 phút
             momoStartCountdown(MOMO_TIMEOUT_SEC);
-
-            // Bắt đầu polling trạng thái mỗi 3 giây
             momoStartPolling(invoiceId);
-
-        } catch(e) {
-            momoShowError('Lỗi kết nối: ' + e.message);
-        }
+        } catch(e) { momoShowError('Lỗi kết nối: ' + e.message); }
     }
 
     function momoSwitchTab(tab) {
@@ -702,7 +620,6 @@
         momoCancelPolling();
     }
 
-    // ── Polling: kiểm tra trạng thái mỗi 3 giây ───────────────
     function momoStartPolling(invoiceId) {
         momoCancelPolling();
         _momoPollingTimer = setInterval(async () => {
@@ -710,38 +627,31 @@
                 const res = await apiRequest(`${API_BASE_URL}/momo/status/${invoiceId}`);
                 if (!res) return;
                 const data = await res.json();
-
                 if (data.paid === true || data.status === 'PAID') {
-                    momoCancelPolling();
-                    momoShowSuccess();
+                    momoCancelPolling(); momoShowSuccess();
                 }
-            } catch(e) { /* ignore polling errors */ }
+            } catch(e) {}
         }, 3000);
     }
 
     function momoCancelPolling() {
-        if (_momoPollingTimer) { clearInterval(_momoPollingTimer); _momoPollingTimer = null; }
-        if (_momoCountdownTimer) { clearInterval(_momoCountdownTimer); _momoCountdownTimer = null; }
+        if (_momoPollingTimer)    { clearInterval(_momoPollingTimer);    _momoPollingTimer    = null; }
+        if (_momoCountdownTimer)  { clearInterval(_momoCountdownTimer);  _momoCountdownTimer  = null; }
     }
 
-    // ── Countdown timer ────────────────────────────────────────
     function momoStartCountdown(seconds) {
         let remaining = seconds;
         const el = document.getElementById('momoCountdown');
         if (_momoCountdownTimer) clearInterval(_momoCountdownTimer);
         _momoCountdownTimer = setInterval(() => {
             remaining--;
-            const m = Math.floor(remaining / 60).toString().padStart(2, '0');
-            const s = (remaining % 60).toString().padStart(2, '0');
+            const m = Math.floor(remaining/60).toString().padStart(2,'0');
+            const s = (remaining%60).toString().padStart(2,'0');
             if (el) el.textContent = `${m}:${s}`;
-            if (remaining <= 0) {
-                momoCancelPolling();
-                momoShowError('Mã QR đã hết hạn. Vui lòng thử lại.');
-            }
+            if (remaining <= 0) { momoCancelPolling(); momoShowError('Mã QR đã hết hạn. Vui lòng thử lại.'); }
         }, 1000);
     }
 
-    // ── Hiển thị màn hình thành công ───────────────────────────
     function momoShowSuccess() {
         document.getElementById('momoContent').classList.add('d-none');
         document.getElementById('momoSuccess').classList.remove('d-none');
@@ -752,7 +662,19 @@
         }, 2500);
     }
 
-    // Load khi page sẵn sàng
+    // Xử lý redirect sau khi MoMo return
+    const urlParams = new URLSearchParams(window.location.search);
+    const momoResult = urlParams.get('momoResult');
+    if (momoResult !== null) {
+        if (momoResult === '0') {
+            showResidentAlert('alertContainer', '✅ Thanh toán MoMo thành công!', 'success');
+        } else {
+            showResidentAlert('alertContainer', `Thanh toán MoMo thất bại (mã lỗi: ${momoResult})`, 'warning');
+        }
+        // Xóa query param khỏi URL
+        window.history.replaceState({}, '', '/resident/invoices');
+    }
+
     loadInvoices(0);
 </script>
 </body>
