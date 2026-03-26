@@ -18,20 +18,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Set;
 
 @Service
 public class AuthService {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
-    private static final Set<String> VALID_STAFF_ROLE_IDS = Set.of("ROLE001", "ROLE002", "ROLE003", "ROLE004");
 
     @Autowired private AuthenticationManager authenticationManager;
-    @Autowired private StaffRepository staffRepository;
-    @Autowired private ResidentsRepository residentsRepository;
-    @Autowired private PasswordEncoder passwordEncoder;
-    @Autowired private JwtTokenProvider tokenProvider;
-    @Autowired private EmailService emailService;
+    @Autowired private StaffRepository       staffRepository;
+    @Autowired private ResidentsRepository   residentsRepository;
+    @Autowired private PasswordEncoder       passwordEncoder;
+    @Autowired private JwtTokenProvider      tokenProvider;
+    @Autowired private EmailService          emailService;
 
     // ─── LOGIN ────────────────────────────────────────────────────────────────
 
@@ -51,11 +49,11 @@ public class AuthService {
         if ("staff".equalsIgnoreCase(loginRequest.getUserType())) {
             Staff staff = staffRepository.findByUsernameOrEmail(username, username)
                     .orElseThrow(() -> new RuntimeException(
-                            "Tài khoản này không có quyền truy cập vào hệ thống quản lý. " +
+                            "Tài khoản này không có quyền truy cập hệ thống quản lý. " +
                                     "Vui lòng chọn 'Cư dân' để đăng nhập."));
 
             if (staff.getStatus() == Staff.StaffStatus.RESIGNED)
-                throw new RuntimeException("Tài khoản của bạn đã bị vô hiệu hóa. Liên hệ quản trị viên.");
+                throw new RuntimeException("Tài khoản đã bị vô hiệu hóa. Liên hệ quản trị viên.");
             if (staff.getStatus() == Staff.StaffStatus.ON_LEAVE)
                 throw new RuntimeException("Tài khoản đang trong trạng thái nghỉ phép. Liên hệ quản trị viên.");
 
@@ -72,11 +70,10 @@ public class AuthService {
                             "Tài khoản này không phải tài khoản cư dân. " +
                                     "Vui lòng chọn 'Nhân viên' để đăng nhập."));
 
-            // ── KIỂM TRA TRẠNG THÁI ──────────────────────────────────────────
             if (resident.getStatus() == Residents.ResidentStatus.PENDING)
                 throw new RuntimeException(
-                        "Tài khoản của bạn đang chờ Manager xác minh. " +
-                                "Vui lòng chờ email thông báo kích hoạt.");
+                        "Tài khoản đang chờ Ban quản lý xác minh. " +
+                                "Bạn sẽ nhận được email thông báo khi tài khoản được kích hoạt.");
             if (resident.getStatus() == Residents.ResidentStatus.INACTIVE)
                 throw new RuntimeException("Tài khoản đã bị vô hiệu hóa. Liên hệ ban quản lý.");
 
@@ -96,65 +93,62 @@ public class AuthService {
     // ─── REGISTER ─────────────────────────────────────────────────────────────
 
     /**
-     * Resident tự đăng ký.
-     * Tài khoản sẽ ở trạng thái PENDING cho đến khi Manager duyệt.
-     * Yêu cầu: username, password, fullName, phone, email.
-     * Optional: idNumber (CCCD — dùng để Manager xác minh danh tính).
+     * Cư dân tự đăng ký → tài khoản PENDING, chờ Manager duyệt.
+     * idNumber (CCCD) optional — Manager dùng để xác minh danh tính.
      */
     @Transactional
-    public String register(RegisterRequest registerRequest) {
-        if (!registerRequest.getPassword().equals(registerRequest.getConfirmPassword()))
+    public String register(RegisterRequest req) {
+        if (!req.getPassword().equals(req.getConfirmPassword()))
             throw new RuntimeException("Mật khẩu và xác nhận mật khẩu không khớp.");
 
-        if (residentsRepository.existsByUsername(registerRequest.getUsername())
-                || staffRepository.existsByUsername(registerRequest.getUsername()))
+        if (residentsRepository.existsByUsername(req.getUsername())
+                || staffRepository.existsByUsername(req.getUsername()))
             throw new RuntimeException("Username đã tồn tại, vui lòng chọn username khác.");
 
-        if (registerRequest.getEmail() != null && !registerRequest.getEmail().isBlank()
-                && residentsRepository.existsByEmail(registerRequest.getEmail()))
-            throw new RuntimeException("Email đã được sử dụng.");
+        if (req.getEmail() != null && !req.getEmail().isBlank()
+                && residentsRepository.existsByEmail(req.getEmail()))
+            throw new RuntimeException("Email đã được sử dụng bởi tài khoản khác.");
 
-        if (registerRequest.getPhone() != null && !registerRequest.getPhone().isBlank()
-                && residentsRepository.existsByPhone(registerRequest.getPhone()))
-            throw new RuntimeException("Số điện thoại đã được sử dụng.");
+        if (req.getPhone() != null && !req.getPhone().isBlank()
+                && residentsRepository.existsByPhone(req.getPhone()))
+            throw new RuntimeException("Số điện thoại đã được sử dụng bởi tài khoản khác.");
 
         Residents resident = new Residents();
         resident.setId(generateResidentId());
-        resident.setUsername(registerRequest.getUsername().trim());
-        resident.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
-        resident.setFullName(registerRequest.getFullName());
-        resident.setEmail(registerRequest.getEmail());
-        resident.setPhone(registerRequest.getPhone());
-        resident.setType(Residents.ResidentType.TENANT);   // default — Manager sẽ cập nhật sau
-        resident.setGender(Residents.Gender.M);            // default — cập nhật ở profile
-        resident.setIdNumber(registerRequest.getIdNumber()); // CCCD để Manager xác minh
-        resident.setApartment(null);                       // Manager gán sau khi duyệt
-        resident.setStatus(Residents.ResidentStatus.PENDING); // ← PENDING, không phải ACTIVE
+        resident.setUsername(req.getUsername().trim());
+        resident.setPassword(passwordEncoder.encode(req.getPassword()));
+        resident.setFullName(req.getFullName().trim());
+        resident.setEmail(req.getEmail());
+        resident.setPhone(req.getPhone());
+        resident.setIdNumber(req.getIdNumber()); // CCCD optional — null nếu không nhập
+        resident.setType(Residents.ResidentType.TENANT); // default, Manager cập nhật sau
+        resident.setGender(Residents.Gender.M);          // default, cập nhật ở profile
+        resident.setApartment(null);
+        resident.setStatus(Residents.ResidentStatus.PENDING);
 
         residentsRepository.save(resident);
         logger.info("New resident registered (PENDING): {} — {}", resident.getId(), resident.getUsername());
 
-        return "Đăng ký thành công! Tài khoản của bạn đang chờ Manager xác minh. " +
-                "Bạn sẽ nhận được email thông báo sau khi được kích hoạt.";
+        return "Đăng ký thành công! Tài khoản đang chờ Ban quản lý xác minh. " +
+                "Bạn sẽ nhận được email thông báo khi được kích hoạt.";
     }
 
     // ─── FORGOT PASSWORD ──────────────────────────────────────────────────────
 
     @Transactional
     public String forgotPassword(ForgotPasswordRequest request) {
-        String resetToken;
         if ("staff".equalsIgnoreCase(request.getUserType())) {
             Staff staff = staffRepository.findByEmail(request.getEmail())
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản với email này."));
-            resetToken = tokenProvider.generateTokenFromUsername(staff.getUsername());
-            emailService.sendPasswordResetEmail(staff.getEmail(), resetToken);
+            emailService.sendPasswordResetEmail(staff.getEmail(),
+                    tokenProvider.generateTokenFromUsername(staff.getUsername()));
         } else {
             Residents resident = residentsRepository.findByEmail(request.getEmail())
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản với email này."));
-            resetToken = tokenProvider.generateTokenFromUsername(resident.getUsername());
-            emailService.sendPasswordResetEmail(resident.getEmail(), resetToken);
+            emailService.sendPasswordResetEmail(resident.getEmail(),
+                    tokenProvider.generateTokenFromUsername(resident.getUsername()));
         }
-        return "Email reset password đã được gửi. Vui lòng kiểm tra hộp thư.";
+        return "Email đặt lại mật khẩu đã được gửi. Vui lòng kiểm tra hộp thư.";
     }
 
     // ─── RESET PASSWORD ───────────────────────────────────────────────────────
@@ -162,7 +156,7 @@ public class AuthService {
     @Transactional
     public String resetPassword(ResetPasswordRequest request) {
         if (!request.getNewPassword().equals(request.getConfirmPassword()))
-            throw new RuntimeException("Password mới và Confirm Password không khớp.");
+            throw new RuntimeException("Mật khẩu mới và xác nhận mật khẩu không khớp.");
 
         String username = tokenProvider.getUsernameFromToken(request.getToken());
         Staff staff = staffRepository.findByUsername(username).orElse(null);
@@ -181,12 +175,12 @@ public class AuthService {
         return "Đặt lại mật khẩu thành công! Bạn có thể đăng nhập với mật khẩu mới.";
     }
 
-    // ─── HELPERS ──────────────────────────────────────────────────────────────
+    // ─── HELPER ───────────────────────────────────────────────────────────────
 
     private String generateResidentId() {
         for (int i = 1; i <= 9999; i++) {
-            String candidate = "RES" + String.format("%03d", i);
-            if (!residentsRepository.existsById(candidate)) return candidate;
+            String c = "RES" + String.format("%03d", i);
+            if (!residentsRepository.existsById(c)) return c;
         }
         return "RES" + (System.currentTimeMillis() % 100000L);
     }
