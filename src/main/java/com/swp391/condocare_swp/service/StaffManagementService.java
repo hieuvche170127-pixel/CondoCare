@@ -221,7 +221,7 @@ public class StaffManagementService {
         m.put("status",     staff.getStatus().name());
         m.put("hiredAt",    staff.getHiredAt());
         m.put("lastLogin",  staff.getLastLogin());
-        m.put("createAt",   staff.getCreateAt());
+        m.put("createAt",   staff.getCreatedAt());
         return m;
     }
 
