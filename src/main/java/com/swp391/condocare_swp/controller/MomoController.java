@@ -2,7 +2,9 @@ package com.swp391.condocare_swp.controller;
 
 import com.swp391.condocare_swp.dto.MomoIpnRequest;
 import com.swp391.condocare_swp.entity.Invoice;
+import com.swp391.condocare_swp.entity.Residents;
 import com.swp391.condocare_swp.repository.InvoiceRepository;
+import com.swp391.condocare_swp.repository.ResidentsRepository;
 import com.swp391.condocare_swp.service.MomoService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +18,10 @@ import java.util.Map;
 /**
  * REST Controller cho MoMo Payment
  * Base: /api/momo
+ *
+ * Thay đổi so với phiên bản cũ:
+ * - createPayment() lấy residentId từ JWT (SecurityContext) và truyền vào MomoService.
+ * - Bổ sung @GetMapping("/status/{invoiceId}") đã bị thiếu annotation trong file cũ.
  */
 @RestController
 @RequestMapping("/api/momo")
@@ -23,15 +29,14 @@ public class MomoController {
 
     private static final Logger logger = LoggerFactory.getLogger(MomoController.class);
 
-    @Autowired private MomoService       momoService;
-    @Autowired private InvoiceRepository invoiceRepo;
+    @Autowired private MomoService         momoService;
+    @Autowired private InvoiceRepository   invoiceRepo;
+    @Autowired private ResidentsRepository residentsRepo;
 
     /**
      * POST /api/momo/create-payment
-     * Resident gọi khi click "Thanh toán MoMo"
+     * Resident gọi khi click "Thanh toán MoMo".
      * Body: { "invoiceId": "INV2026030001" }
-     *
-     * Response: { payUrl, qrCodeUrl, deeplink, shortLink, orderId, ... }
      */
     @PostMapping("/create-payment")
     public ResponseEntity<?> createPayment(@RequestBody Map<String, String> body) {
@@ -40,34 +45,38 @@ public class MomoController {
             return ResponseEntity.badRequest().body("Thiếu invoiceId");
 
         try {
-            // Kiểm tra invoice tồn tại và chưa thanh toán
             Invoice invoice = invoiceRepo.findById(invoiceId)
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn: " + invoiceId));
 
             if (invoice.getStatus() == Invoice.InvoiceStatus.PAID)
                 return ResponseEntity.badRequest().body("Hóa đơn này đã được thanh toán rồi!");
 
-            // Kiểm tra resident chỉ có thể thanh toán hóa đơn của mình
-            // (Optional security check — thêm nếu cần)
-            String currentUser = SecurityContextHolder.getContext().getAuthentication().getName();
-            logger.info("MoMo create payment — user={}, invoiceId={}", currentUser, invoiceId);
+            // Lấy residentId từ JWT để truyền vào extraData của MoMo request.
+            // IPN callback sẽ đọc extraData để gán paid_by — không cần tìm ngược từ apartment.
+            String username   = SecurityContextHolder.getContext().getAuthentication().getName();
+            String residentId = residentsRepo.findByUsername(username)
+                    .map(Residents::getId)
+                    .orElse(null);
 
-            Map<String, Object> result = momoService.createPayment(invoiceId, invoice.getTotalAmount());
+            logger.info("MoMo create payment — user={}, residentId={}, invoiceId={}",
+                    username, residentId, invoiceId);
+
+            Map<String, Object> result =
+                    momoService.createPayment(invoiceId, invoice.getTotalAmount(), residentId);
             return ResponseEntity.ok(result);
 
         } catch (Exception e) {
             logger.error("Error creating MoMo payment for invoice {}", invoiceId, e);
-            return ResponseEntity.internalServerError().body("Lỗi tạo thanh toán MoMo: " + e.getMessage());
+            return ResponseEntity.internalServerError()
+                    .body("Lỗi tạo thanh toán MoMo: " + e.getMessage());
         }
     }
 
     /**
      * POST /api/momo/ipn
-     * MoMo gọi về endpoint này sau khi user thanh toán xong
-     * KHÔNG cần JWT — MoMo gọi trực tiếp, xác thực bằng HMAC signature
-     *
-     * ⚠️  Endpoint này phải được PERMIT_ALL trong Security config
-     *     và phải accessible từ internet (dùng ngrok khi dev)
+     * MoMo gọi về endpoint này sau khi user thanh toán xong.
+     * KHÔNG cần JWT — xác thực bằng HMAC signature.
+     * Phải được PERMIT_ALL trong SecurityConfig.
      */
     @PostMapping("/ipn")
     public ResponseEntity<?> handleIpn(@RequestBody MomoIpnRequest ipnRequest) {
@@ -78,22 +87,15 @@ public class MomoController {
 
         if (!valid) {
             logger.warn("MoMo IPN signature invalid!");
-            // MoMo yêu cầu trả về HTTP 204 dù có lỗi hay không
-            return ResponseEntity.noContent().build();
         }
-
-        // MoMo chỉ cần HTTP 204 No Content để xác nhận đã nhận IPN
+        // MoMo yêu cầu HTTP 204 No Content dù hợp lệ hay không
         return ResponseEntity.noContent().build();
     }
 
     /**
      * GET /api/momo/return?orderId=...&resultCode=0&...
-     *
      * MoMo redirect user về URL này sau khi thanh toán xong.
-     * Dùng khi KHÔNG có ngrok (localhost dev) — thay thế cho IPN.
-     *
-     * Security: dùng permitAll vì MoMo redirect trực tiếp,
-     * nhưng ta verify signature trước khi update DB.
+     * Dùng khi dev local không có ngrok.
      */
     @GetMapping("/return")
     public ResponseEntity<?> handleReturn(
@@ -113,9 +115,7 @@ public class MomoController {
         logger.info("MoMo RETURN — orderId={}, resultCode={}", orderId, resultCode);
 
         if (resultCode == 0) {
-            // Tạo MomoIpnRequest từ query params để tái sử dụng handleIpn
-            com.swp391.condocare_swp.dto.MomoIpnRequest ipn =
-                    new com.swp391.condocare_swp.dto.MomoIpnRequest();
+            MomoIpnRequest ipn = new MomoIpnRequest();
             ipn.setOrderId(orderId);
             ipn.setResultCode(resultCode);
             ipn.setSignature(signature);
@@ -127,18 +127,23 @@ public class MomoController {
             ipn.setResponseTime(responseTime);
             ipn.setRequestId(requestId);
             ipn.setMessage(message);
-            ipn.setExtraData(extraData);
+            ipn.setExtraData(extraData);  // ← chứa residentId
             ipn.setPartnerCode("MOMO");
-
-            momoService.handleIpn(ipn); // tái sử dụng logic verify + update DB
+            momoService.handleIpn(ipn);
         }
 
-        // Redirect về trang hóa đơn (dù thành công hay thất bại)
         return ResponseEntity.status(302)
                 .header("Location", "http://localhost:8080/resident/invoices"
                         + "?momoResult=" + resultCode)
                 .build();
     }
+
+    /**
+     * GET /api/momo/status/{invoiceId}
+     * Frontend polling để kiểm tra kết quả thanh toán.
+     * (Annotation @GetMapping bị thiếu trong file cũ — đã thêm lại.)
+     */
+    @GetMapping("/status/{invoiceId}")
     public ResponseEntity<?> checkStatus(@PathVariable String invoiceId) {
         try {
             return ResponseEntity.ok(momoService.checkPaymentStatus(invoiceId));

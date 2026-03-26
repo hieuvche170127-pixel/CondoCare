@@ -22,21 +22,30 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * ResidentManagementService — Quản lý cư dân phía Staff/Manager.
+ *
+ * Thay đổi so với phiên bản cũ:
+ * - approveResident() và createResident() gọi NotificationService.sendAccountApprovedNotification()
+ *   và sendAccessCardIssuedNotification() thay vì tự tạo Notification nội bộ.
+ * - issueAccessCard() trả về cardNumber để NotificationService có thể đưa vào nội dung thông báo.
+ * - Bỏ sendWelcomeNotification() nội bộ (đã chuyển sang NotificationService).
+ */
 @Service
 public class ResidentManagementService {
 
     private static final Logger logger = LoggerFactory.getLogger(ResidentManagementService.class);
     private static final AtomicInteger idCounter = new AtomicInteger(0);
 
-    @Autowired private ResidentsRepository residentRepo;
-    @Autowired private ApartmentRepository  apartmentRepo;
-    @Autowired private StaffRepository      staffRepo;
-    @Autowired private AccessCardRepository accessCardRepo;
-    @Autowired private NotificationRepository notificationRepo;
-    @Autowired private PasswordEncoder      passwordEncoder;
-    @Autowired private EmailService         emailService;
+    @Autowired private ResidentsRepository    residentRepo;
+    @Autowired private ApartmentRepository    apartmentRepo;
+    @Autowired private StaffRepository        staffRepo;
+    @Autowired private AccessCardRepository   accessCardRepo;
+    @Autowired private PasswordEncoder        passwordEncoder;
+    @Autowired private EmailService           emailService;
+    @Autowired private NotificationService    notificationService;
 
-    // ─── LIST (với filter status, type, apartment, search) ────────────────────
+    // ─── LIST ─────────────────────────────────────────────────────────────────
 
     public Page<Map<String, Object>> listResidents(
             String search, String type, String status,
@@ -72,7 +81,6 @@ public class ResidentManagementService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cư dân: " + id));
         Map<String, Object> res = mapToResponse(r);
 
-        // Thêm thông tin thẻ ra vào
         List<AccessCard> cards = accessCardRepo.findByResidentId(id);
         List<Map<String, Object>> cardList = cards.stream().map(c -> {
             Map<String, Object> m = new LinkedHashMap<>();
@@ -105,8 +113,13 @@ public class ResidentManagementService {
 
     /**
      * Manager duyệt tài khoản PENDING.
-     * Có thể đồng thời gán căn hộ, cập nhật type (OWNER/TENANT/GUEST).
-     * Sau khi duyệt: tự động cấp thẻ ra vào và gửi thông báo.
+     * Luồng sau duyệt:
+     *   1. Gán căn hộ (nếu có)
+     *   2. Cập nhật type (OWNER/TENANT/GUEST)
+     *   3. Kích hoạt tài khoản (ACTIVE)
+     *   4. Tự động cấp thẻ ra vào
+     *   5. Gửi thông báo hệ thống (tài khoản được duyệt + thẻ được cấp)
+     *   6. Gửi email
      */
     @Transactional
     public String approveResident(String residentId, String apartmentId,
@@ -117,10 +130,8 @@ public class ResidentManagementService {
         if (r.getStatus() != Residents.ResidentStatus.PENDING)
             throw new RuntimeException("Tài khoản này không ở trạng thái PENDING.");
 
-        // Lấy thông tin staff đang thực hiện duyệt
         Staff verifier = getCurrentStaff();
 
-        // Gán căn hộ nếu có
         if (apartmentId != null && !apartmentId.isBlank()) {
             Apartment apt = apartmentRepo.findById(apartmentId)
                     .orElseThrow(() -> new RuntimeException("Căn hộ không tồn tại: " + apartmentId));
@@ -130,23 +141,26 @@ public class ResidentManagementService {
             apartmentRepo.save(apt);
         }
 
-        // Cập nhật type nếu có
         if (type != null && !type.isBlank())
             r.setType(Residents.ResidentType.valueOf(type));
 
-        // Duyệt tài khoản
         r.setStatus(Residents.ResidentStatus.ACTIVE);
         r.setVerifiedBy(verifier);
         r.setVerifiedAt(LocalDateTime.now());
         residentRepo.save(r);
 
-        // Tự động cấp thẻ ra vào
-        issueAccessCard(r, verifier);
+        // Cấp thẻ ra vào và lấy số thẻ để đưa vào thông báo
+        String cardNumber = issueAccessCard(r, verifier);
 
-        // Gửi thông báo chào mừng trong hệ thống
-        sendWelcomeNotification(r, verifier);
+        // Thông báo hệ thống: tài khoản được duyệt
+        notificationService.sendAccountApprovedNotification(r, verifier);
 
-        // Gửi email thông báo nếu có email
+        // Thông báo hệ thống: thẻ ra vào được cấp (chỉ khi thẻ mới được tạo)
+        if (cardNumber != null) {
+            notificationService.sendAccessCardIssuedNotification(r, cardNumber, verifier);
+        }
+
+        // Email
         if (r.getEmail() != null && !r.getEmail().isBlank()) {
             emailService.sendAccountApprovedEmail(r.getEmail(), r.getFullName());
         }
@@ -197,7 +211,6 @@ public class ResidentManagementService {
         r.setIdNumber(req.getIdNumber());
         r.setPhone(req.getPhone());
         r.setEmail(req.getEmail());
-        // Manager tạo trực tiếp → ACTIVE ngay, không cần PENDING
         r.setStatus(Residents.ResidentStatus.ACTIVE);
 
         Staff verifier = getCurrentStaff();
@@ -215,10 +228,16 @@ public class ResidentManagementService {
 
         residentRepo.save(r);
 
-        // Tự động cấp thẻ ra vào
-        issueAccessCard(r, verifier);
+        // Cấp thẻ ra vào
+        String cardNumber = issueAccessCard(r, verifier);
 
-        // Gửi email chào mừng
+        // Thông báo hệ thống (tài khoản được tạo và thẻ được cấp)
+        notificationService.sendAccountApprovedNotification(r, verifier);
+        if (cardNumber != null) {
+            notificationService.sendAccessCardIssuedNotification(r, cardNumber, verifier);
+        }
+
+        // Email
         if (req.getEmail() != null && !req.getEmail().isBlank()) {
             emailService.sendWelcomeEmail(req.getEmail(), r.getFullName(),
                     r.getUsername(), plainPassword, "cư dân");
@@ -242,17 +261,17 @@ public class ResidentManagementService {
 
         if (req.getFullName() != null && !req.getFullName().isBlank())
             r.setFullName(req.getFullName().trim());
-        if (req.getType()   != null) r.setType(Residents.ResidentType.valueOf(req.getType()));
-        if (req.getDob()    != null) r.setDob(req.getDob());
-        if (req.getGender() != null) r.setGender(Residents.Gender.valueOf(req.getGender()));
+        if (req.getType()     != null) r.setType(Residents.ResidentType.valueOf(req.getType()));
+        if (req.getDob()      != null) r.setDob(req.getDob());
+        if (req.getGender()   != null) r.setGender(Residents.Gender.valueOf(req.getGender()));
         if (req.getIdNumber() != null) r.setIdNumber(blankToNull(req.getIdNumber()));
-        if (req.getPhone() != null) {
+        if (req.getPhone()    != null) {
             String ph = blankToNull(req.getPhone());
             if (ph == null) throw new RuntimeException("Số điện thoại không được để trống.");
             r.setPhone(ph);
         }
         r.setEmail(newEmail);
-        if (req.getStatus() != null) r.setStatus(Residents.ResidentStatus.valueOf(req.getStatus()));
+        if (req.getStatus()      != null) r.setStatus(Residents.ResidentStatus.valueOf(req.getStatus()));
         if (req.getNewPassword() != null && !req.getNewPassword().isBlank())
             r.setPassword(passwordEncoder.encode(req.getNewPassword()));
 
@@ -287,7 +306,7 @@ public class ResidentManagementService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cư dân: " + id));
         r.setStatus(Residents.ResidentStatus.INACTIVE);
 
-        // Khóa tất cả thẻ ra vào khi vô hiệu hóa
+        // Khóa tất cả thẻ ra vào
         List<AccessCard> cards = accessCardRepo.findByResidentId(id);
         cards.stream()
                 .filter(c -> c.getStatus() == AccessCard.CardStatus.ACTIVE)
@@ -303,42 +322,36 @@ public class ResidentManagementService {
 
     // ─── PRIVATE HELPERS ──────────────────────────────────────────────────────
 
-    /** Tự động cấp thẻ ra vào cho resident sau khi được duyệt */
-    private void issueAccessCard(Residents resident, Staff issuedBy) {
-        // Chỉ cấp nếu chưa có thẻ ACTIVE
+    /**
+     * Tự động cấp thẻ ra vào.
+     * Trả về cardNumber nếu thẻ mới được tạo, null nếu đã có thẻ ACTIVE rồi.
+     */
+    private String issueAccessCard(Residents resident, Staff issuedBy) {
         long activeCards = accessCardRepo.countByResidentIdAndStatus(
                 resident.getId(), AccessCard.CardStatus.ACTIVE);
-        if (activeCards > 0) return;
+        if (activeCards > 0) {
+            logger.info("Resident {} already has active access card, skipping", resident.getId());
+            return null;
+        }
 
+        String cardNumber = generateCardNumber();
         AccessCard card = new AccessCard();
         card.setId(generateCardId());
-        card.setCardNumber(generateCardNumber());
+        card.setCardNumber(cardNumber);
         card.setResident(resident);
         card.setIssuedBy(issuedBy);
         card.setIssuedAt(LocalDateTime.now());
-        card.setExpiredAt(LocalDateTime.now().plusYears(2)); // thẻ hiệu lực 2 năm
+        card.setExpiredAt(LocalDateTime.now().plusYears(2));
         card.setStatus(AccessCard.CardStatus.ACTIVE);
         accessCardRepo.save(card);
-        logger.info("AccessCard {} issued to resident {}", card.getCardNumber(), resident.getId());
-    }
 
-    private void sendWelcomeNotification(Residents resident, Staff createdBy) {
-        Notification notif = new Notification();
-        notif.setId(generateNotifId());
-        notif.setTitle("Tài khoản của bạn đã được xác minh");
-        notif.setContent("Chào mừng " + resident.getFullName() + " đến với CondoCare! " +
-                "Tài khoản đã được kích hoạt. Bạn có thể sử dụng đầy đủ các tính năng.");
-        notif.setType(Notification.NotificationType.INFO);
-        notif.setResident(resident);
-        notif.setCreatedBy(createdBy);
-        notif.setIsRead(false);
-        notificationRepo.save(notif);
+        logger.info("AccessCard {} issued to resident {}", cardNumber, resident.getId());
+        return cardNumber;
     }
 
     private Staff getCurrentStaff() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String username = auth.getName();
-        return staffRepo.findByUsername(username)
+        return staffRepo.findByUsername(auth.getName())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin Staff đang đăng nhập."));
     }
 
@@ -382,11 +395,7 @@ public class ResidentManagementService {
         m.put("lastLogin", r.getLastLogin());
         m.put("createdAt", r.getCreatedAt());
         m.put("verifiedAt", r.getVerifiedAt());
-        if (r.getVerifiedBy() != null) {
-            m.put("verifiedBy", r.getVerifiedBy().getFullName());
-        } else {
-            m.put("verifiedBy", null);
-        }
+        m.put("verifiedBy", r.getVerifiedBy() != null ? r.getVerifiedBy().getFullName() : null);
         if (r.getApartment() != null) {
             m.put("apartmentId",     r.getApartment().getId());
             m.put("apartmentNumber", r.getApartment().getNumber());
@@ -427,10 +436,6 @@ public class ResidentManagementService {
             candidate = String.format("CARD%04d", rng.nextInt(10000));
         } while (accessCardRepo.existsByCardNumber(candidate));
         return candidate;
-    }
-
-    private String generateNotifId() {
-        return "NTF" + System.currentTimeMillis();
     }
 
     private String generateRandomPassword() {

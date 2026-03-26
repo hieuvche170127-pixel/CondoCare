@@ -12,12 +12,18 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 
 /**
- * NotificationService — Luồng quản lý thông báo phía Staff.
+ * NotificationService — Luồng quản lý thông báo.
  *
- * 3 loại gửi:
+ * 3 loại gửi từ Staff:
  *   1. Broadcast toàn tòa   → resident_id = NULL, building_id = set
  *   2. Gửi theo căn hộ      → apartment_id = set, resident_id = NULL
  *   3. Gửi cá nhân          → resident_id = set
+ *
+ * Thông báo hệ thống tự động (gọi từ các service khác):
+ *   - sendAccountApprovedNotification()  → khi manager duyệt tài khoản
+ *   - sendAccessCardIssuedNotification() → khi manager cấp thẻ ra vào
+ *   - sendRequestStatusNotification()    → khi staff cập nhật trạng thái yêu cầu
+ *   - sendPaymentReminder()              → nhắc hóa đơn quá hạn
  */
 @Service
 public class NotificationService {
@@ -66,7 +72,7 @@ public class NotificationService {
         return list.stream().map(this::mapToResponse).toList();
     }
 
-    // ─── GỬI THÔNG BÁO ───────────────────────────────────────────────────────
+    // ─── GỬI THÔNG BÁO (Staff thao tác thủ công) ─────────────────────────────
 
     /**
      * Gửi broadcast toàn tòa nhà.
@@ -92,7 +98,7 @@ public class NotificationService {
     }
 
     /**
-     * Gửi thông báo theo căn hộ (tất cả cư dân trong căn đó).
+     * Gửi thông báo theo căn hộ.
      * Body: { title, content, type, apartmentId }
      */
     @Transactional
@@ -139,9 +145,118 @@ public class NotificationService {
         return "Đã gửi thông báo đến cư dân " + resident.getFullName() + ".";
     }
 
+    // ─── THÔNG BÁO HỆ THỐNG TỰ ĐỘNG ──────────────────────────────────────────
+
     /**
-     * Gửi thông báo nhắc thanh toán hóa đơn quá hạn cho 1 cư dân.
-     * Thường được gọi tự động từ InvoiceManagementService.
+     * Gửi thông báo khi tài khoản cư dân được duyệt (PENDING → ACTIVE).
+     * Gọi từ ResidentManagementService.approveResident().
+     */
+    @Transactional
+    public void sendAccountApprovedNotification(Residents resident, Staff issuedBy) {
+        Notification n = new Notification();
+        n.setId(generateId());
+        n.setTitle("Tài khoản của bạn đã được xác minh");
+        n.setContent("Chào mừng " + resident.getFullName() + " đến với CondoCare! " +
+                "Tài khoản đã được Ban quản lý kích hoạt. " +
+                "Bạn có thể sử dụng đầy đủ các tính năng: nhận thông báo, " +
+                "xem hóa đơn, đăng ký xe và gửi yêu cầu hỗ trợ.");
+        n.setType(Notification.NotificationType.INFO);
+        n.setResident(resident);
+        n.setApartment(resident.getApartment());
+        n.setBuilding(resident.getApartment() != null ? resident.getApartment().getBuilding() : null);
+        n.setCreatedBy(issuedBy);
+        n.setIsRead(false);
+        notifRepo.save(n);
+        logger.info("Account approved notification sent to resident {}", resident.getId());
+    }
+
+    /**
+     * Gửi thông báo khi thẻ ra vào được cấp (sau duyệt tài khoản hoặc cấp lại).
+     * Gọi từ ResidentManagementService sau khi issueAccessCard().
+     */
+    @Transactional
+    public void sendAccessCardIssuedNotification(Residents resident, String cardNumber, Staff issuedBy) {
+        Notification n = new Notification();
+        n.setId(generateId());
+        n.setTitle("Thẻ ra vào đã được cấp");
+        n.setContent("Thẻ ra vào chung cư của bạn đã được cấp với số thẻ: " + cardNumber + ". " +
+                "Vui lòng đến văn phòng Ban quản lý để nhận thẻ vật lý. " +
+                "Thẻ có hiệu lực trong 2 năm kể từ ngày cấp.");
+        n.setType(Notification.NotificationType.INFO);
+        n.setResident(resident);
+        n.setApartment(resident.getApartment());
+        n.setBuilding(resident.getApartment() != null ? resident.getApartment().getBuilding() : null);
+        n.setCreatedBy(issuedBy);
+        n.setIsRead(false);
+        notifRepo.save(n);
+        logger.info("Access card issued notification sent to resident {} — card {}", resident.getId(), cardNumber);
+    }
+
+    /**
+     * Gửi thông báo khi trạng thái yêu cầu hỗ trợ thay đổi.
+     * Gọi từ StaffServiceRequestService khi assign, done, hoặc reject.
+     *
+     * @param resident    Cư dân cần nhận thông báo
+     * @param requestId   ID yêu cầu
+     * @param requestTitle Tiêu đề yêu cầu
+     * @param newStatus   Trạng thái mới (IN_PROGRESS, DONE, REJECTED)
+     * @param note        Ghi chú thêm (lý do từ chối, ghi chú hoàn thành, ...)
+     * @param staff       Staff thực hiện thay đổi
+     */
+    @Transactional
+    public void sendRequestStatusNotification(Residents resident, String requestId,
+                                              String requestTitle, String newStatus,
+                                              String note, Staff staff) {
+        String title;
+        String content;
+        Notification.NotificationType type = Notification.NotificationType.INFO;
+
+        switch (newStatus.toUpperCase()) {
+            case "IN_PROGRESS" -> {
+                title   = "Yêu cầu hỗ trợ đang được xử lý";
+                content = "Yêu cầu \"" + requestTitle + "\" (#" + requestId + ") " +
+                        "đã được tiếp nhận và đang trong quá trình xử lý.";
+                if (note != null && !note.isBlank())
+                    content += " Ghi chú: " + note;
+            }
+            case "DONE" -> {
+                title   = "Yêu cầu hỗ trợ đã hoàn thành";
+                content = "Yêu cầu \"" + requestTitle + "\" (#" + requestId + ") " +
+                        "đã được xử lý xong. Vui lòng xác nhận kết quả trong mục Yêu cầu hỗ trợ.";
+                type    = Notification.NotificationType.INFO;
+            }
+            case "REJECTED" -> {
+                title   = "Yêu cầu hỗ trợ bị từ chối";
+                content = "Yêu cầu \"" + requestTitle + "\" (#" + requestId + ") " +
+                        "không thể thực hiện.";
+                if (note != null && !note.isBlank())
+                    content += " Lý do: " + note;
+                type = Notification.NotificationType.WARNING;
+            }
+            default -> {
+                title   = "Cập nhật yêu cầu hỗ trợ";
+                content = "Yêu cầu #" + requestId + " đã được cập nhật trạng thái: " + newStatus;
+            }
+        }
+
+        Notification n = new Notification();
+        n.setId(generateId());
+        n.setTitle(title);
+        n.setContent(content);
+        n.setType(type);
+        n.setResident(resident);
+        n.setApartment(resident.getApartment());
+        n.setBuilding(resident.getApartment() != null ? resident.getApartment().getBuilding() : null);
+        n.setCreatedBy(staff);
+        n.setIsRead(false);
+        notifRepo.save(n);
+        logger.info("Request status notification sent — requestId={}, status={}, residentId={}",
+                requestId, newStatus, resident.getId());
+    }
+
+    /**
+     * Gửi thông báo nhắc thanh toán hóa đơn quá hạn.
+     * Gọi từ InvoiceManagementService / InvoiceScheduler.
      */
     @Transactional
     public void sendPaymentReminder(Residents resident, String invoiceId,
@@ -158,6 +273,7 @@ public class NotificationService {
         n.setCreatedBy(staff);
         n.setIsRead(false);
         notifRepo.save(n);
+        logger.info("Payment reminder sent to resident {} for invoice {}", resident.getId(), invoiceId);
     }
 
     // ─── XÓA THÔNG BÁO ───────────────────────────────────────────────────────
@@ -202,15 +318,14 @@ public class NotificationService {
 
     private Map<String, Object> mapToResponse(Notification n) {
         Map<String, Object> m = new LinkedHashMap<>();
-        m.put("id",         n.getId());
-        m.put("title",      n.getTitle());
-        m.put("content",    n.getContent());
-        m.put("type",       n.getType().name());
-        m.put("isRead",     n.getIsRead());
-        m.put("createdAt",  n.getCreatedAt().toString());
-        m.put("createdBy",  n.getCreatedBy() != null ? n.getCreatedBy().getFullName() : "Hệ thống");
+        m.put("id",        n.getId());
+        m.put("title",     n.getTitle());
+        m.put("content",   n.getContent());
+        m.put("type",      n.getType().name());
+        m.put("isRead",    n.getIsRead());
+        m.put("createdAt", n.getCreatedAt().toString());
+        m.put("createdBy", n.getCreatedBy() != null ? n.getCreatedBy().getFullName() : "Hệ thống");
 
-        // Phân biệt loại gửi
         if (n.getResident() != null) {
             m.put("sendType",     "PERSONAL");
             m.put("residentId",   n.getResident().getId());
@@ -220,7 +335,7 @@ public class NotificationService {
             m.put("apartmentId",     n.getApartment().getId());
             m.put("apartmentNumber", n.getApartment().getNumber());
         } else {
-            m.put("sendType",     "BROADCAST");
+            m.put("sendType", "BROADCAST");
         }
 
         if (n.getBuilding() != null) {
@@ -238,6 +353,6 @@ public class NotificationService {
     }
 
     private String generateId() {
-        return "NTF" + System.currentTimeMillis() + (int)(Math.random() * 1000);
+        return "NTF" + System.currentTimeMillis() + (int) (Math.random() * 1000);
     }
 }
