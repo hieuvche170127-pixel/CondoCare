@@ -113,8 +113,8 @@ public class Staff {
      * Ngày tạo account
      * Tự động set khi tạo mới
      */
-    @Column(name = "create_at", nullable = false, updatable = false)
-    private LocalDateTime createAt;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
     
     /**
      * Token để reset password
@@ -134,7 +134,7 @@ public class Staff {
      */
     @PrePersist
     protected void onCreate() {
-        createAt = LocalDateTime.now();
+        createdAt = LocalDateTime.now();
         if (status == null) {
             status = StaffStatus.ACTIVE;
         }

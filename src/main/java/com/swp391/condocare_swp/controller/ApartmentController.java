@@ -1,155 +1,134 @@
 package com.swp391.condocare_swp.controller;
 
-
-import com.swp391.condocare_swp.entity.Apartment;
-import com.swp391.condocare_swp.entity.Building;
 import com.swp391.condocare_swp.service.ApartmentService;
-import com.swp391.condocare_swp.service.BuildingService;
-import com.swp391.condocare_swp.service.CloudinaryService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.stereotype.Controller;
-import org.springframework.stereotype.Service;
-import org.springframework.ui.Model;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Map;
 
-@Controller
-@RequestMapping("/dashboard")
-@RequiredArgsConstructor
+/**
+ * REST Controller quản lý Tòa nhà (Building) và Căn hộ (Apartment).
+ *
+ * Building endpoints: /api/buildings/**
+ * Apartment endpoints: /api/apartments/**
+ */
+@RestController
+@CrossOrigin(origins = "*", maxAge = 3600)
 public class ApartmentController {
 
-    private final ApartmentService apartmentService;
-    private final BuildingService buildingService; // Dùng để load danh sách Tòa nhà vào form
-    private final CloudinaryService cloudinaryService;
+    private static final Logger logger = LoggerFactory.getLogger(ApartmentController.class);
+    @Autowired private ApartmentService service;
 
-    // 1. DANH SÁCH CĂN HỘ
-    // Sửa lại hàm số 1 (DANH SÁCH CĂN HỘ) như sau:
-    @GetMapping("/apartments")
-    public String listApartments(
-            @RequestParam(value = "keyword", required = false) String keyword,
-            @RequestParam(value = "buildingId", required = false) String buildingId,
-            @RequestParam(value = "status", required = false) Apartment.ApartmentStatus status,
-            @RequestParam(value = "rentalStatus", required = false) Apartment.RentalStatus rentalStatus,
-            @RequestParam(defaultValue = "1") int pageNo,
-            Model model) {
+    // ── STATS ─────────────────────────────────────────────────────────────────
 
-        int pageSize = 5; // Hiển thị 5 record/trang
-
-        // Truyền tất cả filter xuống Service
-        Page<Apartment> page = apartmentService.filterApartments(keyword, buildingId, status, rentalStatus, pageNo - 1, pageSize);
-
-        model.addAttribute("apartments", page.getContent());
-        model.addAttribute("currentPage", pageNo);
-        model.addAttribute("totalPages", page.getTotalPages());
-        model.addAttribute("totalItems", page.getTotalElements());
-
-        // Đẩy danh sách tòa nhà ra để làm Filter Dropdown
-        model.addAttribute("buildings", buildingService.getBuildings(null));
-
-        // Trả lại các giá trị đang lọc để giao diện giữ trạng thái
-        model.addAttribute("keyword", keyword);
-        model.addAttribute("buildingId", buildingId);
-        model.addAttribute("status", status);
-        model.addAttribute("rentalStatus", rentalStatus);
-
-        return "apartment-list";
+    /** GET /api/apartments/stats */
+    @GetMapping("/api/apartments/stats")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    public ResponseEntity<?> getStats() {
+        try { return ResponseEntity.ok(service.getStats()); }
+        catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
     }
 
-    // 2. XEM CHI TIẾT
-    @GetMapping("/apartments/view/{id}")
-    public String viewApartment(@PathVariable("id") String id, Model model) {
-        Apartment apt = apartmentService.getApartmentById(id);
-        if (apt == null) return "redirect:/dashboard/apartments";
-        model.addAttribute("apartment", apt);
-        return "apartment-detail";
+    // ── BUILDING ──────────────────────────────────────────────────────────────
+
+    /** GET /api/buildings */
+    @GetMapping("/api/buildings")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    public ResponseEntity<?> getAllBuildings() {
+        try { return ResponseEntity.ok(service.getAllBuildings()); }
+        catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
     }
 
-    // 3. FORM THÊM MỚI
-    @GetMapping("/apartments/add")
-    public String showAddForm(Model model) {
-        model.addAttribute("apartment", new Apartment());
-        model.addAttribute("buildings", buildingService.getBuildings(null)); // Load list tòa nhà
-        model.addAttribute("isEdit", false);
-        return "apartment-form";
+    /** GET /api/buildings/{id} */
+    @GetMapping("/api/buildings/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    public ResponseEntity<?> getBuildingDetail(@PathVariable String id) {
+        try { return ResponseEntity.ok(service.getBuildingDetail(id)); }
+        catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
     }
 
-    // 4. FORM SỬA
-    @GetMapping("/apartments/edit/{id}")
-    public String showEditForm(@PathVariable("id") String id, Model model) {
-        Apartment apt = apartmentService.getApartmentById(id);
-        if (apt == null) return "redirect:/dashboard/apartments";
-
-        model.addAttribute("apartment", apt);
-        model.addAttribute("buildings", buildingService.getBuildings(null));
-        model.addAttribute("isEdit", true);
-        return "apartment-form";
-    }
-
-    // 5. LƯU (CREATE & UPDATE) - CHỐNG TRÙNG LẶP
-    @PostMapping("/apartments/save")
-    public String saveApartment(@ModelAttribute("apartment") Apartment apartment,
-                                @RequestParam(value = "imageFile", required = false) List<MultipartFile> imageFiles,
-                                @RequestParam(value = "isEdit", defaultValue = "false") boolean isEdit,
-                                Model model, // Phải có model để trả lỗi về form
-                                RedirectAttributes redirectAttributes) {
-        try {
-
-            // 1. Xử lý Upload Ảnh lên Cloudinary
-            if (imageFiles != null && !imageFiles.isEmpty() && !imageFiles.get(0).isEmpty()) {
-                String imageUrl = cloudinaryService.uploadImages(imageFiles);
-                apartment.setImages(imageUrl); // Lưu URL trả về từ Cloudinary
-            } else if (isEdit) {
-                // Nếu đang Edit mà không upload ảnh mới -> Giữ lại ảnh cũ từ DB
-                Apartment existingApt = apartmentService.getApartmentById(apartment.getId());
-                if (existingApt != null) {
-                    apartment.setImages(existingApt.getImages());
-                }
-            }
-
-
-            if (!isEdit) {
-                // Không trùng thì lưu bình thường
-                apartmentService.saveApartment(apartment);
-                redirectAttributes.addFlashAttribute("successMessage", "Thêm mới căn hộ thành công!");
-            } else {
-                // KHI CHỈNH SỬA
-                apartmentService.saveApartment(apartment);
-                redirectAttributes.addFlashAttribute("successMessage", "Cập nhật căn hộ thành công!");
-            }
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
-
+    /**
+     * POST /api/buildings
+     * Body: { name, address, totalFloors, totalApartments, managerId }
+     */
+    @PostMapping("/api/buildings")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    public ResponseEntity<?> createBuilding(@RequestBody Map<String, String> body) {
+        try { return ResponseEntity.ok(service.createBuilding(body)); }
+        catch (Exception e) {
+            logger.error("Error creating building", e);
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
-        return "redirect:/dashboard/apartments";
     }
 
-    // ==========================================
-    // API TRẢ VỀ THYMELEAF FRAGMENT (Cho AJAX Dropdown Form Hợp đồng)
-    // ==========================================
-    @GetMapping("/apartments/load-apartments")
-    public String loadApartmentsForDropdown(@RequestParam("buildingId") String buildingId,
-                                            @RequestParam(value = "selectedId", required = false) String selectedId,
-                                            Model model) {
-        List<Apartment> apartments = apartmentService.getApartmentsByBuilding(buildingId);
-        model.addAttribute("aptList", apartments);
-        model.addAttribute("selectedAptId", selectedId);
-        return "contract-form :: apartmentOptions";
-    }
-
-    // 6. XÓA CĂN HỘ
-    @GetMapping("/apartments/delete/{id}")
-    public String deleteApartment(@PathVariable("id") String id, RedirectAttributes redirectAttributes) {
-        try {
-            apartmentService.deleteApartment(id);
-            redirectAttributes.addFlashAttribute("successMessage", "Xóa căn hộ thành công!");
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Không thể xóa do căn hộ đang chứa dữ liệu cư dân/hợp đồng!");
+    /**
+     * PUT /api/buildings/{id}
+     * Body: { name?, address?, totalFloors?, totalApartments?, managerId? }
+     */
+    @PutMapping("/api/buildings/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    public ResponseEntity<?> updateBuilding(@PathVariable String id,
+                                            @RequestBody Map<String, String> body) {
+        try { return ResponseEntity.ok(service.updateBuilding(id, body)); }
+        catch (Exception e) {
+            logger.error("Error updating building {}", id, e);
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
-        return "redirect:/dashboard/apartments";
+    }
+
+    // ── APARTMENT ─────────────────────────────────────────────────────────────
+
+    /**
+     * GET /api/apartments
+     * Params: buildingId (optional), status (optional)
+     */
+    @GetMapping("/api/apartments")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    public ResponseEntity<?> getAllApartments(
+            @RequestParam(required = false) String buildingId,
+            @RequestParam(required = false) String status) {
+        try { return ResponseEntity.ok(service.getAllApartments(buildingId, status)); }
+        catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
+    }
+
+    /** GET /api/apartments/{id} */
+    @GetMapping("/api/apartments/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    public ResponseEntity<?> getApartmentDetail(@PathVariable String id) {
+        try { return ResponseEntity.ok(service.getApartmentDetail(id)); }
+        catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
+    }
+
+    /**
+     * POST /api/apartments
+     * Body: { buildingId, number, floor, area, description? }
+     */
+    @PostMapping("/api/apartments")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    public ResponseEntity<?> createApartment(@RequestBody Map<String, Object> body) {
+        try { return ResponseEntity.ok(service.createApartment(body)); }
+        catch (Exception e) {
+            logger.error("Error creating apartment", e);
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    /**
+     * PUT /api/apartments/{id}
+     * Body: { floor?, area?, status?, rentalStatus?, description? }
+     */
+    @PutMapping("/api/apartments/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    public ResponseEntity<?> updateApartment(@PathVariable String id,
+                                             @RequestBody Map<String, Object> body) {
+        try { return ResponseEntity.ok(service.updateApartment(id, body)); }
+        catch (Exception e) {
+            logger.error("Error updating apartment {}", id, e);
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 }

@@ -13,11 +13,12 @@ import java.util.List;
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, String> {
 
+    // ── RESIDENT SIDE ─────────────────────────────────────────────────────────
+
     /**
-     * Lấy tất cả thông báo dành cho 1 cư dân cụ thể:
-     *  - Thông báo chung (resident IS NULL)  ← dành cho mọi người
-     *  - Thông báo riêng gửi cho cư dân đó (resident = residentObj)
-     * Sắp xếp mới nhất lên đầu
+     * Lấy thông báo của 1 cư dân:
+     *   - Thông báo chung (resident IS NULL)
+     *   - Thông báo riêng gửi cho cư dân đó
      */
     @Query("""
         SELECT n FROM Notification n
@@ -26,29 +27,40 @@ public interface NotificationRepository extends JpaRepository<Notification, Stri
     """)
     List<Notification> findForResident(@Param("resident") Residents resident);
 
-    /**
-     * Đếm thông báo chưa đọc của 1 cư dân
-     */
+    /** Đếm thông báo chưa đọc của 1 cư dân */
     @Query("""
         SELECT COUNT(n) FROM Notification n
         WHERE (n.resident IS NULL OR n.resident = :resident) AND n.isRead = false
     """)
     long countUnreadForResident(@Param("resident") Residents resident);
 
-    /**
-     * Đánh dấu đã đọc 1 thông báo
-     */
     @Modifying
     @Query("UPDATE Notification n SET n.isRead = true WHERE n.id = :id")
     void markAsRead(@Param("id") String id);
 
-    /**
-     * Đánh dấu tất cả đã đọc cho 1 cư dân
-     */
     @Modifying
     @Query("""
         UPDATE Notification n SET n.isRead = true
         WHERE (n.resident IS NULL OR n.resident = :resident) AND n.isRead = false
     """)
     void markAllAsReadForResident(@Param("resident") Residents resident);
+
+    // ── STAFF SIDE ────────────────────────────────────────────────────────────
+
+    List<Notification> findAllByOrderByCreatedAtDesc();
+
+    List<Notification> findByResidentOrderByCreatedAtDesc(Residents resident);
+
+    List<Notification> findByBuildingIdOrderByCreatedAtDesc(String buildingId);
+
+    List<Notification> findByApartmentIdOrderByCreatedAtDesc(String apartmentId);
+
+    /** Đếm broadcast (resident = NULL) */
+    long countByResidentIsNull();
+
+    /** Đếm thông báo cá nhân (resident != NULL) */
+    long countByResidentIsNotNull();
+
+    /** Đếm theo trạng thái đọc */
+    long countByIsRead(boolean isRead);
 }

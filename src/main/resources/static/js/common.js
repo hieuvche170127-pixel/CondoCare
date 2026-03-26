@@ -1,191 +1,139 @@
 /**
- * Common JavaScript functions cho Apartment Management System
+ * common.js — Apartment Management System
+ * Các hàm dùng chung cho toàn bộ ứng dụng
  */
 
-// API Base URL
-const API_BASE_URL = 'http://localhost:8080/api';
+// API Base URL —
+const API_BASE_URL = '/api';
 
-/**
- * Hiển thị loading spinner
- */
+/* ─── Loading spinner ─────────────────────────────────────── */
 function showLoading() {
-    const loading = document.getElementById('loading');
-    if (loading) {
-        loading.classList.add('show');
-    }
+    document.getElementById('loading')?.classList.add('show');
 }
-
-/**
- * Ẩn loading spinner
- */
 function hideLoading() {
-    const loading = document.getElementById('loading');
-    if (loading) {
-        loading.classList.remove('show');
-    }
+    document.getElementById('loading')?.classList.remove('show');
 }
 
-/**
- * Hiển thị alert message
- * @param {string} message - Nội dung thông báo
- * @param {string} type - Loại alert (success, danger, warning, info)
- */
+/* ─── Alert ──────────────────────────────────────────────── */
 function showAlert(message, type = 'info') {
     const alertDiv = document.createElement('div');
     alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
     alertDiv.role = 'alert';
-    alertDiv.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    `;
-    
-    // Tìm container để insert alert
-    const container = document.querySelector('.container') || document.querySelector('.container-fluid');
+    alertDiv.innerHTML = `${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+    const container = document.getElementById('alertContainer')
+        || document.querySelector('.container')
+        || document.querySelector('.container-fluid');
     if (container) {
         container.insertBefore(alertDiv, container.firstChild);
-        
-        // Tự động ẩn sau 5 giây
-        setTimeout(() => {
-            alertDiv.remove();
-        }, 5000);
+        setTimeout(() => alertDiv.remove(), 5000);
     }
 }
 
-/**
- * Lưu token.
- * @param {string} token - JWT token
- * @param {boolean} remember - true = ghi nhớ (localStorage), false = sessionStorage
- */
+/* ─── Token storage ──────────────────────────────────────── */
 function saveToken(token, remember = false) {
     if (remember) {
         localStorage.setItem('token', token);
         sessionStorage.removeItem('token');
     } else {
         sessionStorage.setItem('token', token);
-        localStorage.removeItem('token');  // xóa nếu lần trước đã remember
+        localStorage.removeItem('token');
     }
 }
 
-/**
- * Lấy token — ưu tiên sessionStorage, fallback localStorage (remember me)
- * @returns {string|null} JWT token
- */
 function getToken() {
     return sessionStorage.getItem('token') || localStorage.getItem('token');
 }
 
-/**
- * Xóa token khỏi cả hai storage
- */
 function removeToken() {
     sessionStorage.removeItem('token');
     localStorage.removeItem('token');
 }
 
-/**
- * Lưu user info — đồng bộ với nơi lưu token
- * @param {Object} userInfo - Thông tin user
- * @param {boolean} remember - true = localStorage
- */
+/* ─── User info storage ──────────────────────────────────── */
 function saveUserInfo(userInfo, remember = false) {
+    const s = JSON.stringify(userInfo);
     if (remember) {
-        localStorage.setItem('userInfo', JSON.stringify(userInfo));
+        localStorage.setItem('userInfo', s);
         sessionStorage.removeItem('userInfo');
     } else {
-        sessionStorage.setItem('userInfo', JSON.stringify(userInfo));
+        sessionStorage.setItem('userInfo', s);
         localStorage.removeItem('userInfo');
     }
 }
 
-/**
- * Lấy user info — ưu tiên sessionStorage
- * @returns {Object|null} User info
- */
 function getUserInfo() {
     const raw = sessionStorage.getItem('userInfo') || localStorage.getItem('userInfo');
     try { return raw ? JSON.parse(raw) : null; } catch { return null; }
 }
 
-/**
- * Xóa user info khỏi cả hai storage
- */
 function removeUserInfo() {
     sessionStorage.removeItem('userInfo');
     localStorage.removeItem('userInfo');
 }
 
-/**
- * Kiểm tra user đã đăng nhập chưa
- * @returns {boolean} true nếu đã đăng nhập
- */
+/* ─── Auth state ─────────────────────────────────────────── */
 function isLoggedIn() {
     return getToken() !== null;
 }
 
-/**
- * Logout user
- */
 function logout() {
     removeToken();
     removeUserInfo();
+    localStorage.removeItem('unreadCount');
     window.location.href = '/login';
 }
 
 /**
- * Redirect đến trang dashboard nếu đã đăng nhập
+ * Redirect nếu đã đăng nhập — dùng ở trang login/register.
+ * Staff   → /dashboard
+ * Resident → /resident
  */
 function redirectIfLoggedIn() {
-    if (isLoggedIn()) {
-        const userInfo = getUserInfo();
-        if (userInfo && userInfo.userType === 'staff') {
-            window.location.href = '/dashboard';
-        }
+    if (!isLoggedIn()) return;
+    const info = getUserInfo();
+    if (!info) return;
+    if (info.userType === 'staff') {
+        window.location.href = '/dashboard';
+    } else if (info.userType === 'resident') {
+        window.location.href = '/resident';
     }
 }
 
-/**
- * Redirect đến trang login nếu chưa đăng nhập
- */
+/** Redirect về login nếu chưa đăng nhập */
 function redirectIfNotLoggedIn() {
-    if (!isLoggedIn()) {
-        window.location.href = '/login';
-    }
+    if (!isLoggedIn()) window.location.href = '/login';
 }
 
-/**
- * Make API request với JWT token
- * @param {string} url - API endpoint
- * @param {Object} options - Fetch options
- * @returns {Promise} Fetch promise
- */
+/* ─── Login session ──────────────────────────────────────── */
+function saveLoginSession(token, userInfo, remember = false) {
+    saveToken(token, remember);
+    saveUserInfo(userInfo, remember);
+}
+
+/* ─── Role helpers ───────────────────────────────────────── */
+function getRole() {
+    return getUserInfo()?.role || '';
+}
+
+function isRole(...roles) {
+    return roles.includes(getRole());
+}
+
+/* ─── API request với JWT ────────────────────────────────── */
 async function apiRequest(url, options = {}) {
     const token = getToken();
-
-    const defaultOptions = {
-        headers: {
-            'Content-Type': 'application/json',
-            ...(token && { 'Authorization': `Bearer ${token}` })
-        }
-    };
-
-    const mergedOptions = {
-        ...defaultOptions,
+    const merged = {
         ...options,
         headers: {
-            ...defaultOptions.headers,
-            ...options.headers
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+            ...options.headers,
         }
     };
-
     try {
-        const response = await fetch(url, mergedOptions);
-
-        // Nếu 401 Unauthorized, logout
-        if (response.status === 401) {
-            logout();
-            return;
-        }
-
+        const response = await fetch(url, merged);
+        if (response.status === 401) { logout(); return; }
         return response;
     } catch (error) {
         console.error('API Request Error:', error);
@@ -193,162 +141,78 @@ async function apiRequest(url, options = {}) {
     }
 }
 
-/**
- * Validate email format
- * @param {string} email - Email để validate
- * @returns {boolean} true nếu email hợp lệ
- */
+/* ─── Validation helpers ─────────────────────────────────── */
 function isValidEmail(email) {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-/**
- * Validate phone number (10-11 chữ số)
- * @param {string} phone - Phone number
- * @returns {boolean} true nếu hợp lệ
- */
 function isValidPhone(phone) {
-    const phoneRegex = /^[0-9]{10,11}$/;
-    return phoneRegex.test(phone);
+    return /^[0-9]{10,11}$/.test(phone);
 }
 
-/**
- * Format số tiền VND
- * @param {number} amount - Số tiền
- * @returns {string} Số tiền đã format
- */
+/* ─── Formatting ─────────────────────────────────────────── */
 function formatCurrency(amount) {
-    return new Intl.NumberFormat('vi-VN', {
-        style: 'currency',
-        currency: 'VND'
-    }).format(amount);
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 }
 
-/**
- * Format date
- * @param {string} dateString - Date string
- * @returns {string} Formatted date
- */
 function formatDate(dateString) {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('vi-VN').format(date);
+    if (!dateString) return '—';
+    return new Intl.DateTimeFormat('vi-VN').format(new Date(dateString));
 }
 
-/**
- * Debounce function
- * @param {Function} func - Function to debounce
- * @param {number} wait - Wait time in milliseconds
- * @returns {Function} Debounced function
- */
+function formatDateTime(dateString) {
+    if (!dateString) return '—';
+    return new Date(dateString).toLocaleString('vi-VN');
+}
+
+/* ─── Debounce ───────────────────────────────────────────── */
 function debounce(func, wait) {
     let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
+    return function(...args) {
         clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
+        timeout = setTimeout(() => func(...args), wait);
     };
 }
 
-// Event listener khi DOM đã load
+/* ─── DOM ready listeners ────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', function() {
-    // Thêm logout button handler nếu có
-    const logoutBtn = document.getElementById('logoutBtn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            logout();
-        });
-    }
-});
+    // Logout button handler
+    document.getElementById('logoutBtn')?.addEventListener('click', e => {
+        e.preventDefault(); logout();
+    });
 
-/**
- * Lưu session sau khi login thành công.
- * Gọi hàm này trong login.html thay vì gọi saveToken/saveUserInfo riêng lẻ.
- * @param {string} token - JWT token từ server
- * @param {Object} userInfo - Thông tin user từ server
- * @param {boolean} remember - Giá trị checkbox "Ghi nhớ đăng nhập"
- */
-function saveLoginSession(token, userInfo, remember = false) {
-    saveToken(token, remember);
-    saveUserInfo(userInfo, remember);
-}
-
-/**
- * Lấy role của user đang đăng nhập.
- * Staff  → "ADMIN" | "MANAGER" | "STAFF"
- * Resident → "OWNER" | "TENANT" | "GUEST"
- */
-function getRole() {
-    return getUserInfo()?.role || '';
-}
-
-/**
- * Kiểm tra role hiện tại có nằm trong danh sách không.
- * @param {...string} roles - Các role cần check
- * @returns {boolean}
- * @example  isRole('ADMIN','MANAGER')  → true nếu đang là ADMIN hoặc MANAGER
- */
-function isRole(...roles) {
-    return roles.includes(getRole());
-}
-/**
- * Staff sidebar mobile toggle — tự động inject hamburger button cho staff pages.
- * Chạy khi DOM load, chỉ kích hoạt nếu có nav.sidebar (staff layout).
- * Không cần sửa từng file HTML staff.
- */
-document.addEventListener('DOMContentLoaded', function () {
+    // Staff sidebar mobile toggle (tự inject)
     const staffSidebar = document.querySelector('nav.sidebar');
-    if (!staffSidebar) return; // Không phải staff page → bỏ qua
+    if (!staffSidebar) return;
 
-    // Thêm title attribute cho mỗi nav-link để tooltip hoạt động trên tablet
     staffSidebar.querySelectorAll('.nav-link').forEach(link => {
         const span = link.querySelector('span');
         const text = span ? span.textContent.trim() : link.textContent.trim();
-        if (text && !link.getAttribute('title')) {
-            link.setAttribute('title', text);
-        }
+        if (text && !link.getAttribute('title')) link.setAttribute('title', text);
     });
 
-    // Inject hamburger button nếu chưa có
     if (!document.getElementById('staffMobileToggle')) {
         const btn = document.createElement('button');
-        btn.id        = 'staffMobileToggle';
+        btn.id = 'staffMobileToggle';
         btn.className = 'staff-mobile-toggle';
         btn.innerHTML = '<i class="fas fa-bars"></i>';
         btn.setAttribute('aria-label', 'Mở menu');
         document.body.appendChild(btn);
 
-        btn.addEventListener('click', function () {
+        btn.addEventListener('click', () => {
             staffSidebar.classList.toggle('open');
-            // Đổi icon
-            const icon = btn.querySelector('i');
-            icon.className = staffSidebar.classList.contains('open')
-                ? 'fas fa-times'
-                : 'fas fa-bars';
+            btn.querySelector('i').className =
+                staffSidebar.classList.contains('open') ? 'fas fa-times' : 'fas fa-bars';
         });
 
-        // Đóng sidebar khi click ra ngoài
-        document.addEventListener('click', function (e) {
+        document.addEventListener('click', e => {
             if (window.innerWidth <= 768
                 && staffSidebar.classList.contains('open')
                 && !staffSidebar.contains(e.target)
-                && e.target !== btn
                 && !btn.contains(e.target)) {
                 staffSidebar.classList.remove('open');
                 btn.querySelector('i').className = 'fas fa-bars';
             }
         });
-    }
-
-    // Thêm col classes cho tablet icon-only mode
-    const row = staffSidebar.closest('.row');
-    if (row) {
-        // Thêm class để CSS tablet nhắm đúng
-        staffSidebar.closest('[class*="col-md-3"]')?.classList.add('staff-sidebar-col');
-        row.querySelector('[class*="col-md-9"]')?.classList.add('staff-main-col');
     }
 });

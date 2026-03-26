@@ -105,7 +105,7 @@ public class StaffServiceRequestController {
      * POST /{id}/done — tất cả staff (người được giao thực hiện)
      */
     @PostMapping("/{id}/done")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF','TECHNICIAN')")
     public ResponseEntity<?> markDone(
             @PathVariable String id,
             @RequestBody Map<String, String> body) {
@@ -125,7 +125,7 @@ public class StaffServiceRequestController {
      * PATCH /{id}/note — tất cả staff
      */
     @PatchMapping("/{id}/note")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF','TECHNICIAN')")
     public ResponseEntity<?> updateNote(
             @PathVariable String id,
             @RequestBody Map<String, String> body) {

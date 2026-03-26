@@ -1,70 +1,72 @@
 package com.swp391.condocare_swp.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
-/**
- * Entity bảng Invoice_Monthly (để tránh conflict với bảng Invoice gốc)
- * Hóa đơn hàng tháng của từng căn hộ - dành cho Resident Dashboard.
- * Mỗi căn hộ chỉ có duy nhất 1 hóa đơn cho mỗi tháng/năm (unique key).
- */
 @Entity
-@Table(name = "Invoice")
-@Data
+@Table(name = "Invoice",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uq_invoice_apt_month",
+                columnNames = {"apartment_id", "month", "year"}))
+@Getter @Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class Invoice {
+
     @Id
+    @Column(name = "ID", length = 15, nullable = false)
     private String id;
 
-    @ManyToOne
-    @JoinColumn(name = "apartment_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "apartment_id", nullable = false)
     private Apartment apartment;
 
+    /** 1–12 */
+    @Column(name = "month", nullable = false)
     private Integer month;
+
+    @Column(name = "year", nullable = false)
     private Integer year;
 
-    // Liên kết với MeterReading
-    @ManyToOne
-    @JoinColumn(name = "electric_reading_id")
-    private MeterReading electricReading;
-
-    @ManyToOne
-    @JoinColumn(name = "water_reading_id")
-    private MeterReading waterReading;
-
-    // Liên kết với Fees
-    @ManyToOne
-    @JoinColumn(name = "service_fee_id")
-    private Fees serviceFee;
-
-    @ManyToOne
-    @JoinColumn(name = "parking_fee_id")
-    private Fees parkingFee;
-
-    // Các số tiền
-    private BigDecimal electricAmount;
-    private BigDecimal waterAmount;
-    private BigDecimal serviceAmount;
-    private BigDecimal parkingAmount;
-    private BigDecimal totalAmount;
+    @Column(name = "total_amount", nullable = false, precision = 19, scale = 2)
+    private BigDecimal totalAmount = BigDecimal.ZERO;
 
     @Enumerated(EnumType.STRING)
-    private InvoiceStatus status;  // UNPAID, PAID, OVERDUE
+    @Column(name = "status", nullable = false,
+            columnDefinition = "ENUM('UNPAID','PAID','OVERDUE')")
+    private InvoiceStatus status = InvoiceStatus.UNPAID;
 
+    @Column(name = "issued_at")
     private LocalDateTime issuedAt;
+
+    @Column(name = "due_date")
     private LocalDate dueDate;
+
+    @Column(name = "paid_at")
     private LocalDateTime paidAt;
 
-    @ManyToOne
-    @JoinColumn(name = "create_by")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by", nullable = false)
     private Staff createdBy;
 
-    public enum InvoiceStatus {
-        UNPAID, PAID, OVERDUE
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    /** Chi tiết từng dòng phí — cascade delete khi xóa invoice */
+    @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<InvoiceFeeDetail> feeDetails;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        if (status      == null) status      = InvoiceStatus.UNPAID;
+        if (totalAmount == null) totalAmount = BigDecimal.ZERO;
     }
+
+    public enum InvoiceStatus { UNPAID, PAID, OVERDUE }
 }

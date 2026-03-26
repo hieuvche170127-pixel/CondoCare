@@ -3,13 +3,17 @@ package com.swp391.condocare_swp.service;
 import com.swp391.condocare_swp.dto.ChangePasswordRequest;
 import com.swp391.condocare_swp.dto.ProfileResponse;
 import com.swp391.condocare_swp.dto.UpdateProfileRequest;
+import com.swp391.condocare_swp.entity.AccessCard;
 import com.swp391.condocare_swp.entity.Apartment;
-import com.swp391.condocare_swp.entity.Fees;
+import com.swp391.condocare_swp.entity.FeeTemplate;
 import com.swp391.condocare_swp.entity.Residents;
 import com.swp391.condocare_swp.entity.Staff;
-import com.swp391.condocare_swp.repository.FeesRepository;
+import com.swp391.condocare_swp.entity.Vehicle;
+import com.swp391.condocare_swp.repository.AccessCardRepository;
+import com.swp391.condocare_swp.repository.FeeTemplateRepository;
 import com.swp391.condocare_swp.repository.ResidentsRepository;
 import com.swp391.condocare_swp.repository.StaffRepository;
+import com.swp391.condocare_swp.repository.VehicleRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +25,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -29,14 +32,16 @@ public class ProfileService {
 
     private static final Logger logger = LoggerFactory.getLogger(ProfileService.class);
 
-    @Autowired private StaffRepository     staffRepository;
-    @Autowired private ResidentsRepository residentsRepository;
-    @Autowired private FeesRepository      feesRepository;
-    @Autowired private PasswordEncoder     passwordEncoder;
+    @Autowired private StaffRepository       staffRepository;
+    @Autowired private ResidentsRepository   residentsRepository;
+    @Autowired private FeeTemplateRepository feeTemplateRepository;
+    @Autowired private VehicleRepository     vehicleRepository;
+    @Autowired private AccessCardRepository  accessCardRepository;
+    @Autowired private PasswordEncoder       passwordEncoder;
 
-    /* ══════════════════════════════════════════════════════
+    /* ══════════════════════════════════════════════════════════
        GET PROFILE
-    ══════════════════════════════════════════════════════ */
+    ══════════════════════════════════════════════════════════ */
     public ProfileResponse getProfile() {
         String username = currentUsername();
         logger.info("Getting profile for user: {}", username);
@@ -49,9 +54,9 @@ public class ProfileService {
         return buildResidentProfile(resident);
     }
 
-    /* ══════════════════════════════════════════════════════
+    /* ══════════════════════════════════════════════════════════
        UPDATE PROFILE
-    ══════════════════════════════════════════════════════ */
+    ══════════════════════════════════════════════════════════ */
     @Transactional
     public String updateProfile(UpdateProfileRequest req) {
         String username = currentUsername();
@@ -65,9 +70,9 @@ public class ProfileService {
         return updateResidentProfile(resident, req);
     }
 
-    /* ══════════════════════════════════════════════════════
+    /* ══════════════════════════════════════════════════════════
        CHANGE PASSWORD
-    ══════════════════════════════════════════════════════ */
+    ══════════════════════════════════════════════════════════ */
     @Transactional
     public String changePassword(ChangePasswordRequest req) {
         if (!req.getNewPassword().equals(req.getConfirmPassword()))
@@ -93,9 +98,10 @@ public class ProfileService {
         return "Đổi mật khẩu thành công!";
     }
 
-    /* ══════════════════════════════════════════════════════
-       PRIVATE — BUILD RESPONSE
-    ══════════════════════════════════════════════════════ */
+    /* ══════════════════════════════════════════════════════════
+       PRIVATE — BUILD PROFILE RESPONSE
+    ══════════════════════════════════════════════════════════ */
+
     private ProfileResponse buildStaffProfile(Staff s) {
         return ProfileResponse.builder()
                 .id(s.getId())
@@ -108,14 +114,15 @@ public class ProfileService {
                 .userType("staff")
                 .position(s.getPosition())
                 .department(s.getDepartment())
-                .staffStatus(s.getStatus() != null ? s.getStatus().name() : null)
+                .staffStatus(s.getStatus() != null ? s.getStatus().name() : null) // Staff.StaffStatus
                 .roleName(s.getRole() != null ? s.getRole().getName() : null)
-                .fees(new ArrayList<>())
+                .vehicles(new ArrayList<>())
+                .feeTemplates(new ArrayList<>())
                 .build();
     }
 
     private ProfileResponse buildResidentProfile(Residents r) {
-        ProfileResponse.ProfileResponseBuilder b = ProfileResponse.builder()
+        ProfileResponse.ProfileResponseBuilder builder = ProfileResponse.builder()
                 .id(r.getId())
                 .username(r.getUsername())
                 .fullName(r.getFullName())
@@ -126,52 +133,71 @@ public class ProfileService {
                 .userType("resident")
                 .idNumber(r.getIdNumber())
                 .residentType(r.getType() != null ? r.getType().name() : null)
-                .residentStatus(r.getStatus() != null ? r.getStatus().name() : null)
-                .tempResidence(r.getTempResidence())
-                .tempAbsence(r.getTempAbsence());
+                .residentStatus(r.getStatus() != null ? r.getStatus().name() : null); // Residents.ResidentStatus
 
         Apartment apt = r.getApartment();
         if (apt != null) {
-            b.apartmentId(apt.getId())
+            builder.apartmentId(apt.getId())
                     .apartmentNumber(apt.getNumber())
-                    .apartmentArea(apt.getArea() != null ? (double) apt.getArea() : null)
+                    .apartmentArea(apt.getArea() != null ? apt.getArea().doubleValue() : null)
                     .buildingName(apt.getBuilding() != null ? apt.getBuilding().getName() : null);
 
-            // Load tất cả fees của căn hộ (active + inactive parking)
-            List<Fees> allFees = feesRepository.findByApartment(apt);
-            List<ProfileResponse.FeeInfo> feeInfos = allFees.stream()
-                    .map(f -> ProfileResponse.FeeInfo.builder()
-                            .id(f.getId())
-                            .name(f.getName())
-                            .type(f.getType() != null ? f.getType().name() : "OTHER")
-                            .vehicleType(detectVehicleType(f.getName()))
-                            .amount(f.getAmount() != null ? f.getAmount().doubleValue() : 0)
-                            .active(f.getEffectiveTo() == null) // null = đang dùng
-                            .build())
-                    .collect(Collectors.toList());
-            b.fees(feeInfos);
+            // VehicleRepository.findByResidentId(String) — Spring JPA tự resolve
+            // vì Vehicle.resident là @ManyToOne, Spring map "residentId" → resident.id
+            List<Vehicle> vehicles = vehicleRepository.findByResidentId(r.getId());
+            builder.vehicles(vehicles.stream()
+                    .map(this::toVehicleInfo)
+                    .collect(Collectors.toList()));
+
+            // FeeTemplate ACTIVE của tòa nhà
+            if (apt.getBuilding() != null) {
+                List<FeeTemplate> templates = feeTemplateRepository
+                        .findByBuildingIdAndStatus(
+                                apt.getBuilding().getId(),
+                                FeeTemplate.FeeStatus.ACTIVE); // FeeTemplate.FeeStatus
+                builder.feeTemplates(templates.stream()
+                        .map(this::toFeeTemplateInfo)
+                        .collect(Collectors.toList()));
+            }
         } else {
-            b.fees(new ArrayList<>());
+            builder.vehicles(new ArrayList<>());
+            builder.feeTemplates(new ArrayList<>());
         }
 
-        return b.build();
+        // Thẻ từ — chỉ hiện khi ACTIVE
+        // AccessCardRepository chỉ có findByResidentId(String) trả về List
+        // → lọc CardStatus.ACTIVE thủ công (không dùng findFirstByResidentIdAndStatus)
+        if (r.getStatus() == Residents.ResidentStatus.ACTIVE) {
+            accessCardRepository.findByResidentId(r.getId())
+                    .stream()
+                    .filter(c -> c.getStatus() == AccessCard.CardStatus.ACTIVE) // AccessCard.CardStatus
+                    .findFirst()
+                    .ifPresent(card -> builder
+                            .accessCardNumber(card.getCardNumber())
+                            .accessCardStatus(card.getStatus().name()));
+        }
+
+        return builder.build();
     }
 
-    /* ══════════════════════════════════════════════════════
-       PRIVATE — UPDATE
-    ══════════════════════════════════════════════════════ */
+    /* ══════════════════════════════════════════════════════════
+       PRIVATE — UPDATE PROFILE
+    ══════════════════════════════════════════════════════════ */
+
     private String updateStaffProfile(Staff staff, UpdateProfileRequest req) {
-        if (staff.getEmail() != null && !staff.getEmail().equals(req.getEmail())
+        if (req.getEmail() != null
+                && !req.getEmail().equals(staff.getEmail())
                 && staffRepository.existsByEmail(req.getEmail()))
             throw new RuntimeException("Email đã được sử dụng bởi tài khoản khác");
 
         staff.setFullName(req.getFullName());
         staff.setEmail(req.getEmail());
         staff.setPhone(req.getPhone());
+
         if (req.getDob() != null && !req.getDob().isBlank())
             staff.setDob(LocalDate.parse(req.getDob()));
         if (req.getGender() != null && !req.getGender().isBlank())
-            staff.setGender(Staff.Gender.valueOf(req.getGender().toUpperCase()));
+            staff.setGender(Staff.Gender.valueOf(req.getGender().toUpperCase())); // Staff.Gender
 
         staffRepository.save(staff);
         logger.info("Staff profile updated: {}", staff.getUsername());
@@ -179,74 +205,74 @@ public class ProfileService {
     }
 
     private String updateResidentProfile(Residents resident, UpdateProfileRequest req) {
-        if (resident.getEmail() != null && !resident.getEmail().equals(req.getEmail())
+        if (req.getEmail() != null
+                && !req.getEmail().equals(resident.getEmail())
                 && residentsRepository.existsByEmail(req.getEmail()))
             throw new RuntimeException("Email đã được sử dụng bởi tài khoản khác");
 
         resident.setFullName(req.getFullName());
         resident.setEmail(req.getEmail());
         resident.setPhone(req.getPhone());
+
         if (req.getDob() != null && !req.getDob().isBlank())
             resident.setDob(LocalDate.parse(req.getDob()));
         if (req.getGender() != null && !req.getGender().isBlank())
-            resident.setGender(Residents.Gender.valueOf(req.getGender().toUpperCase()));
-        if (req.getIdNumber() != null)
-            resident.setIdNumber(req.getIdNumber());
-        if (req.getTempResidence() != null)
-            resident.setTempResidence(req.getTempResidence());
-        if (req.getTempAbsence() != null)
-            resident.setTempAbsence(req.getTempAbsence());
+            resident.setGender(Residents.Gender.valueOf(req.getGender().toUpperCase())); // Residents.Gender
 
-        residentsRepository.save(resident);
-
-        // Cập nhật trạng thái fees gửi xe nếu có gửi selectedFeeIds
-        if (req.getSelectedFeeIds() != null && resident.getApartment() != null) {
-            updateParkingFees(resident.getApartment(), req.getSelectedFeeIds());
+        // idNumber: chỉ cho cập nhật khi còn PENDING
+        // Sau khi ACTIVE → khóa để tránh giả mạo danh tính
+        if (req.getIdNumber() != null) {
+            if (resident.getStatus() == Residents.ResidentStatus.PENDING) {
+                resident.setIdNumber(req.getIdNumber());
+            } else {
+                throw new RuntimeException(
+                        "Không thể thay đổi CCCD sau khi tài khoản đã được xác minh");
+            }
         }
 
+        residentsRepository.save(resident);
         logger.info("Resident profile updated: {}", resident.getUsername());
         return "Cập nhật thông tin thành công!";
     }
 
-    /**
-     * Bật/tắt phí xe theo lựa chọn của resident.
-     * selected = có trong list → effectiveTo = null  (bật)
-     * không selected           → effectiveTo = today (tắt)
-     */
-    private void updateParkingFees(Apartment apt, List<String> selectedFeeIds) {
-        Set<String> selected = Set.copyOf(selectedFeeIds);
-        List<Fees> parkingFees = feesRepository.findByApartmentAndType(apt, Fees.FeeType.PARKING);
+    /* ══════════════════════════════════════════════════════════
+       PRIVATE — MAPPERS
+    ══════════════════════════════════════════════════════════ */
 
-        for (Fees fee : parkingFees) {
-            boolean wantActive = selected.contains(fee.getId());
-            boolean isActive   = fee.getEffectiveTo() == null;
-
-            if (wantActive && !isActive) {
-                fee.setEffectiveTo(null);
-                feesRepository.save(fee);
-                logger.info("Parking fee {} activated for apt {}", fee.getId(), apt.getId());
-            } else if (!wantActive && isActive) {
-                fee.setEffectiveTo(LocalDate.now());
-                feesRepository.save(fee);
-                logger.info("Parking fee {} deactivated for apt {}", fee.getId(), apt.getId());
-            }
-        }
+    private ProfileResponse.VehicleInfo toVehicleInfo(Vehicle v) {
+        return ProfileResponse.VehicleInfo.builder()
+                .id(v.getId())
+                .type(v.getType()          != null ? v.getType().name()          : null) // Vehicle.VehicleType
+                .licensePlate(v.getLicensePlate())
+                .brand(v.getBrand())
+                .model(v.getModel())
+                .color(v.getColor())
+                .durationType(v.getDurationType() != null ? v.getDurationType().name() : null)
+                .registeredAt(v.getRegisteredAt() != null ? v.getRegisteredAt().toString() : null)
+                .expiredAt(v.getExpiredAt()       != null ? v.getExpiredAt().toString()    : null)
+                .pendingStatus(v.getPendingStatus() != null ? v.getPendingStatus().name()  : null)
+                .status(v.getStatus()              != null ? v.getStatus().name()          : null) // Vehicle.VehicleStatus
+                .rejectReason(v.getRejectReason())
+                .build();
     }
 
-    /* ══════════════════════════════════════════════════════
+    private ProfileResponse.FeeTemplateInfo toFeeTemplateInfo(FeeTemplate f) {
+        return ProfileResponse.FeeTemplateInfo.builder()
+                .id(f.getId())
+                .name(f.getName())
+                .type(f.getType() != null ? f.getType().name() : null)
+                .unit(f.getUnit() != null ? f.getUnit().name() : null)
+                .amount(f.getAmount() != null ? f.getAmount().doubleValue() : 0)
+                .effectiveFrom(f.getEffectiveFrom() != null
+                        ? f.getEffectiveFrom().toString() : null)
+                .build();
+    }
+
+    /* ══════════════════════════════════════════════════════════
        HELPERS
-    ══════════════════════════════════════════════════════ */
+    ══════════════════════════════════════════════════════════ */
+
     private String currentUsername() {
         return SecurityContextHolder.getContext().getAuthentication().getName();
-    }
-
-    /** Phân loại xe từ tên fee để frontend hiển thị icon */
-    private String detectVehicleType(String name) {
-        if (name == null) return null;
-        String lc = name.toLowerCase();
-        if (lc.contains("ô tô") || lc.contains("o to") || lc.contains("car"))  return "car";
-        if (lc.contains("đạp") || lc.contains("ebike") || lc.contains("xe điện")) return "ebike";
-        if (lc.contains("máy") || lc.contains("motorbike") || lc.contains("motor")) return "motorbike";
-        return null;
     }
 }

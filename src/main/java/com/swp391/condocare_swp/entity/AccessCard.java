@@ -1,23 +1,27 @@
 package com.swp391.condocare_swp.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "access_cards")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@Getter @Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class AccessCard {
+
     @Id
-    @Column(length = 10, nullable = false)
+    @Column(name = "ID", length = 10, nullable = false)
     private String id;
 
-    @Column(name = "card_number", length = 8, nullable = false, unique = true)
+    @Column(name = "card_number", length = 20, nullable = false, unique = true)
     private String cardNumber;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "resident_id", nullable = false)
+    private Residents resident;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "issued_by")
@@ -30,18 +34,18 @@ public class AccessCard {
     private LocalDateTime expiredAt;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "ENUM('ACTIVE', 'BLOCKED', 'LOST') DEFAULT 'ACTIVE'")
+    @Column(name = "status", nullable = false,
+            columnDefinition = "ENUM('ACTIVE','BLOCKED','LOST')")
     private CardStatus status = CardStatus.ACTIVE;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "resident_id", nullable = false)
-    private Residents resident;
 
     @PrePersist
     protected void onCreate() {
-        if (issuedAt == null) issuedAt = LocalDateTime.now();
         if (status == null) status = CardStatus.ACTIVE;
     }
 
-    public enum CardStatus { ACTIVE, BLOCKED, LOST }
+    public enum CardStatus {
+        ACTIVE,   // Đang hoạt động
+        BLOCKED,  // Bị khóa
+        LOST      // Đã mất
+    }
 }
