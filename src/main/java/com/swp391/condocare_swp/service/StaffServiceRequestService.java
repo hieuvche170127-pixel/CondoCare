@@ -295,6 +295,30 @@ public class StaffServiceRequestService {
         return m;
     }
 
+
+    /**
+     * Trả về staffId từ username (dùng cho TECHNICIAN filter).
+     */
+    public String getStaffIdByUsername(String username) {
+        return staffRepo.findByUsername(username)
+                .map(s -> s.getId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên: " + username));
+    }
+
+    /**
+     * Kiểm tra yêu cầu có được phân công cho staffId không.
+     * Ném exception nếu không — TECHNICIAN không được xem/sửa yêu cầu người khác.
+     */
+    public void assertAssignedTo(String requestId, String staffId) {
+        ServiceRequest req = ServiceRequestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy yêu cầu: " + requestId));
+
+        if (req.getAssignedTo() == null || !req.getAssignedTo().getId().equals(staffId)) {
+            throw new RuntimeException("Bạn không có quyền truy cập yêu cầu này " +
+                    "(chỉ được xem yêu cầu được phân công cho bạn).");
+        }
+    }
+
     private Map<String, Object> toMapFull(ServiceRequest sr) {
         Map<String, Object> m = toMap(sr);
         m.put("completionImage", sr.getCompletionImage());
