@@ -108,6 +108,10 @@ public class PageController {
     @GetMapping("/dashboard/invoices")
     public String invoiceManagement()     { return "staff/invoices"; }
 
+    /** GET /dashboard/apartments → Quản lý căn hộ & phí dịch vụ */
+    @GetMapping("/dashboard/apartments")
+    public String apartmentManagement()   { return "staff/apartments"; }
+
     /** GET /dashboard/service-requests → Quan ly yeu cau ho tro */
     @GetMapping("/dashboard/service-requests")
     public String staffServiceRequests()  { return "staff/service-requests"; }

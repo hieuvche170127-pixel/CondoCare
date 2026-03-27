@@ -438,6 +438,39 @@ public class ResidentManagementService {
         return candidate;
     }
 
+    // ─── RESET MẬT KHẨU ──────────────────────────────────────────────────────
+
+    /**
+     * Sinh mật khẩu random, lưu DB, gửi email cho cư dân.
+     * Ném RuntimeException nếu cư dân không có email (không gửi được).
+     */
+    @Transactional
+    public String resetPassword(String id) {
+        Residents r = residentRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy cư dân: " + id));
+
+        if (r.getEmail() == null || r.getEmail().isBlank())
+            throw new RuntimeException(
+                    "Cư dân " + r.getFullName() + " chưa có địa chỉ email. Vui lòng cập nhật email trước.");
+
+        String newPassword = generateRandomPassword();
+        r.setPassword(passwordEncoder.encode(newPassword));
+        residentRepo.save(r);
+
+        logger.info("Password reset for resident [{}] by admin", id);
+
+        // Gửi email thông báo mật khẩu mới
+        emailService.sendWelcomeEmail(
+                r.getEmail(),
+                r.getFullName(),
+                r.getUsername(),
+                newPassword,
+                "cư dân (mật khẩu mới)"
+        );
+
+        return "Đã đặt lại mật khẩu và gửi về email: " + r.getEmail();
+    }
+
     private String generateRandomPassword() {
         final String CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#$%";
         SecureRandom rng = new SecureRandom();

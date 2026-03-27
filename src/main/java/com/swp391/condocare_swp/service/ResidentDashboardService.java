@@ -177,15 +177,15 @@ public class ResidentDashboardService {
 
     private Map<String, Object> mapInvoice(Invoice inv) {
         Map<String, Object> m = new LinkedHashMap<>();
-        m.put("id",        inv.getId());
-        m.put("month",     inv.getMonth());
-        m.put("year",      inv.getYear());
-        m.put("totalAmt",  inv.getTotalAmount() != null ? inv.getTotalAmount() : BigDecimal.ZERO);
-        m.put("status",    inv.getStatus().name());
-        m.put("issuedAt",  inv.getIssuedAt()  != null ? inv.getIssuedAt().toString()  : null);
-        m.put("dueDate",   inv.getDueDate()   != null ? inv.getDueDate().toString()   : null);
-        m.put("paidAt",    inv.getPaidAt()    != null ? inv.getPaidAt().toString()    : null);
-        m.put("createdBy", inv.getCreatedBy() != null ? inv.getCreatedBy().getFullName() : "Hệ thống");
+        m.put("id",          inv.getId());
+        m.put("month",       inv.getMonth());
+        m.put("year",        inv.getYear());
+        m.put("totalAmount", inv.getTotalAmount() != null ? inv.getTotalAmount() : BigDecimal.ZERO);
+        m.put("status",      inv.getStatus().name());
+        m.put("issuedAt",    inv.getIssuedAt()  != null ? inv.getIssuedAt().toString()  : null);
+        m.put("dueDate",     inv.getDueDate()   != null ? inv.getDueDate().toString()   : null);
+        m.put("paidAt",      inv.getPaidAt()    != null ? inv.getPaidAt().toString()    : null);
+        m.put("createdBy",   inv.getCreatedBy() != null ? inv.getCreatedBy().getFullName() : "Hệ thống");
 
         // Chi tiết từng dòng phí (thay cho electricAmount/waterAmount cũ)
         List<InvoiceFeeDetail> details = detailRepo.findByInvoiceId(inv.getId());
@@ -209,8 +209,8 @@ public class ResidentDashboardService {
                 .filter(d -> d.getFeeType() == FeeTemplate.FeeType.PARKING)
                 .map(InvoiceFeeDetail::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        m.put("serviceTotal", serviceTotal);
-        m.put("parkingTotal", parkingTotal);
+        m.put("serviceAmount", serviceTotal);
+        m.put("parkingAmount", parkingTotal);
 
         return m;
     }

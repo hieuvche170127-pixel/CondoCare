@@ -204,6 +204,38 @@ public class StaffManagementService {
         return "Đã vô hiệu hóa nhân viên thành công!";
     }
 
+    // ─── RESET MẬT KHẨU ──────────────────────────────────────────────────────
+
+    /**
+     * Sinh mật khẩu random, lưu DB, gửi email cho nhân viên.
+     * Ném RuntimeException nếu nhân viên không có email.
+     */
+    @Transactional
+    public String resetPassword(String id) {
+        Staff staff = staffRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên: " + id));
+
+        if (staff.getEmail() == null || staff.getEmail().isBlank())
+            throw new RuntimeException(
+                    "Nhân viên " + staff.getFullName() + " chưa có địa chỉ email. Vui lòng cập nhật email trước.");
+
+        String newPassword = generateRandomPassword();
+        staff.setPassword(passwordEncoder.encode(newPassword));
+        staffRepo.save(staff);
+
+        logger.info("Password reset for staff [{}] by admin", id);
+
+        emailService.sendWelcomeEmail(
+                staff.getEmail(),
+                staff.getFullName(),
+                staff.getUsername(),
+                newPassword,
+                "nhân viên (mật khẩu mới)"
+        );
+
+        return "Đã đặt lại mật khẩu và gửi về email: " + staff.getEmail();
+    }
+
     /* ── HELPERS ── */
     private Map<String, Object> mapToResponse(Staff staff) {
         Map<String, Object> m = new LinkedHashMap<>();

@@ -1,1249 +1,157 @@
 <!DOCTYPE html>
-<html lang="vi" xmlns:th="http://www.thymeleaf.org"
-      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản lý Căn hộ – CondoCare</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        :root {
-          --primary: #2563eb;
-          --primary-light: #eff6ff;
-          --success: #16a34a;
-          --warning: #d97706;
-          --danger: #dc2626;
-          --sidebar-w: 240px;
-          --topbar-h: 60px;
-          --bg: #f1f5f9;
-          --card-bg: #ffffff;
-          --text: #1e293b;
-          --muted: #64748b;
-          --border: #e2e8f0;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--text); }
+    <title>Thông tin căn hộ - Cư dân</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/resident.css">
 
-        /* ── Sidebar ── */
-        .sidebar {
-          position: fixed; top: 0; left: 0; height: 100vh; width: var(--sidebar-w);
-          background: #1e293b; color: #cbd5e1; display: flex; flex-direction: column;
-          z-index: 100; transition: transform .25s;
-        }
-        .sidebar-brand {
-          height: var(--topbar-h); display: flex; align-items: center; gap: 10px;
-          padding: 0 20px; font-size: 1.15rem; font-weight: 800; color: #fff;
-          border-bottom: 1px solid #334155;
-        }
-        .sidebar-brand i { color: var(--primary); font-size: 1.4rem; }
-        .sidebar-nav { flex: 1; overflow-y: auto; padding: 12px 0; }
-        .nav-section { font-size: .7rem; font-weight: 700; text-transform: uppercase;
-          letter-spacing: .1em; color: #475569; padding: 14px 20px 4px; }
-        .nav-link {
-          display: flex; align-items: center; gap: 10px; padding: 9px 20px;
-          color: #94a3b8; text-decoration: none; font-size: .875rem; font-weight: 600;
-          border-radius: 0; transition: all .15s;
-        }
-        .nav-link:hover, .nav-link.active {
-          background: rgba(37,99,235,.15); color: #fff;
-        }
-        .nav-link.active { border-right: 3px solid var(--primary); }
-        .nav-link i { width: 20px; text-align: center; font-size: 1rem; }
-
-        /* ── Main ── */
-        .main-wrap { margin-left: var(--sidebar-w); min-height: 100vh; display: flex; flex-direction: column; }
-        .topbar {
-          height: var(--topbar-h); background: var(--card-bg); border-bottom: 1px solid var(--border);
-          display: flex; align-items: center; justify-content: space-between;
-          padding: 0 24px; position: sticky; top: 0; z-index: 50;
-        }
-        .topbar-title { font-size: 1.05rem; font-weight: 700; }
-        .topbar-user { display: flex; align-items: center; gap: 8px; font-size: .875rem; font-weight: 600; }
-        .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--primary);
-          color: #fff; display: flex; align-items: center; justify-content: center; font-size: .8rem; font-weight: 700; }
-        .content { flex: 1; padding: 24px; }
-
-        /* ── Stats ── */
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(180px,1fr)); gap: 16px; margin-bottom: 24px; }
-        .stat-card {
-          background: var(--card-bg); border-radius: 12px; padding: 16px 20px;
-          border: 1px solid var(--border); display: flex; align-items: center; gap: 16px;
-        }
-        .stat-icon { width: 46px; height: 46px; border-radius: 10px; display: flex;
-          align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; }
-        .stat-icon.blue  { background: #dbeafe; color: var(--primary); }
-        .stat-icon.green { background: #dcfce7; color: var(--success); }
-        .stat-icon.amber { background: #fef3c7; color: var(--warning); }
-        .stat-icon.red   { background: #fee2e2; color: var(--danger); }
-        .stat-icon.indigo{ background: #e0e7ff; color: #4f46e5; }
-        .stat-num  { font-size: 1.6rem; font-weight: 800; line-height: 1; }
-        .stat-lbl  { font-size: .75rem; color: var(--muted); font-weight: 600; margin-top: 2px; }
-
-        /* ── Two-column layout ── */
-        .page-grid { display: grid; grid-template-columns: 280px 1fr; gap: 20px; }
-
-        /* ── Building panel ── */
-        .panel { background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border); overflow: hidden; }
-        .panel-header {
-          padding: 14px 18px; border-bottom: 1px solid var(--border);
-          display: flex; align-items: center; justify-content: space-between;
-        }
-        .panel-title { font-size: .9rem; font-weight: 700; }
-        .building-item {
-          padding: 12px 18px; cursor: pointer; border-bottom: 1px solid var(--border);
-          transition: background .12s; display: flex; align-items: flex-start; gap: 10px;
-        }
-        .building-item:hover { background: #f8fafc; }
-        .building-item.active { background: var(--primary-light); border-left: 3px solid var(--primary); }
-        .building-item .name { font-size: .875rem; font-weight: 700; }
-        .building-item .addr { font-size: .75rem; color: var(--muted); margin-top: 2px; }
-        .building-item .badge { font-size: .7rem; }
-        .bld-icon { width: 36px; height: 36px; border-radius: 8px; background: #dbeafe;
-          color: var(--primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-
-        /* ── Right panel ── */
-        .right-panel { display: flex; flex-direction: column; gap: 20px; }
-
-        /* ── Table ── */
-        .card { background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border); overflow: hidden; }
-        .card-header {
-          padding: 14px 18px; border-bottom: 1px solid var(--border);
-          display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
-        }
-        .card-header-title { font-size: .9rem; font-weight: 700; }
-        .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-        table { width: 100%; border-collapse: collapse; font-size: .85rem; }
-        th { background: #f8fafc; padding: 10px 14px; text-align: left; font-weight: 700;
-             font-size: .75rem; color: var(--muted); border-bottom: 1px solid var(--border); }
-        td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-        tr:last-child td { border-bottom: none; }
-        tr:hover td { background: #f8fafc; }
-        .badge { padding: 3px 9px; border-radius: 6px; font-size: .72rem; font-weight: 700; }
-        .badge-green  { background:#dcfce7; color:#15803d; }
-        .badge-red    { background:#fee2e2; color:#b91c1c; }
-        .badge-amber  { background:#fef3c7; color:#b45309; }
-        .badge-blue   { background:#dbeafe; color:#1d4ed8; }
-        .badge-gray   { background:#f1f5f9; color:#475569; }
-
-        /* ── Btn ── */
-        .btn { font-family: 'Nunito', sans-serif; font-weight: 700; font-size: .82rem;
-               border-radius: 8px; padding: 6px 14px; border: none; cursor: pointer;
-               display: inline-flex; align-items: center; gap: 5px; transition: opacity .15s; }
-        .btn:hover { opacity: .88; }
-        .btn-primary { background: var(--primary); color: #fff; }
-        .btn-success { background: var(--success); color: #fff; }
-        .btn-warning { background: var(--warning); color: #fff; }
-        .btn-danger  { background: var(--danger);  color: #fff; }
-        .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text); }
-        .btn-sm { padding: 4px 10px; font-size: .78rem; }
-        .btn-xs { padding: 2px 8px; font-size: .74rem; border-radius: 6px; }
-
-        /* ── Fee section ── */
-        .fee-item {
-          padding: 12px 18px; border-bottom: 1px solid var(--border);
-          display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 12px;
-        }
-        .fee-item:last-child { border-bottom: none; }
-        .fee-name { font-weight: 700; font-size: .85rem; }
-        .fee-unit { font-size: .75rem; color: var(--muted); margin-top: 2px; }
-        .fee-amount { font-weight: 800; font-size: .95rem; color: var(--primary); white-space: nowrap; }
-        .decree-box {
-          background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px;
-          padding: 12px 16px; margin-bottom: 16px; font-size: .8rem;
-        }
-        .decree-box strong { color: var(--primary); }
-
-        /* ── Modal overrides ── */
-        .modal-content { border-radius: 14px; border: none; }
-        .modal-header  { border-bottom: 1px solid var(--border); padding: 16px 20px; }
-        .modal-footer  { border-top: 1px solid var(--border); padding: 12px 20px; }
-        .modal-title   { font-weight: 800; font-size: 1rem; }
-        .form-label    { font-size: .82rem; font-weight: 700; color: var(--text); margin-bottom: 5px; }
-        .form-control, .form-select {
-          font-size: .875rem; border-radius: 8px; border: 1.5px solid var(--border);
-          font-family: 'Nunito', sans-serif;
-        }
-        .form-control:focus, .form-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
-        .form-text { font-size: .75rem; color: var(--muted); }
-
-        /* Detail modal */
-        .detail-row { display: flex; justify-content: space-between; padding: 8px 0;
-          border-bottom: 1px solid var(--border); font-size: .85rem; }
-        .detail-row:last-child { border-bottom: none; }
-        .detail-key { color: var(--muted); font-weight: 600; }
-        .detail-val { font-weight: 700; text-align: right; }
-        .fee-detail-row {
-          display: grid; grid-template-columns: 1fr auto auto;
-          gap: 8px; align-items: center; padding: 8px 0;
-          border-bottom: 1px solid var(--border); font-size: .84rem;
-        }
-        .fee-detail-row:last-child { border-bottom: none; }
-        .total-row { background: var(--primary-light); border-radius: 8px;
-          padding: 10px 14px; display: flex; justify-content: space-between;
-          font-weight: 800; margin-top: 8px; }
-        .total-row .total-val { color: var(--primary); font-size: 1.05rem; }
-
-        /* Quick-add chips */
-        .chip {
-          display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px;
-          border-radius: 20px; border: 1.5px solid var(--border); background: #fff;
-          font-size: .78rem; font-weight: 700; cursor: pointer; transition: all .15s;
-        }
-        .chip:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
-        .chip i { font-size: .85rem; }
-
-        /* Empty state */
-        .empty-state { text-align: center; padding: 40px 20px; color: var(--muted); }
-        .empty-state i { font-size: 2.5rem; margin-bottom: 10px; display: block; opacity: .4; }
-
-        /* Toast */
-        #toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
-        .toast-msg {
-          background: #1e293b; color: #fff; padding: 12px 18px; border-radius: 10px;
-          font-size: .84rem; font-weight: 600; min-width: 240px;
-          box-shadow: 0 4px 16px rgba(0,0,0,.2); animation: slideIn .3s ease;
-        }
-        .toast-msg.success { background: #166534; }
-        .toast-msg.error   { background: #991b1b; }
-        @keyframes slideIn { from { transform: translateX(60px); opacity: 0; } to { transform: none; opacity: 1; } }
-
-        .loading { text-align: center; padding: 30px; color: var(--muted); font-size: .9rem; }
-        .spin { animation: spin 1s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-    </style>
 </head>
 <body>
+<div id="loading" class="loading"><div class="spinner"></div></div>
 
-<!-- ════════════════════ SIDEBAR ════════════════════ -->
-<nav class="sidebar" id="sidebar">
-    <div class="sidebar-brand">
-        <i class="bi bi-buildings-fill"></i> CondoCare
-    </div>
-    <div class="sidebar-nav">
-        <div class="nav-section">Tổng quan</div>
-        <a class="nav-link" th:href="@{/staff/dashboard}"><i class="bi bi-speedometer2"></i> Dashboard</a>
+<div class="resident-wrapper">
+    <nav class="resident-sidebar" id="residentSidebar"></nav>
+    <button class="mobile-toggle" id="mobileToggle"><i class="fas fa-bars"></i></button>
 
-        <div class="nav-section">Quản lý</div>
-        <a class="nav-link active" th:href="@{/staff/apartments}"><i class="bi bi-building"></i> Căn hộ & Phí DV</a>
-        <a class="nav-link" th:href="@{/staff/list}"><i class="bi bi-people-fill"></i> Nhân viên</a>
-        <a class="nav-link" th:href="@{/residents/list}"><i class="bi bi-person-badge"></i> Cư dân</a>
-        <a class="nav-link" th:href="@{/staff/invoices}"><i class="bi bi-receipt"></i> Hóa đơn</a>
-        <a class="nav-link" th:href="@{/staff/service-requests}"><i class="bi bi-tools"></i> Yêu cầu dịch vụ</a>
-
-        <div class="nav-section">Hệ thống</div>
-        <a class="nav-link" th:href="@{/profile}"><i class="bi bi-person-circle"></i> Hồ sơ</a>
-        <a class="nav-link" href="#" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Đăng xuất</a>
-    </div>
-</nav>
-
-<!-- ════════════════════ MAIN ════════════════════ -->
-<div class="main-wrap">
-    <!-- Topbar -->
-    <header class="topbar">
-        <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-outline btn-sm" onclick="document.getElementById('sidebar').classList.toggle('d-none')">
-                <i class="bi bi-list"></i>
-            </button>
-            <span class="topbar-title"><i class="bi bi-building me-1"></i> Quản lý Căn hộ & Phí dịch vụ</span>
-        </div>
-        <div class="topbar-user">
-            <div class="avatar" id="avatarInitial">ST</div>
-            <span id="topbarUserName">Staff</span>
-        </div>
-    </header>
-
-    <!-- Content -->
-    <div class="content">
-
-        <!-- Stats -->
-        <div class="stats-grid" id="statsGrid">
-            <div class="stat-card">
-                <div class="stat-icon indigo"><i class="bi bi-buildings"></i></div>
-                <div><div class="stat-num" id="statBuildings">—</div><div class="stat-lbl">Tòa nhà</div></div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon blue"><i class="bi bi-house-fill"></i></div>
-                <div><div class="stat-num" id="statTotal">—</div><div class="stat-lbl">Tổng căn hộ</div></div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon green"><i class="bi bi-people-fill"></i></div>
-                <div><div class="stat-num" id="statOccupied">—</div><div class="stat-lbl">Đang ở</div></div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon amber"><i class="bi bi-house-door"></i></div>
-                <div><div class="stat-num" id="statEmpty">—</div><div class="stat-lbl">Trống</div></div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon red"><i class="bi bi-wrench-adjustable"></i></div>
-                <div><div class="stat-num" id="statMaint">—</div><div class="stat-lbl">Bảo trì</div></div>
-            </div>
-        </div>
-
-        <!-- Two-column -->
-        <div class="page-grid">
-
-            <!-- LEFT: Building list -->
+    <main class="resident-main">
+        <div class="page-header">
             <div>
-                <div class="panel">
-                    <div class="panel-header">
-                        <span class="panel-title"><i class="bi bi-buildings me-1"></i>Tòa nhà</span>
-                        <button class="btn btn-primary btn-sm" onclick="openModalAddBuilding()">
-                            <i class="bi bi-plus-lg"></i> Thêm
-                        </button>
-                    </div>
-                    <div id="buildingList">
-                        <div class="loading"><i class="bi bi-arrow-repeat spin me-1"></i>Đang tải...</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- RIGHT -->
-            <div class="right-panel">
-
-                <!-- Apartment card -->
-                <div class="card">
-                    <div class="card-header">
-            <span class="card-header-title" id="aptCardTitle">
-              <i class="bi bi-house-fill me-1"></i>Danh sách căn hộ
-            </span>
-                        <div class="filter-bar">
-                            <select class="form-select form-select-sm" id="filterStatus" style="width:140px" onchange="loadApartments()">
-                                <option value="">Tất cả trạng thái</option>
-                                <option value="EMPTY">Trống</option>
-                                <option value="OCCUPIED">Đang ở</option>
-                                <option value="MAINTENANCE">Bảo trì</option>
-                            </select>
-                            <input class="form-control form-control-sm" id="searchApt" placeholder="Tìm số căn..." style="width:140px" oninput="filterTable()">
-                            <button class="btn btn-primary btn-sm" onclick="openModalAddApartment()" id="btnAddApt" disabled>
-                                <i class="bi bi-plus-lg"></i> Thêm căn hộ
-                            </button>
-                        </div>
-                    </div>
-                    <div style="overflow-x:auto">
-                        <table id="aptTable">
-                            <thead>
-                            <tr>
-                                <th>Số căn</th><th>Tầng</th><th>Diện tích</th>
-                                <th>Trạng thái</th><th>Thuê/Sở hữu</th>
-                                <th>Cư dân</th><th>Phương tiện</th><th>Thao tác</th>
-                            </tr>
-                            </thead>
-                            <tbody id="aptTbody">
-                            <tr><td colspan="8" class="empty-state"><i class="bi bi-buildings"></i>Chọn tòa nhà để xem danh sách căn hộ</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Fee Template card -->
-                <div class="card" id="feeCard">
-                    <div class="card-header">
-                        <span class="card-header-title"><i class="bi bi-currency-exchange me-1"></i>Phí dịch vụ & Gửi xe</span>
-                        <button class="btn btn-success btn-sm" onclick="openModalAddFee()" id="btnAddFee" disabled>
-                            <i class="bi bi-plus-lg"></i> Thêm phí
-                        </button>
-                    </div>
-
-                    <!-- Decree info banner -->
-                    <div style="padding:12px 18px 0">
-                        <div class="decree-box">
-                            <i class="bi bi-info-circle-fill me-1"></i>
-                            <strong>QĐ 33/2025/QĐ-UBND UBND TP Hà Nội</strong> (hiệu lực 01/05/2025):
-                            Có thang máy <strong>1.200–16.500 đ/m²/tháng</strong> ·
-                            Không thang máy <strong>700–5.000 đ/m²/tháng</strong>
-                        </div>
-                    </div>
-
-                    <!-- Quick-add chips -->
-                    <div style="padding:8px 18px 12px; display:flex; gap:8px; flex-wrap:wrap;" id="feeChips"></div>
-
-                    <div id="feeList">
-                        <div class="loading" style="padding:20px"><i class="bi bi-arrow-repeat spin me-1"></i>Đang tải...</div>
-                    </div>
-                </div>
-
-            </div><!-- /right-panel -->
-        </div><!-- /page-grid -->
-    </div><!-- /content -->
-</div><!-- /main-wrap -->
-
-<!-- ════ TOAST ════ -->
-<div id="toast-container"></div>
-
-<!-- ════════════════════ MODALS ════════════════════ -->
-
-<!-- Modal: Add Building -->
-<div class="modal fade" id="modalAddBuilding" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span class="modal-title"><i class="bi bi-buildings me-2 text-primary"></i>Thêm Tòa nhà</span>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="row g-3">
-                    <div class="col-12">
-                        <label class="form-label">Tên tòa nhà <span class="text-danger">*</span></label>
-                        <input class="form-control" id="bldName" placeholder="VD: Chung cư Sunrise Tower">
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Địa chỉ <span class="text-danger">*</span></label>
-                        <input class="form-control" id="bldAddress" placeholder="Số nhà, đường, quận...">
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Số tầng</label>
-                        <input class="form-control" id="bldFloors" type="number" min="1" placeholder="25">
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Tổng số căn</label>
-                        <input class="form-control" id="bldTotalApt" type="number" min="1" placeholder="200">
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Trưởng ban quản lý <span class="text-danger">*</span></label>
-                        <select class="form-select" id="bldManagerId"></select>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-outline" data-bs-dismiss="modal">Huỷ</button>
-                <button class="btn btn-primary" onclick="submitCreateBuilding()"><i class="bi bi-check-lg me-1"></i>Tạo tòa nhà</button>
+                <h4><i class="fas fa-building"></i> Thông tin căn hộ</h4>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="/resident">Trang chủ</a></li>
+                        <li class="breadcrumb-item active">Thông tin căn hộ</li>
+                    </ol>
+                </nav>
             </div>
         </div>
-    </div>
+
+        <div id="alertContainer"></div>
+        <div id="aptContent"></div>
+    </main>
 </div>
 
-<!-- Modal: Edit Building -->
-<div class="modal fade" id="modalEditBuilding" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span class="modal-title"><i class="bi bi-pencil me-2 text-warning"></i>Chỉnh sửa Tòa nhà</span>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="editBldId">
-                <div class="row g-3">
-                    <div class="col-12">
-                        <label class="form-label">Tên tòa nhà</label>
-                        <input class="form-control" id="editBldName">
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Địa chỉ</label>
-                        <input class="form-control" id="editBldAddress">
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Số tầng</label>
-                        <input class="form-control" id="editBldFloors" type="number" min="1">
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Tổng số căn</label>
-                        <input class="form-control" id="editBldTotalApt" type="number" min="1">
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Trưởng ban quản lý</label>
-                        <select class="form-select" id="editBldManagerId"></select>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-outline" data-bs-dismiss="modal">Huỷ</button>
-                <button class="btn btn-warning" onclick="submitUpdateBuilding()"><i class="bi bi-check-lg me-1"></i>Lưu thay đổi</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal: Add Apartment -->
-<div class="modal fade" id="modalAddApartment" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span class="modal-title"><i class="bi bi-house-add me-2 text-primary"></i>Thêm Căn hộ</span>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="row g-3">
-                    <div class="col-6">
-                        <label class="form-label">Số căn hộ <span class="text-danger">*</span></label>
-                        <input class="form-control" id="aptNumber" placeholder="VD: A101" style="text-transform:uppercase">
-                        <div class="form-text">Tự động kiểm tra trùng lặp trong tòa.</div>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Tầng <span class="text-danger">*</span></label>
-                        <input class="form-control" id="aptFloor" type="number" min="1" placeholder="1">
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Diện tích (m²) <span class="text-danger">*</span></label>
-                        <input class="form-control" id="aptArea" type="number" min="10" step="0.01" placeholder="65.5">
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Toà nhà</label>
-                        <input class="form-control" id="aptBuildingDisplay" readonly>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Mô tả</label>
-                        <textarea class="form-control" id="aptDescription" rows="2" placeholder="2PN, 2WC, ban công hướng Đông..."></textarea>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-outline" data-bs-dismiss="modal">Huỷ</button>
-                <button class="btn btn-primary" onclick="submitCreateApartment()"><i class="bi bi-check-lg me-1"></i>Tạo căn hộ</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal: Edit Apartment -->
-<div class="modal fade" id="modalEditApartment" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span class="modal-title"><i class="bi bi-pencil me-2 text-warning"></i>Chỉnh sửa Căn hộ</span>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="editAptId">
-                <div class="row g-3">
-                    <div class="col-6">
-                        <label class="form-label">Số căn hộ</label>
-                        <input class="form-control" id="editAptNumber" readonly>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Tầng</label>
-                        <input class="form-control" id="editAptFloor" type="number" min="1">
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Diện tích (m²)</label>
-                        <input class="form-control" id="editAptArea" type="number" min="10" step="0.01">
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Trạng thái</label>
-                        <select class="form-select" id="editAptStatus">
-                            <option value="EMPTY">Trống</option>
-                            <option value="OCCUPIED">Đang ở</option>
-                            <option value="MAINTENANCE">Bảo trì</option>
-                        </select>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Hình thức</label>
-                        <select class="form-select" id="editAptRental">
-                            <option value="AVAILABLE">Sẵn cho thuê</option>
-                            <option value="RENTED">Đang thuê</option>
-                            <option value="OWNER_OCCUPIED">Chủ ở</option>
-                        </select>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Mô tả</label>
-                        <textarea class="form-control" id="editAptDesc" rows="2"></textarea>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-outline" data-bs-dismiss="modal">Huỷ</button>
-                <button class="btn btn-warning" onclick="submitUpdateApartment()"><i class="bi bi-check-lg me-1"></i>Lưu thay đổi</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal: Apartment Detail -->
-<div class="modal fade" id="modalAptDetail" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span class="modal-title"><i class="bi bi-house-fill me-2 text-primary"></i>Chi tiết Căn hộ</span>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body" id="aptDetailBody">
-                <div class="loading"><i class="bi bi-arrow-repeat spin me-1"></i>Đang tải...</div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal: Add Fee Template -->
-<div class="modal fade" id="modalAddFee" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span class="modal-title"><i class="bi bi-currency-exchange me-2 text-success"></i>Thêm mẫu phí</span>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <!-- Decree hint -->
-                <div class="decree-box mb-3">
-                    <i class="bi bi-lightbulb-fill me-1" style="color:#d97706"></i>
-                    <strong>QĐ 33/2025 Hà Nội:</strong>
-                    Có thang máy <strong>1.200–16.500 đ/m²</strong> ·
-                    Không thang máy <strong>700–5.000 đ/m²</strong>
-                    <span class="text-muted">(chưa gồm dịch vụ cao cấp)</span>
-                </div>
-                <div class="row g-3">
-                    <div class="col-12">
-                        <label class="form-label">Tên phí <span class="text-danger">*</span></label>
-                        <input class="form-control" id="feeName" placeholder="VD: Phí quản lý vận hành">
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Loại <span class="text-danger">*</span></label>
-                        <select class="form-select" id="feeType">
-                            <option value="SERVICE">Dịch vụ</option>
-                            <option value="PARKING">Gửi xe</option>
-                        </select>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Đơn vị tính <span class="text-danger">*</span></label>
-                        <select class="form-select" id="feeUnit" onchange="updateFeeUnitHint()">
-                            <option value="PER_M2">đ/m²/tháng</option>
-                            <option value="PER_APT">đ/căn/tháng</option>
-                            <option value="FIXED">Cố định (FIXED)</option>
-                        </select>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Đơn giá (VNĐ) <span class="text-danger">*</span></label>
-                        <input class="form-control" id="feeAmount" type="number" min="1" placeholder="7000">
-                        <div class="form-text" id="feeUnitHint">Mức phổ biến: 7.000 đ/m²</div>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Chung cư có thang máy?</label>
-                        <select class="form-select" id="feeHasElevator">
-                            <option value="true">Có thang máy</option>
-                            <option value="false">Không thang máy</option>
-                        </select>
-                        <div class="form-text">Dùng kiểm tra khung giá QĐ 33/2025</div>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Hiệu lực từ <span class="text-danger">*</span></label>
-                        <input class="form-control" id="feeEffectiveFrom" type="date">
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Hiệu lực đến</label>
-                        <input class="form-control" id="feeEffectiveTo" type="date">
-                        <div class="form-text">Để trống = còn hiệu lực vô thời hạn</div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-outline" data-bs-dismiss="modal">Huỷ</button>
-                <button class="btn btn-success" onclick="submitCreateFee()"><i class="bi bi-check-lg me-1"></i>Tạo mẫu phí</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal: Edit Fee Template -->
-<div class="modal fade" id="modalEditFee" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span class="modal-title"><i class="bi bi-pencil me-2 text-warning"></i>Chỉnh sửa mẫu phí</span>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="editFeeId">
-                <div class="row g-3">
-                    <div class="col-12">
-                        <label class="form-label">Tên phí</label>
-                        <input class="form-control" id="editFeeName">
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Loại</label>
-                        <select class="form-select" id="editFeeType">
-                            <option value="SERVICE">Dịch vụ</option>
-                            <option value="PARKING">Gửi xe</option>
-                        </select>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Đơn vị tính</label>
-                        <select class="form-select" id="editFeeUnit">
-                            <option value="PER_M2">đ/m²/tháng</option>
-                            <option value="PER_APT">đ/căn/tháng</option>
-                            <option value="FIXED">Cố định</option>
-                        </select>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Đơn giá (VNĐ)</label>
-                        <input class="form-control" id="editFeeAmount" type="number" min="1">
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Trạng thái</label>
-                        <select class="form-select" id="editFeeStatus">
-                            <option value="ACTIVE">Đang áp dụng</option>
-                            <option value="INACTIVE">Vô hiệu hoá</option>
-                        </select>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Hiệu lực từ</label>
-                        <input class="form-control" id="editFeeFrom" type="date">
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Hiệu lực đến</label>
-                        <input class="form-control" id="editFeeTo" type="date">
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-danger btn-sm me-auto" onclick="deleteFee()"><i class="bi bi-trash me-1"></i>Vô hiệu hoá</button>
-                <button class="btn btn-outline" data-bs-dismiss="modal">Huỷ</button>
-                <button class="btn btn-warning" onclick="submitUpdateFee()"><i class="bi bi-check-lg me-1"></i>Lưu</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- ════════════════════ SCRIPTS ════════════════════ -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/common.js"></script>
+<script src="/js/resident-common.js"></script>
 <script>
-    // ── Config ─────────────────────────────────────────────────────────────────
-    const API = '';  // same origin
-    let token = localStorage.getItem('jwtToken') || sessionStorage.getItem('jwtToken') || '';
-    let currentBuildingId = null;
-    let allApartments = [];
+    requireResidentLogin();
+    renderResidentSidebar('apartment');
+    document.getElementById('mobileToggle').addEventListener('click', () =>
+        document.getElementById('residentSidebar').classList.toggle('open'));
 
-    const headers = () => ({
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + token
-    });
+    const STATUS_LABEL = { EMPTY:'Trống', OCCUPIED:'Đang ở', MAINTENANCE:'Đang bảo trì' };
+    const RENTAL_LABEL = { AVAILABLE:'Có thể thuê', RENTED:'Đang cho thuê', OWNER:'Chủ sở hữu' };
+    const TYPE_LABEL   = { OWNER:'Chủ sở hữu', TENANT:'Người thuê', GUEST:'Khách' };
 
-    // ── Helpers ─────────────────────────────────────────────────────────────────
-    function toast(msg, type = 'info') {
-      const c = document.getElementById('toast-container');
-      const d = document.createElement('div');
-      d.className = `toast-msg ${type}`;
-      d.innerHTML = `<i class="bi ${type === 'success' ? 'bi-check-circle-fill' : type === 'error' ? 'bi-x-circle-fill' : 'bi-info-circle-fill'} me-2"></i>${msg}`;
-      c.appendChild(d);
-      setTimeout(() => d.remove(), 3500);
+    async function loadApartment() {
+        showLoading();
+        try {
+            const res  = await apiRequest(`${API_BASE_URL}/resident/apartment`);
+            const data = await res.json();
+
+            if (!data.hasApartment) {
+                document.getElementById('aptContent').innerHTML = `
+                    <div class="content-card">
+                        <div class="empty-state">
+                            <i class="fas fa-building d-block mb-3"></i>
+                            <h5>Chưa được gán căn hộ</h5>
+                            <p>Vui lòng liên hệ Ban quản lý để được hỗ trợ.</p>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            document.getElementById('aptContent').innerHTML = `
+            <div class="row g-3">
+                <!-- Thông tin căn hộ -->
+                <div class="col-md-6">
+                    <div class="content-card h-100">
+                        <div class="card-title"><i class="fas fa-home me-2"></i>Căn hộ ${data.number}</div>
+
+                        <div class="apt-info-row">
+                            <span class="label"><i class="fas fa-hashtag me-2"></i>Số căn hộ</span>
+                            <span class="value">${data.number}</span>
+                        </div>
+                        <div class="apt-info-row">
+                            <span class="label"><i class="fas fa-layer-group me-2"></i>Tầng</span>
+                            <span class="value">${data.floor}</span>
+                        </div>
+                        <div class="apt-info-row">
+                            <span class="label"><i class="fas fa-ruler-combined me-2"></i>Diện tích</span>
+                            <span class="value">${data.area} m²</span>
+                        </div>
+                        <div class="apt-info-row">
+                            <span class="label"><i class="fas fa-toggle-on me-2"></i>Trạng thái</span>
+                            <span class="value">
+                                <span class="badge ${data.status==='OCCUPIED'?'bg-success':data.status==='MAINTENANCE'?'bg-warning text-dark':'bg-secondary'}">
+                                    ${STATUS_LABEL[data.status] || data.status}
+                                </span>
+                            </span>
+                        </div>
+                        <div class="apt-info-row">
+                            <span class="label"><i class="fas fa-users me-2"></i>Số cư dân</span>
+                            <span class="value">${data.totalResident || 0} người</span>
+                        </div>
+                        ${data.description ? `
+                        <div class="apt-info-row flex-column">
+                            <span class="label mb-1"><i class="fas fa-info-circle me-2"></i>Mô tả</span>
+                            <span class="value">${data.description}</span>
+                        </div>` : ''}
+                    </div>
+                </div>
+
+                <!-- Thông tin tòa nhà -->
+                <div class="col-md-6">
+                    <div class="content-card h-100">
+                        <div class="card-title"><i class="fas fa-city me-2"></i>Tòa nhà</div>
+
+                        <div class="apt-info-row">
+                            <span class="label"><i class="fas fa-building me-2"></i>Tên tòa</span>
+                            <span class="value">${data.buildingName || '—'}</span>
+                        </div>
+                        <div class="apt-info-row">
+                            <span class="label"><i class="fas fa-map-marker-alt me-2"></i>Địa chỉ</span>
+                            <span class="value">${data.buildingAddress || '—'}</span>
+                        </div>
+                        <div class="apt-info-row">
+                            <span class="label"><i class="fas fa-sort-amount-up me-2"></i>Tổng số tầng</span>
+                            <span class="value">${data.totalFloors || '—'}</span>
+                        </div>
+                        <div class="apt-info-row">
+                            <span class="label"><i class="fas fa-user me-2"></i>Loại cư trú</span>
+                            <span class="value">
+                                <span class="badge bg-primary">${TYPE_LABEL[data.residentType] || data.residentType}</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ghi chú liên hệ -->
+                <div class="col-12">
+                    <div class="content-card">
+                        <div class="card-title"><i class="fas fa-phone-alt me-2"></i>Liên hệ Ban quản lý</div>
+                        <p class="mb-1">Nếu cần hỗ trợ hoặc có vấn đề về căn hộ, vui lòng:</p>
+                        <ul class="mb-0">
+                            <li>Đến trực tiếp văn phòng Ban quản lý tại <strong>Tầng 1, Tòa A</strong></li>
+                            <li>Gửi <a href="/resident/requests">Yêu cầu hỗ trợ</a> qua hệ thống</li>
+                            <li>Hotline: <strong>0900 000 000</strong> (8h–17h, T2–T6)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>`;
+
+        } catch(e) {
+            showResidentAlert('alertContainer', 'Không thể tải thông tin căn hộ.');
+        } finally { hideLoading(); }
     }
 
-    function fmt(n) {
-      return new Intl.NumberFormat('vi-VN').format(n) + ' đ';
-    }
-
-    function statusBadge(s) {
-      const map = {
-        EMPTY: '<span class="badge badge-amber">Trống</span>',
-        OCCUPIED: '<span class="badge badge-green">Đang ở</span>',
-        MAINTENANCE: '<span class="badge badge-red">Bảo trì</span>'
-      };
-      return map[s] || s;
-    }
-
-    function rentalBadge(s) {
-      const map = {
-        AVAILABLE: '<span class="badge badge-blue">Sẵn thuê</span>',
-        RENTED: '<span class="badge badge-green">Đang thuê</span>',
-        OWNER_OCCUPIED: '<span class="badge badge-gray">Chủ ở</span>'
-      };
-      return map[s] || s;
-    }
-
-    // ── Auth ────────────────────────────────────────────────────────────────────
-    function logout() {
-      localStorage.removeItem('jwtToken');
-      sessionStorage.removeItem('jwtToken');
-      window.location.href = '/login';
-    }
-
-    async function loadUserInfo() {
-      try {
-        const r = await fetch('/api/profile', { headers: headers() });
-        if (r.ok) {
-          const d = await r.json();
-          const name = d.fullName || d.username || 'Staff';
-          document.getElementById('topbarUserName').textContent = name;
-          document.getElementById('avatarInitial').textContent = name.charAt(0).toUpperCase();
-        }
-      } catch(e) {}
-    }
-
-    // ── Stats ───────────────────────────────────────────────────────────────────
-    async function loadStats() {
-      try {
-        const r = await fetch('/api/apartments/stats', { headers: headers() });
-        const d = await r.json();
-        document.getElementById('statBuildings').textContent = d.totalBuildings ?? 0;
-        document.getElementById('statTotal').textContent     = d.totalApartments ?? 0;
-        document.getElementById('statOccupied').textContent  = d.occupied ?? 0;
-        document.getElementById('statEmpty').textContent     = d.empty ?? 0;
-        document.getElementById('statMaint').textContent     = d.maintenance ?? 0;
-      } catch(e) { console.error(e); }
-    }
-
-    // ── Buildings ────────────────────────────────────────────────────────────────
-    let buildings = [];
-    async function loadBuildings() {
-      try {
-        const r = await fetch('/api/buildings', { headers: headers() });
-        buildings = await r.json();
-        renderBuildings();
-      } catch(e) { document.getElementById('buildingList').innerHTML = '<div class="empty-state"><i class="bi bi-exclamation-triangle"></i>Lỗi tải dữ liệu</div>'; }
-    }
-
-    function renderBuildings() {
-      const el = document.getElementById('buildingList');
-      if (!buildings.length) {
-        el.innerHTML = '<div class="empty-state"><i class="bi bi-buildings"></i>Chưa có tòa nhà nào</div>';
-        return;
-      }
-      el.innerHTML = buildings.map(b => `
-        <div class="building-item ${b.id === currentBuildingId ? 'active' : ''}" onclick="selectBuilding('${b.id}')">
-          <div class="bld-icon"><i class="bi bi-building-fill"></i></div>
-          <div style="flex:1;min-width:0">
-            <div class="name">${b.name}</div>
-            <div class="addr">${b.address}</div>
-            <div style="margin-top:4px">
-              <span class="badge badge-blue">${b.totalFloors} tầng</span>
-              <span class="badge badge-gray ms-1">${b.totalApartments} căn</span>
-            </div>
-          </div>
-          <button class="btn btn-outline btn-xs" onclick="event.stopPropagation();openEditBuilding('${b.id}')" title="Sửa">
-            <i class="bi bi-pencil"></i>
-          </button>
-        </div>
-      `).join('');
-    }
-
-    async function selectBuilding(id) {
-      currentBuildingId = id;
-      const b = buildings.find(x => x.id === id);
-      document.getElementById('aptCardTitle').innerHTML =
-        `<i class="bi bi-house-fill me-1"></i>Căn hộ – <strong>${b?.name || id}</strong>`;
-      document.getElementById('btnAddApt').disabled = false;
-      document.getElementById('btnAddFee').disabled = false;
-      renderBuildings();
-      await loadApartments();
-      await loadFeeTemplates();
-    }
-
-    // ── Apartments ───────────────────────────────────────────────────────────────
-    async function loadApartments() {
-      if (!currentBuildingId) return;
-      const status = document.getElementById('filterStatus').value;
-      let url = `/api/apartments?buildingId=${currentBuildingId}`;
-      if (status) url += `&status=${status}`;
-      try {
-        const r = await fetch(url, { headers: headers() });
-        allApartments = await r.json();
-        renderApartments(allApartments);
-      } catch(e) { toast('Lỗi tải danh sách căn hộ', 'error'); }
-    }
-
-    function renderApartments(list) {
-      const tbody = document.getElementById('aptTbody');
-      if (!list.length) {
-        tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><i class="bi bi-house-door"></i>Chưa có căn hộ nào</div></td></tr>';
-        return;
-      }
-      tbody.innerHTML = list.map(a => `
-        <tr>
-          <td><strong>${a.number}</strong></td>
-          <td>Tầng ${a.floor}</td>
-          <td>${a.area} m²</td>
-          <td>${statusBadge(a.status)}</td>
-          <td>${rentalBadge(a.rentalStatus)}</td>
-          <td><i class="bi bi-people me-1 text-muted"></i>${a.totalResidents}</td>
-          <td><i class="bi bi-car-front me-1 text-muted"></i>${a.totalVehicles}</td>
-          <td>
-            <button class="btn btn-outline btn-xs me-1" onclick="showAptDetail('${a.id}')" title="Xem chi tiết">
-              <i class="bi bi-eye"></i>
-            </button>
-            <button class="btn btn-warning btn-xs" onclick="openEditApartment(${JSON.stringify(a).replace(/"/g,'&quot;')})" title="Sửa">
-              <i class="bi bi-pencil"></i>
-            </button>
-          </td>
-        </tr>
-      `).join('');
-    }
-
-    function filterTable() {
-      const q = document.getElementById('searchApt').value.toLowerCase();
-      renderApartments(allApartments.filter(a => a.number.toLowerCase().includes(q)));
-    }
-
-    // ── Apartment Detail ─────────────────────────────────────────────────────────
-    async function showAptDetail(id) {
-      const body = document.getElementById('aptDetailBody');
-      body.innerHTML = '<div class="loading"><i class="bi bi-arrow-repeat spin me-1"></i>Đang tải...</div>';
-      const bsModal = new bootstrap.Modal(document.getElementById('modalAptDetail'));
-      bsModal.show();
-      try {
-        const r = await fetch(`/api/apartments/${id}`, { headers: headers() });
-        const d = await r.json();
-
-        const statusMap = { EMPTY:'Trống', OCCUPIED:'Đang ở', MAINTENANCE:'Bảo trì' };
-        const rentalMap = { AVAILABLE:'Sẵn cho thuê', RENTED:'Đang thuê', OWNER_OCCUPIED:'Chủ ở' };
-
-        let feesHtml = '';
-        if (d.activeFees && d.activeFees.length > 0) {
-          feesHtml = d.activeFees.map(f => `
-            <div class="fee-detail-row">
-              <div>
-                <div style="font-weight:700">${f.name}</div>
-                <div style="font-size:.75rem;color:var(--muted)">${f.typeLabel} · ${f.unitLabel}</div>
-              </div>
-              <div style="color:var(--muted);font-size:.8rem">${fmt(f.amount)}</div>
-              <div style="font-weight:700;color:var(--primary)">${fmt(f.estimatedAmount)}</div>
-            </div>
-          `).join('');
-          feesHtml += `
-            <div class="total-row">
-              <span>Ước tính chi phí/tháng</span>
-              <span class="total-val">${fmt(d.totalEstimatedMonthly)}</span>
-            </div>
-            <p style="font-size:.72rem;color:var(--muted);margin-top:8px">${d.feeNote || ''}</p>
-          `;
-        } else {
-          feesHtml = '<div class="empty-state" style="padding:16px"><i class="bi bi-receipt"></i>Chưa có mẫu phí nào được cấu hình cho tòa nhà này.</div>';
-        }
-
-        body.innerHTML = `
-          <div class="row g-3">
-            <div class="col-md-6">
-              <div style="font-weight:800;font-size:.9rem;margin-bottom:10px;color:var(--primary)">
-                <i class="bi bi-info-circle me-1"></i>Thông tin căn hộ
-              </div>
-              <div class="detail-row"><span class="detail-key">Tòa nhà</span><span class="detail-val">${d.buildingName}</span></div>
-              <div class="detail-row"><span class="detail-key">Số căn</span><span class="detail-val">${d.number}</span></div>
-              <div class="detail-row"><span class="detail-key">Tầng</span><span class="detail-val">Tầng ${d.floor}</span></div>
-              <div class="detail-row"><span class="detail-key">Diện tích</span><span class="detail-val">${d.area} m²</span></div>
-              <div class="detail-row"><span class="detail-key">Trạng thái</span><span class="detail-val">${statusBadge(d.status)}</span></div>
-              <div class="detail-row"><span class="detail-key">Hình thức</span><span class="detail-val">${rentalMap[d.rentalStatus] || d.rentalStatus}</span></div>
-              <div class="detail-row"><span class="detail-key">Cư dân</span><span class="detail-val">${d.totalResidents} người</span></div>
-              <div class="detail-row"><span class="detail-key">Phương tiện</span><span class="detail-val">${d.totalVehicles} xe</span></div>
-              ${d.description ? `<div class="detail-row"><span class="detail-key">Mô tả</span><span class="detail-val" style="max-width:200px;word-break:break-word">${d.description}</span></div>` : ''}
-            </div>
-            <div class="col-md-6">
-              <div style="font-weight:800;font-size:.9rem;margin-bottom:10px;color:var(--success)">
-                <i class="bi bi-currency-exchange me-1"></i>Phí dịch vụ áp dụng
-              </div>
-              ${feesHtml}
-            </div>
-          </div>
-        `;
-      } catch(e) {
-        body.innerHTML = '<div class="empty-state"><i class="bi bi-exclamation-triangle"></i>Lỗi tải chi tiết</div>';
-      }
-    }
-
-    // ── Fee Templates ─────────────────────────────────────────────────────────────
-    async function loadFeeTemplates() {
-      if (!currentBuildingId) return;
-      const el = document.getElementById('feeList');
-      el.innerHTML = '<div class="loading"><i class="bi bi-arrow-repeat spin me-1"></i>Đang tải...</div>';
-      try {
-        const r = await fetch(`/api/fee-templates?buildingId=${currentBuildingId}`, { headers: headers() });
-        const list = await r.json();
-        renderFeeTemplates(list);
-      } catch(e) {
-        el.innerHTML = '<div class="empty-state" style="padding:20px"><i class="bi bi-exclamation-triangle"></i>Lỗi tải phí</div>';
-      }
-    }
-
-    function renderFeeTemplates(list) {
-      const el = document.getElementById('feeList');
-      if (!list.length) {
-        el.innerHTML = '<div class="empty-state" style="padding:24px"><i class="bi bi-receipt-cutoff"></i>Chưa có mẫu phí nào. Nhấn "Thêm phí" hoặc dùng gợi ý bên trên.</div>';
-        return;
-      }
-      el.innerHTML = list.map(f => `
-        <div class="fee-item">
-          <div>
-            <div class="fee-name">${f.name}
-              ${f.status === 'INACTIVE' ? '<span class="badge badge-gray ms-1">Vô hiệu</span>' : ''}
-            </div>
-            <div class="fee-unit">
-              <span class="badge ${f.type === 'SERVICE' ? 'badge-blue' : 'badge-amber'} me-1">${f.typeLabel}</span>
-              ${f.unitLabel} · Từ ${f.effectiveFrom}${f.effectiveTo ? ' → ' + f.effectiveTo : ''}
-            </div>
-          </div>
-          <div class="fee-amount">${fmt(f.amount)}</div>
-          <button class="btn btn-outline btn-xs" onclick="openEditFee(${JSON.stringify(f).replace(/"/g,'&quot;')})" title="Sửa">
-            <i class="bi bi-pencil"></i>
-          </button>
-        </div>
-      `).join('');
-    }
-
-    // ── Quick-add fee chips (Hanoi decree) ─────────────────────────────────────
-    async function loadFeeChips() {
-      try {
-        const r = await fetch('/api/fee-templates/hanoi-decree', { headers: headers() });
-        const d = await r.json();
-        const chips = document.getElementById('feeChips');
-
-        const suggestions = [
-          { label: 'Phí QLVH (có thang máy)', name: 'Phí quản lý vận hành', type: 'SERVICE', unit: 'PER_M2',  amount: d.serviceFeesWithElevator?.defaultAmount || 7000, hasElevator: true },
-          { label: 'Phí QLVH (không TM)',     name: 'Phí quản lý vận hành', type: 'SERVICE', unit: 'PER_M2',  amount: d.serviceFeesNoElevator?.defaultAmount || 2500,   hasElevator: false },
-          { label: 'Phí gửi xe máy',           name: 'Phí gửi xe máy',       type: 'PARKING', unit: 'FIXED',   amount: 100000 },
-          { label: 'Phí gửi ô tô',             name: 'Phí gửi ô tô',         type: 'PARKING', unit: 'FIXED',   amount: 1200000 },
-          { label: 'Phí gửi xe đạp',           name: 'Phí gửi xe đạp',       type: 'PARKING', unit: 'FIXED',   amount: 50000 },
-        ];
-
-        chips.innerHTML = '<span style="font-size:.75rem;color:var(--muted);font-weight:700;align-self:center">Gợi ý nhanh:</span>' +
-          suggestions.map(s => `
-            <div class="chip" onclick="prefillFee(${JSON.stringify(s).replace(/"/g,'&quot;')})">
-              <i class="bi bi-lightning-fill" style="color:#d97706"></i> ${s.label}
-            </div>
-          `).join('');
-      } catch(e) {}
-    }
-
-    function prefillFee(s) {
-      document.getElementById('feeName').value          = s.name;
-      document.getElementById('feeType').value          = s.type;
-      document.getElementById('feeUnit').value          = s.unit;
-      document.getElementById('feeAmount').value        = s.amount;
-      document.getElementById('feeHasElevator').value   = s.hasElevator !== undefined ? String(s.hasElevator) : 'true';
-      document.getElementById('feeEffectiveFrom').value = new Date().toISOString().split('T')[0];
-      updateFeeUnitHint();
-      new bootstrap.Modal(document.getElementById('modalAddFee')).show();
-    }
-
-    function updateFeeUnitHint() {
-      const unit = document.getElementById('feeUnit').value;
-      const hints = {
-        PER_M2:  'QĐ 33/2025 Hà Nội: Có TM 1.200–16.500 đ/m² · Không TM 700–5.000 đ/m²',
-        PER_APT: 'Áp dụng một mức cố định cho từng căn hộ/tháng',
-        FIXED:   'Mức cố định không phụ thuộc diện tích hay số căn'
-      };
-      document.getElementById('feeUnitHint').textContent = hints[unit] || '';
-    }
-
-    // ── CRUD Handlers ─────────────────────────────────────────────────────────────
-
-    // --- Building ---
-    async function openModalAddBuilding() {
-      await loadStaffList('bldManagerId');
-      new bootstrap.Modal(document.getElementById('modalAddBuilding')).show();
-    }
-
-    async function openEditBuilding(id) {
-      const b = buildings.find(x => x.id === id);
-      if (!b) return;
-      await loadStaffList('editBldManagerId', b.managerId);
-      document.getElementById('editBldId').value         = b.id;
-      document.getElementById('editBldName').value       = b.name;
-      document.getElementById('editBldAddress').value    = b.address;
-      document.getElementById('editBldFloors').value     = b.totalFloors;
-      document.getElementById('editBldTotalApt').value   = b.totalApartments;
-      new bootstrap.Modal(document.getElementById('modalEditBuilding')).show();
-    }
-
-    async function submitCreateBuilding() {
-      const body = {
-        name:            document.getElementById('bldName').value,
-        address:         document.getElementById('bldAddress').value,
-        totalFloors:     document.getElementById('bldFloors').value,
-        totalApartments: document.getElementById('bldTotalApt').value,
-        managerId:       document.getElementById('bldManagerId').value,
-      };
-      try {
-        const r = await fetch('/api/buildings', { method: 'POST', headers: headers(), body: JSON.stringify(body) });
-        const msg = await r.text();
-        if (!r.ok) throw new Error(msg);
-        toast(msg, 'success');
-        bootstrap.Modal.getInstance(document.getElementById('modalAddBuilding'))?.hide();
-        await loadBuildings(); await loadStats();
-      } catch(e) { toast(e.message, 'error'); }
-    }
-
-    async function submitUpdateBuilding() {
-      const id = document.getElementById('editBldId').value;
-      const body = {
-        name:            document.getElementById('editBldName').value,
-        address:         document.getElementById('editBldAddress').value,
-        totalFloors:     document.getElementById('editBldFloors').value,
-        totalApartments: document.getElementById('editBldTotalApt').value,
-        managerId:       document.getElementById('editBldManagerId').value,
-      };
-      try {
-        const r = await fetch(`/api/buildings/${id}`, { method: 'PUT', headers: headers(), body: JSON.stringify(body) });
-        const msg = await r.text();
-        if (!r.ok) throw new Error(msg);
-        toast(msg, 'success');
-        bootstrap.Modal.getInstance(document.getElementById('modalEditBuilding'))?.hide();
-        await loadBuildings();
-      } catch(e) { toast(e.message, 'error'); }
-    }
-
-    // --- Apartment ---
-    function openModalAddApartment() {
-      if (!currentBuildingId) return toast('Vui lòng chọn tòa nhà trước', 'error');
-      const b = buildings.find(x => x.id === currentBuildingId);
-      document.getElementById('aptNumber').value          = '';
-      document.getElementById('aptFloor').value           = '';
-      document.getElementById('aptArea').value            = '';
-      document.getElementById('aptDescription').value     = '';
-      document.getElementById('aptBuildingDisplay').value = b?.name || currentBuildingId;
-      new bootstrap.Modal(document.getElementById('modalAddApartment')).show();
-    }
-
-    async function submitCreateApartment() {
-      const body = {
-        buildingId:  currentBuildingId,
-        number:      document.getElementById('aptNumber').value,
-        floor:       document.getElementById('aptFloor').value,
-        area:        document.getElementById('aptArea').value,
-        description: document.getElementById('aptDescription').value,
-      };
-      try {
-        const r = await fetch('/api/apartments', { method: 'POST', headers: headers(), body: JSON.stringify(body) });
-        const msg = await r.text();
-        if (!r.ok) throw new Error(msg);
-        toast(msg, 'success');
-        bootstrap.Modal.getInstance(document.getElementById('modalAddApartment'))?.hide();
-        await loadApartments(); await loadStats();
-      } catch(e) { toast(e.message, 'error'); }
-    }
-
-    function openEditApartment(a) {
-      document.getElementById('editAptId').value      = a.id;
-      document.getElementById('editAptNumber').value  = a.number;
-      document.getElementById('editAptFloor').value   = a.floor;
-      document.getElementById('editAptArea').value    = a.area;
-      document.getElementById('editAptStatus').value  = a.status;
-      document.getElementById('editAptRental').value  = a.rentalStatus;
-      document.getElementById('editAptDesc').value    = a.description || '';
-      new bootstrap.Modal(document.getElementById('modalEditApartment')).show();
-    }
-
-    async function submitUpdateApartment() {
-      const id = document.getElementById('editAptId').value;
-      const body = {
-        floor:        document.getElementById('editAptFloor').value,
-        area:         document.getElementById('editAptArea').value,
-        status:       document.getElementById('editAptStatus').value,
-        rentalStatus: document.getElementById('editAptRental').value,
-        description:  document.getElementById('editAptDesc').value,
-      };
-      try {
-        const r = await fetch(`/api/apartments/${id}`, { method: 'PUT', headers: headers(), body: JSON.stringify(body) });
-        const msg = await r.text();
-        if (!r.ok) throw new Error(msg);
-        toast(msg, 'success');
-        bootstrap.Modal.getInstance(document.getElementById('modalEditApartment'))?.hide();
-        await loadApartments();
-      } catch(e) { toast(e.message, 'error'); }
-    }
-
-    // --- Fee Template ---
-    function openModalAddFee() {
-      if (!currentBuildingId) return toast('Vui lòng chọn tòa nhà trước', 'error');
-      document.getElementById('feeName').value          = '';
-      document.getElementById('feeType').value          = 'SERVICE';
-      document.getElementById('feeUnit').value          = 'PER_M2';
-      document.getElementById('feeAmount').value        = '';
-      document.getElementById('feeEffectiveFrom').value = new Date().toISOString().split('T')[0];
-      document.getElementById('feeEffectiveTo').value   = '';
-      updateFeeUnitHint();
-      new bootstrap.Modal(document.getElementById('modalAddFee')).show();
-    }
-
-    async function submitCreateFee() {
-      const body = {
-        buildingId:    currentBuildingId,
-        name:          document.getElementById('feeName').value,
-        type:          document.getElementById('feeType').value,
-        unit:          document.getElementById('feeUnit').value,
-        amount:        document.getElementById('feeAmount').value,
-        hasElevator:   document.getElementById('feeHasElevator').value,
-        effectiveFrom: document.getElementById('feeEffectiveFrom').value,
-        effectiveTo:   document.getElementById('feeEffectiveTo').value || null,
-      };
-      try {
-        const r = await fetch('/api/fee-templates', { method: 'POST', headers: headers(), body: JSON.stringify(body) });
-        const d = await r.json();
-        if (!r.ok) throw new Error(d.message || JSON.stringify(d));
-        toast('Tạo mẫu phí thành công!', 'success');
-        bootstrap.Modal.getInstance(document.getElementById('modalAddFee'))?.hide();
-        await loadFeeTemplates();
-      } catch(e) { toast(e.message, 'error'); }
-    }
-
-    function openEditFee(f) {
-      document.getElementById('editFeeId').value     = f.id;
-      document.getElementById('editFeeName').value   = f.name;
-      document.getElementById('editFeeType').value   = f.type;
-      document.getElementById('editFeeUnit').value   = f.unit;
-      document.getElementById('editFeeAmount').value = f.amount;
-      document.getElementById('editFeeStatus').value = f.status;
-      document.getElementById('editFeeFrom').value   = f.effectiveFrom || '';
-      document.getElementById('editFeeTo').value     = f.effectiveTo   || '';
-      new bootstrap.Modal(document.getElementById('modalEditFee')).show();
-    }
-
-    async function submitUpdateFee() {
-      const id = document.getElementById('editFeeId').value;
-      const body = {
-        name:          document.getElementById('editFeeName').value,
-        type:          document.getElementById('editFeeType').value,
-        unit:          document.getElementById('editFeeUnit').value,
-        amount:        document.getElementById('editFeeAmount').value,
-        status:        document.getElementById('editFeeStatus').value,
-        effectiveFrom: document.getElementById('editFeeFrom').value,
-        effectiveTo:   document.getElementById('editFeeTo').value || null,
-      };
-      try {
-        const r = await fetch(`/api/fee-templates/${id}`, { method: 'PUT', headers: headers(), body: JSON.stringify(body) });
-        const d = await r.json();
-        if (!r.ok) throw new Error(d.message || JSON.stringify(d));
-        toast('Cập nhật phí thành công!', 'success');
-        bootstrap.Modal.getInstance(document.getElementById('modalEditFee'))?.hide();
-        await loadFeeTemplates();
-      } catch(e) { toast(e.message, 'error'); }
-    }
-
-    async function deleteFee() {
-      const id = document.getElementById('editFeeId').value;
-      if (!confirm('Vô hiệu hoá mẫu phí này?')) return;
-      try {
-        const r = await fetch(`/api/fee-templates/${id}`, { method: 'DELETE', headers: headers() });
-        const msg = await r.text();
-        if (!r.ok) throw new Error(msg);
-        toast(msg, 'success');
-        bootstrap.Modal.getInstance(document.getElementById('modalEditFee'))?.hide();
-        await loadFeeTemplates();
-      } catch(e) { toast(e.message, 'error'); }
-    }
-
-    // ── Staff list for manager dropdown ──────────────────────────────────────────
-    async function loadStaffList(selectId, selectedId = null) {
-      try {
-        const r = await fetch('/api/staff/managers', { headers: headers() });
-        if (!r.ok) {
-          // fallback: try all staff
-          const r2 = await fetch('/api/staff', { headers: headers() });
-          if (!r2.ok) return;
-          const list = await r2.json();
-          fillSelect(selectId, list, selectedId);
-        } else {
-          const list = await r.json();
-          fillSelect(selectId, list, selectedId);
-        }
-      } catch(e) {
-        // If staff API not available, just leave empty
-        const sel = document.getElementById(selectId);
-        sel.innerHTML = '<option value="">— Nhập ID thủ công —</option>';
-        sel.insertAdjacentHTML('afterend', '<input class="form-control mt-1" placeholder="Staff ID" id="' + selectId + 'Manual">');
-      }
-    }
-
-    function fillSelect(id, list, selectedId) {
-      const sel = document.getElementById(id);
-      sel.innerHTML = list.map(s =>
-        `<option value="${s.id}" ${s.id === selectedId ? 'selected' : ''}>${s.fullName || s.full_name} (${s.id})</option>`
-      ).join('');
-    }
-
-    // ── Init ──────────────────────────────────────────────────────────────────────
-    async function init() {
-      if (!token) { window.location.href = '/login'; return; }
-      await Promise.all([loadUserInfo(), loadStats(), loadBuildings(), loadFeeChips()]);
-    }
-
-    document.addEventListener('DOMContentLoaded', init);
+    loadApartment();
 </script>
 </body>
 </html>
