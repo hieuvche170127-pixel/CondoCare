@@ -2,18 +2,23 @@ package com.swp391.condocare_swp.service;
 
 import com.swp391.condocare_swp.entity.Apartment;
 import com.swp391.condocare_swp.entity.Building;
+import com.swp391.condocare_swp.entity.FeeTemplate;
 import com.swp391.condocare_swp.entity.Staff;
 import com.swp391.condocare_swp.repository.ApartmentRepository;
 import com.swp391.condocare_swp.repository.BuildingRepository;
+import com.swp391.condocare_swp.repository.FeeTemplateRepository;
 import com.swp391.condocare_swp.repository.StaffRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -23,11 +28,24 @@ public class ApartmentService {
     private static final Logger logger = LoggerFactory.getLogger(ApartmentService.class);
     private static final AtomicInteger idCounter = new AtomicInteger(0);
 
-    @Autowired private ApartmentRepository apartmentRepo;
-    @Autowired private BuildingRepository  buildingRepo;
-    @Autowired private StaffRepository     staffRepo;
+    // ── Quyết định 33/2025/QĐ-UBND Hà Nội (hiệu lực 01/05/2025) ─────────────
+    // Phí quản lý vận hành nhà chung cư CÓ thang máy: 1.200 – 16.500 đ/m²/tháng
+    // Phí quản lý vận hành nhà chung cư KHÔNG thang máy: 700 – 5.000 đ/m²/tháng
+    private static final BigDecimal FEE_ELEVATOR_MIN    = new BigDecimal("1200");
+    private static final BigDecimal FEE_ELEVATOR_MAX    = new BigDecimal("16500");
+    private static final BigDecimal FEE_ELEVATOR_DEFAULT = new BigDecimal("7000");
+    private static final BigDecimal FEE_NO_ELEVATOR_MIN = new BigDecimal("700");
+    private static final BigDecimal FEE_NO_ELEVATOR_MAX = new BigDecimal("5000");
+    private static final BigDecimal FEE_NO_ELEVATOR_DEFAULT = new BigDecimal("2500");
 
-    // ─── BUILDING CRUD ────────────────────────────────────────────────────────
+    @Autowired private ApartmentRepository    apartmentRepo;
+    @Autowired private BuildingRepository     buildingRepo;
+    @Autowired private StaffRepository        staffRepo;
+    @Autowired private FeeTemplateRepository  feeTemplateRepo;
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // BUILDING CRUD
+    // ═════════════════════════════════════════════════════════════════════════
 
     public List<Map<String, Object>> getAllBuildings() {
         return buildingRepo.findAll().stream().map(this::mapBuilding).toList();
@@ -44,14 +62,14 @@ public class ApartmentService {
 
     @Transactional
     public String createBuilding(Map<String, String> body) {
-        String name         = body.get("name");
-        String address      = body.get("address");
-        String totalFloors  = body.get("totalFloors");
-        String totalApts    = body.get("totalApartments");
-        String managerId    = body.get("managerId");
+        String name        = body.get("name");
+        String address     = body.get("address");
+        String totalFloors = body.get("totalFloors");
+        String totalApts   = body.get("totalApartments");
+        String managerId   = body.get("managerId");
 
-        if (name == null || name.isBlank())    throw new RuntimeException("Tên tòa nhà không được để trống.");
-        if (address == null || address.isBlank()) throw new RuntimeException("Địa chỉ không được để trống.");
+        if (name      == null || name.isBlank())    throw new RuntimeException("Tên tòa nhà không được để trống.");
+        if (address   == null || address.isBlank()) throw new RuntimeException("Địa chỉ không được để trống.");
         if (managerId == null || managerId.isBlank()) throw new RuntimeException("Manager không được để trống.");
 
         Staff manager = staffRepo.findById(managerId)
@@ -88,7 +106,9 @@ public class ApartmentService {
         return "Cập nhật tòa nhà thành công!";
     }
 
-    // ─── APARTMENT CRUD ───────────────────────────────────────────────────────
+    // ═════════════════════════════════════════════════════════════════════════
+    // APARTMENT CRUD
+    // ═════════════════════════════════════════════════════════════════════════
 
     public Map<String, Object> getStats() {
         Map<String, Object> m = new LinkedHashMap<>();
@@ -113,10 +133,48 @@ public class ApartmentService {
         return apartmentRepo.findAll(spec).stream().map(this::mapApartment).toList();
     }
 
+    /**
+     * Chi tiết căn hộ kèm danh sách phí dịch vụ áp dụng và ước tính chi phí
+     * theo Quyết định 33/2025/QĐ-UBND UBND TP Hà Nội.
+     */
     public Map<String, Object> getApartmentDetail(String id) {
         Apartment apt = apartmentRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy căn hộ: " + id));
-        return mapApartment(apt);
+
+        Map<String, Object> result = mapApartment(apt);
+
+        // Lấy phí dịch vụ ACTIVE của tòa nhà
+        List<FeeTemplate> fees = feeTemplateRepo.findByBuildingIdAndStatus(
+                apt.getBuilding().getId(), FeeTemplate.FeeStatus.ACTIVE);
+
+        BigDecimal totalEstimated = BigDecimal.ZERO;
+        List<Map<String, Object>> feeDetails = new ArrayList<>();
+
+        for (FeeTemplate ft : fees) {
+            Map<String, Object> feeMap = mapFeeTemplate(ft);
+
+            // Tính ước tính chi phí cho căn hộ này
+            BigDecimal estimated;
+            if (ft.getUnit() == FeeTemplate.FeeUnit.PER_M2) {
+                estimated = ft.getAmount().multiply(apt.getArea());
+            } else if (ft.getUnit() == FeeTemplate.FeeUnit.PER_APT) {
+                estimated = ft.getAmount();
+            } else { // FIXED
+                estimated = ft.getAmount();
+            }
+            feeMap.put("estimatedAmount", estimated);
+            totalEstimated = totalEstimated.add(estimated);
+            feeDetails.add(feeMap);
+        }
+
+        result.put("activeFees", feeDetails);
+        result.put("totalEstimatedMonthly", totalEstimated);
+        result.put("feeNote",
+                "Phí quản lý vận hành theo QĐ 33/2025/QĐ-UBND UBND TP Hà Nội (hiệu lực 01/05/2025). " +
+                        "Chung cư có thang máy: 1.200–16.500 đ/m²/tháng. " +
+                        "Chung cư không thang máy: 700–5.000 đ/m²/tháng.");
+
+        return result;
     }
 
     @Transactional
@@ -134,8 +192,9 @@ public class ApartmentService {
         Building building = buildingRepo.findById(buildingId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tòa nhà: " + buildingId));
 
-        if (apartmentRepo.findByNumberAndBuildingId(number, buildingId).isPresent())
-            throw new RuntimeException("Căn hộ " + number + " đã tồn tại trong tòa nhà này.");
+        // Kiểm tra trùng lặp số căn hộ trong cùng tòa nhà
+        if (apartmentRepo.findByNumberAndBuildingId(number.trim().toUpperCase(), buildingId).isPresent())
+            throw new RuntimeException("Căn hộ " + number.toUpperCase() + " đã tồn tại trong tòa nhà này.");
 
         Apartment apt = new Apartment();
         apt.setId(generateApartmentId());
@@ -171,29 +230,235 @@ public class ApartmentService {
         return "Cập nhật căn hộ thành công!";
     }
 
-    // ─── PRIVATE HELPERS ──────────────────────────────────────────────────────
+    // ═════════════════════════════════════════════════════════════════════════
+    // FEE TEMPLATE CRUD
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /** Lấy danh sách phí dịch vụ của tòa nhà */
+    public List<Map<String, Object>> getFeeTemplates(String buildingId, String status) {
+        List<FeeTemplate> list;
+        if (status != null && !status.isBlank()) {
+            list = feeTemplateRepo.findByBuildingIdAndStatus(
+                    buildingId, FeeTemplate.FeeStatus.valueOf(status));
+        } else {
+            list = feeTemplateRepo.findByBuildingId(buildingId);
+        }
+        return list.stream().map(this::mapFeeTemplate).toList();
+    }
+
+    /** Tạo mẫu phí mới cho tòa nhà */
+    @Transactional
+    public Map<String, Object> createFeeTemplate(Map<String, Object> body) {
+        String buildingId = (String) body.get("buildingId");
+        String name       = (String) body.get("name");
+        String type       = (String) body.get("type");
+        String unit       = (String) body.get("unit");
+        String amountStr  = body.get("amount") != null ? body.get("amount").toString() : null;
+
+        if (buildingId == null || buildingId.isBlank()) throw new RuntimeException("BuildingId không được để trống.");
+        if (name       == null || name.isBlank())       throw new RuntimeException("Tên phí không được để trống.");
+        if (type       == null)                          throw new RuntimeException("Loại phí không được để trống.");
+        if (unit       == null)                          throw new RuntimeException("Đơn vị tính không được để trống.");
+        if (amountStr  == null)                          throw new RuntimeException("Đơn giá không được để trống.");
+
+        BigDecimal amount = new BigDecimal(amountStr);
+        if (amount.compareTo(BigDecimal.ZERO) <= 0)
+            throw new RuntimeException("Đơn giá phải lớn hơn 0.");
+
+        // Kiểm tra phí PER_M2 theo khung giá QĐ 33/2025 Hà Nội
+        if (FeeTemplate.FeeUnit.PER_M2.name().equals(unit) &&
+                FeeTemplate.FeeType.SERVICE.name().equals(type)) {
+            validateHanoiFeeRange(amount, body);
+        }
+
+        Building building = buildingRepo.findById(buildingId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tòa nhà: " + buildingId));
+
+        Staff staff = getCurrentStaff();
+
+        String effectiveFromStr = (String) body.get("effectiveFrom");
+        String effectiveToStr   = (String) body.get("effectiveTo");
+
+        FeeTemplate ft = new FeeTemplate();
+        ft.setId(generateFeeTemplateId());
+        ft.setBuilding(building);
+        ft.setName(name.trim());
+        ft.setType(FeeTemplate.FeeType.valueOf(type));
+        ft.setUnit(FeeTemplate.FeeUnit.valueOf(unit));
+        ft.setAmount(amount);
+        ft.setEffectiveFrom(effectiveFromStr != null ? LocalDate.parse(effectiveFromStr) : LocalDate.now());
+        ft.setEffectiveTo(effectiveToStr != null && !effectiveToStr.isBlank()
+                ? LocalDate.parse(effectiveToStr) : null);
+        ft.setStatus(FeeTemplate.FeeStatus.ACTIVE);
+        ft.setCreatedBy(staff);
+
+        feeTemplateRepo.save(ft);
+        logger.info("Created fee template {} for building {}", ft.getId(), buildingId);
+        return mapFeeTemplate(ft);
+    }
+
+    /** Cập nhật mẫu phí */
+    @Transactional
+    public Map<String, Object> updateFeeTemplate(String id, Map<String, Object> body) {
+        FeeTemplate ft = feeTemplateRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy mẫu phí: " + id));
+
+        if (body.containsKey("name") && body.get("name") != null)
+            ft.setName(body.get("name").toString().trim());
+
+        if (body.containsKey("amount") && body.get("amount") != null) {
+            BigDecimal amount = new BigDecimal(body.get("amount").toString());
+            if (amount.compareTo(BigDecimal.ZERO) <= 0)
+                throw new RuntimeException("Đơn giá phải lớn hơn 0.");
+            ft.setAmount(amount);
+        }
+
+        if (body.containsKey("unit") && body.get("unit") != null)
+            ft.setUnit(FeeTemplate.FeeUnit.valueOf(body.get("unit").toString()));
+
+        if (body.containsKey("type") && body.get("type") != null)
+            ft.setType(FeeTemplate.FeeType.valueOf(body.get("type").toString()));
+
+        if (body.containsKey("effectiveFrom") && body.get("effectiveFrom") != null)
+            ft.setEffectiveFrom(LocalDate.parse(body.get("effectiveFrom").toString()));
+
+        if (body.containsKey("effectiveTo")) {
+            String eto = body.get("effectiveTo") != null ? body.get("effectiveTo").toString() : null;
+            ft.setEffectiveTo(eto != null && !eto.isBlank() ? LocalDate.parse(eto) : null);
+        }
+
+        if (body.containsKey("status") && body.get("status") != null)
+            ft.setStatus(FeeTemplate.FeeStatus.valueOf(body.get("status").toString()));
+
+        feeTemplateRepo.save(ft);
+        logger.info("Updated fee template: {}", id);
+        return mapFeeTemplate(ft);
+    }
+
+    /** Vô hiệu hoá mẫu phí (soft delete) */
+    @Transactional
+    public String deactivateFeeTemplate(String id) {
+        FeeTemplate ft = feeTemplateRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy mẫu phí: " + id));
+        ft.setStatus(FeeTemplate.FeeStatus.INACTIVE);
+        feeTemplateRepo.save(ft);
+        return "Đã vô hiệu hoá mẫu phí.";
+    }
+
+    /**
+     * Trả về bộ mẫu phí gợi ý theo Quyết định 33/2025/QĐ-UBND UBND TP Hà Nội.
+     * Frontend sẽ dùng để hiển thị quick-add suggestions.
+     */
+    public Map<String, Object> getHanoiDecreeSuggestions() {
+        Map<String, Object> decree = new LinkedHashMap<>();
+        decree.put("decree",    "Quyết định 33/2025/QĐ-UBND UBND TP Hà Nội");
+        decree.put("effectiveDate", "2025-05-01");
+        decree.put("note",      "Khung giá chưa bao gồm dịch vụ cao cấp: bể bơi, xông hơi, truyền hình cáp, internet.");
+
+        // Khung phí quản lý vận hành
+        Map<String, Object> serviceFeesWithElevator = new LinkedHashMap<>();
+        serviceFeesWithElevator.put("label",       "Phí QLVH – chung cư CÓ thang máy (PER_M2)");
+        serviceFeesWithElevator.put("type",        "SERVICE");
+        serviceFeesWithElevator.put("unit",        "PER_M2");
+        serviceFeesWithElevator.put("minAmount",   FEE_ELEVATOR_MIN);
+        serviceFeesWithElevator.put("maxAmount",   FEE_ELEVATOR_MAX);
+        serviceFeesWithElevator.put("defaultAmount", FEE_ELEVATOR_DEFAULT);
+        serviceFeesWithElevator.put("description", "Áp dụng cho căn hộ có thang máy, tính theo m²/tháng");
+
+        Map<String, Object> serviceFeesNoElevator = new LinkedHashMap<>();
+        serviceFeesNoElevator.put("label",       "Phí QLVH – chung cư KHÔNG thang máy (PER_M2)");
+        serviceFeesNoElevator.put("type",        "SERVICE");
+        serviceFeesNoElevator.put("unit",        "PER_M2");
+        serviceFeesNoElevator.put("minAmount",   FEE_NO_ELEVATOR_MIN);
+        serviceFeesNoElevator.put("maxAmount",   FEE_NO_ELEVATOR_MAX);
+        serviceFeesNoElevator.put("defaultAmount", FEE_NO_ELEVATOR_DEFAULT);
+        serviceFeesNoElevator.put("description", "Áp dụng cho căn hộ không có thang máy, tính theo m²/tháng");
+
+        // Phí gửi xe (mức phổ biến thực tế tại Hà Nội)
+        List<Map<String, Object>> parkingFees = new ArrayList<>();
+
+        parkingFees.add(Map.of(
+                "label",         "Phí gửi xe máy",
+                "type",          "PARKING",
+                "unit",          "FIXED",
+                "defaultAmount", new BigDecimal("100000"),
+                "description",   "Xe máy/xe điện – 100.000 đ/xe/tháng"
+        ));
+        parkingFees.add(Map.of(
+                "label",         "Phí gửi ô tô",
+                "type",          "PARKING",
+                "unit",          "FIXED",
+                "defaultAmount", new BigDecimal("1200000"),
+                "description",   "Ô tô – 1.200.000 đ/xe/tháng"
+        ));
+        parkingFees.add(Map.of(
+                "label",         "Phí gửi xe đạp",
+                "type",          "PARKING",
+                "unit",          "FIXED",
+                "defaultAmount", new BigDecimal("50000"),
+                "description",   "Xe đạp – 50.000 đ/xe/tháng"
+        ));
+
+        decree.put("serviceFeesWithElevator",    serviceFeesWithElevator);
+        decree.put("serviceFeesNoElevator",      serviceFeesNoElevator);
+        decree.put("parkingFeeSuggestions",      parkingFees);
+
+        return decree;
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // PRIVATE HELPERS
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Kiểm tra mức phí PER_M2 SERVICE có nằm trong khung QĐ 33/2025 không.
+     * Chỉ cảnh báo (không block) – để BQL linh hoạt áp mức riêng nếu đã có thỏa thuận hội nghị.
+     */
+    private void validateHanoiFeeRange(BigDecimal amount, Map<String, Object> body) {
+        // Xác định có thang máy hay không qua flag "hasElevator" trong body (true/false)
+        Object elevatorFlag = body.get("hasElevator");
+        boolean hasElevator = elevatorFlag == null || Boolean.parseBoolean(elevatorFlag.toString());
+
+        BigDecimal min = hasElevator ? FEE_ELEVATOR_MIN    : FEE_NO_ELEVATOR_MIN;
+        BigDecimal max = hasElevator ? FEE_ELEVATOR_MAX    : FEE_NO_ELEVATOR_MAX;
+
+        if (amount.compareTo(min) < 0 || amount.compareTo(max) > 0) {
+            String type = hasElevator ? "có thang máy" : "không thang máy";
+            logger.warn("Phí {}/m² nằm ngoài khung QĐ 33/2025 cho chung cư {}: [{} – {}]",
+                    amount, type, min, max);
+            // Không throw – chỉ log để admin biết, vì hội nghị nhà chung cư có thể đã thỏa thuận mức riêng
+        }
+    }
+
+    private Staff getCurrentStaff() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) throw new RuntimeException("Không xác định được người dùng hiện tại.");
+        String username = auth.getName();
+        return staffRepo.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản: " + username));
+    }
 
     private Map<String, Object> mapBuilding(Building b) {
         Map<String, Object> m = new LinkedHashMap<>();
-        m.put("id",               b.getId());
-        m.put("name",             b.getName());
-        m.put("address",          b.getAddress());
-        m.put("totalFloors",      b.getTotalFloors());
-        m.put("totalApartments",  b.getTotalApartments());
-        m.put("managerName",      b.getManager() != null ? b.getManager().getFullName() : "—");
-        m.put("managerId",        b.getManager() != null ? b.getManager().getId() : null);
+        m.put("id",              b.getId());
+        m.put("name",            b.getName());
+        m.put("address",         b.getAddress());
+        m.put("totalFloors",     b.getTotalFloors());
+        m.put("totalApartments", b.getTotalApartments());
+        m.put("managerName",     b.getManager() != null ? b.getManager().getFullName() : "—");
+        m.put("managerId",       b.getManager() != null ? b.getManager().getId() : null);
         return m;
     }
 
     private Map<String, Object> mapApartment(Apartment a) {
         Map<String, Object> m = new LinkedHashMap<>();
-        m.put("id",            a.getId());
-        m.put("number",        a.getNumber());
-        m.put("floor",         a.getFloor());
-        m.put("area",          a.getArea());
-        m.put("status",        a.getStatus().name());
-        m.put("rentalStatus",  a.getRentalStatus().name());
-        m.put("description",   a.getDescription());
+        m.put("id",             a.getId());
+        m.put("number",         a.getNumber());
+        m.put("floor",          a.getFloor());
+        m.put("area",           a.getArea());
+        m.put("status",         a.getStatus().name());
+        m.put("rentalStatus",   a.getRentalStatus().name());
+        m.put("description",    a.getDescription());
         m.put("totalResidents", a.getTotalResident());
         m.put("totalVehicles",  a.getTotalVehicle());
         if (a.getBuilding() != null) {
@@ -202,6 +467,36 @@ public class ApartmentService {
         }
         return m;
     }
+
+    private Map<String, Object> mapFeeTemplate(FeeTemplate ft) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id",            ft.getId());
+        m.put("name",          ft.getName());
+        m.put("type",          ft.getType().name());
+        m.put("typeLabel",     ft.getType() == FeeTemplate.FeeType.SERVICE ? "Dịch vụ" : "Gửi xe");
+        m.put("unit",          ft.getUnit().name());
+        m.put("unitLabel",     switch (ft.getUnit()) {
+            case PER_M2  -> "đ/m²/tháng";
+            case PER_APT -> "đ/căn/tháng";
+            case FIXED   -> "đ/lần (cố định)";
+        });
+        m.put("amount",        ft.getAmount());
+        m.put("effectiveFrom", ft.getEffectiveFrom());
+        m.put("effectiveTo",   ft.getEffectiveTo());
+        m.put("status",        ft.getStatus().name());
+        m.put("statusLabel",   ft.getStatus() == FeeTemplate.FeeStatus.ACTIVE ? "Đang áp dụng" : "Không hoạt động");
+        if (ft.getBuilding() != null) {
+            m.put("buildingId",   ft.getBuilding().getId());
+            m.put("buildingName", ft.getBuilding().getName());
+        }
+        if (ft.getCreatedBy() != null) {
+            m.put("createdBy", ft.getCreatedBy().getFullName());
+        }
+        m.put("createdAt", ft.getCreatedAt());
+        return m;
+    }
+
+    // ─── ID Generators ────────────────────────────────────────────────────────
 
     private synchronized String generateBuildingId() {
         for (int i = 1; i <= 999; i++) {
@@ -213,9 +508,17 @@ public class ApartmentService {
 
     private synchronized String generateApartmentId() {
         for (int i = 1; i <= 9999; i++) {
-            String c = "APT" + String.format("%03d", i);
+            String c = "APT" + String.format("%04d", i);
             if (!apartmentRepo.existsById(c)) return c;
         }
         return "APT" + System.currentTimeMillis() % 10000000L + idCounter.incrementAndGet();
+    }
+
+    private synchronized String generateFeeTemplateId() {
+        for (int i = 1; i <= 9999; i++) {
+            String c = "FEE" + String.format("%04d", i);
+            if (!feeTemplateRepo.existsById(c)) return c;
+        }
+        return "FEE" + System.currentTimeMillis() % 10000000L;
     }
 }

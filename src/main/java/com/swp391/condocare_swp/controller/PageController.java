@@ -22,7 +22,7 @@ public class PageController {
      * Trang đăng nhập
      * GET /login
      */
-    @GetMapping("/auth/login")
+    @GetMapping("/login")
     public String authLoginPage() {
         return "login";
     }
@@ -31,7 +31,7 @@ public class PageController {
      * Trang đăng ký
      * GET /register
      */
-    @GetMapping("/auth/register")
+    @GetMapping("/register")
     public String authRegisterPage() {
         return "register";
     }
@@ -40,7 +40,7 @@ public class PageController {
      * Trang quên mật khẩu
      * GET /forgot-password
      */
-    @GetMapping("/auth/forgot-password")
+    @GetMapping("/forgot-password")
     public String authForgotPasswordPage() {
         return "forgot-password";
     }
@@ -49,7 +49,7 @@ public class PageController {
      * Trang reset mật khẩu
      * GET /reset-password
      */
-    @GetMapping("/auth/reset-password")
+    @GetMapping("/reset-password")
     public String authResetPasswordPage() {
         return "reset-password";
     }

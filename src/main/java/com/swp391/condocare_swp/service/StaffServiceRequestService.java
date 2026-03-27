@@ -15,16 +15,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.*;
 
-/**
- * StaffServiceRequestService — Xử lý yêu cầu hỗ trợ phía Staff.
- *
- * Thay đổi so với phiên bản cũ:
- * - assignAndStart(), markDone(), reject() đều gọi NotificationService.sendRequestStatusNotification()
- *   để resident nhận thông báo trong hệ thống khi trạng thái yêu cầu thay đổi.
- */
 @Service
 public class StaffServiceRequestService {
 
@@ -33,6 +25,7 @@ public class StaffServiceRequestService {
     @Autowired private ServiceRequestRepository srRepo;
     @Autowired private StaffRepository          staffRepo;
     @Autowired private NotificationService      notificationService;
+    @Autowired private EmailService             emailService;   // ← THÊM MỚI
 
     // ─── HELPER ───────────────────────────────────────────────────────────────
 
@@ -122,7 +115,6 @@ public class StaffServiceRequestService {
         logger.info("SR [{}] assigned to staff [{}] by [{}]",
                 requestId, assigneeId, currentStaff().getUsername());
 
-        // Thông báo cho resident
         if (sr.getResident() != null) {
             notificationService.sendRequestStatusNotification(
                     sr.getResident(), requestId, sr.getTitle(),
@@ -154,7 +146,6 @@ public class StaffServiceRequestService {
 
         logger.info("SR [{}] REJECTED by [{}]: {}", requestId, staff.getUsername(), rejectReason);
 
-        // Thông báo cho resident kèm lý do
         if (sr.getResident() != null) {
             notificationService.sendRequestStatusNotification(
                     sr.getResident(), requestId, sr.getTitle(),
@@ -177,7 +168,12 @@ public class StaffServiceRequestService {
 
     /**
      * Hoàn thành yêu cầu — Staff upload ảnh xác nhận.
-     * Resident nhận thông báo và được yêu cầu xác nhận.
+     *
+     * Sau khi lưu DB:
+     *   1. Gửi thông báo trong hệ thống (NotificationService) — như cũ.
+     *   2. *** GỬI EMAIL cho cư dân nếu có địa chỉ email. ***
+     *
+     * Email bị lỗi sẽ chỉ log WARNING, KHÔNG rollback transaction.
      */
     @Transactional
     public Map<String, Object> markDone(String requestId, String completionImage, String note) {
@@ -203,12 +199,30 @@ public class StaffServiceRequestService {
 
         logger.info("SR [{}] marked DONE by [{}]", requestId, staff.getUsername());
 
-        // Thông báo cho resident: hoàn thành, cần xác nhận
+        // 1. Thông báo trong hệ thống (giữ nguyên)
         if (sr.getResident() != null) {
             notificationService.sendRequestStatusNotification(
                     sr.getResident(), requestId, sr.getTitle(),
                     "DONE", note, staff);
         }
+
+        // 2. ── GỬI EMAIL ──────────────────────────────────────────────────────
+        if (sr.getResident() != null) {
+            String residentEmail = sr.getResident().getEmail();
+            if (residentEmail != null && !residentEmail.isBlank()) {
+                emailService.sendServiceRequestDoneEmail(
+                        residentEmail,
+                        sr.getResident().getFullName(),
+                        requestId,
+                        sr.getTitle(),
+                        staff.getFullName(),
+                        sr.getNote()          // note đã được set ở trên (có thể null)
+                );
+            } else {
+                logger.debug("SR [{}] — resident has no email, skipping done notification email", requestId);
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────────
 
         return toMap(sr);
     }
