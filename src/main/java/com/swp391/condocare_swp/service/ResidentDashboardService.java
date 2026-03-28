@@ -459,8 +459,8 @@ public class ResidentDashboardService {
         v.setBrand(body.get("brand") != null ? body.get("brand").trim() : null);
         v.setModel(body.get("model") != null ? body.get("model").trim() : null);
         v.setColor(body.get("color") != null ? body.get("color").trim() : null);
-        v.setResident(r.getId());
-        v.setApartment(r.getApartment().getId());
+        v.setResident(r);                    // @ManyToOne → Residents
+        v.setApartment(r.getApartment());    // @ManyToOne → Apartment
         v.setDurationType(durationType);
         v.setPendingStatus(Vehicle.PendingStatus.PENDING);
         v.setStatus(Vehicle.VehicleStatus.ACTIVE);

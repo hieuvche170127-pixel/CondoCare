@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản lý nhân viên</title>
+    <title>Quản lý nhân viên - CondoCare</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
@@ -14,7 +14,6 @@
 
 <div class="container-fluid">
     <div class="row">
-
         <!-- Sidebar -->
         <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse" id="sidebarNav">
             <div class="position-sticky pt-3">
@@ -23,63 +22,21 @@
                     <small class="text-white-50" id="sidebarUser"></small>
                 </div>
                 <ul class="nav flex-column">
-                    <li class="nav-item">
-                        <a class="nav-link" href="/dashboard">
-                            <i class="fas fa-tachometer-alt me-2"></i>Tổng quan
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/dashboard/buildings">
-                            <i class="fas fa-building me-2"></i>Tòa nhà
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/dashboard/apartments">
-                            <i class="fas fa-home me-2"></i>Căn hộ
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/dashboard/resident">
-                            <i class="fas fa-users me-2"></i>Quản lý cư dân
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="/dashboard/staff">
-                            <i class="fas fa-users-cog me-2"></i>Quản lý nhân viên
-                        </a>
-                    </li>
-                    <!--                    <li class="nav-item">-->
-                    <!--                        <a class="nav-link" href="/dashboard/fees">-->
-                    <!--                            <i class="fas fa-file-invoice-dollar me-2"></i>Phí dịch vụ-->
-                    <!--                        </a>-->
-                    <!--                    </li>-->
-                    <li class="nav-item">
-                        <a class="nav-link" href="/dashboard/invoices">
-                            <i class="fas fa-receipt me-2"></i>Hóa đơn
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/dashboard/service-requests">
-                            <i class="fas fa-tools me-2"></i>Yêu cầu hỗ trợ
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/dashboard/settings">
-                            <i class="fas fa-cog me-2"></i>Cài đặt
-                        </a>
-                    </li>
-                    <li class="nav-item mt-4">
-                        <a class="nav-link text-danger-emphasis" href="#" id="logoutBtn">
-                            <i class="fas fa-sign-out-alt me-2"></i>Đăng xuất
-                        </a>
-                    </li>
+                    <li class="nav-item"><a class="nav-link" href="/dashboard"><i class="fas fa-tachometer-alt me-2"></i>Tổng quan</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/dashboard/buildings"><i class="fas fa-building me-2"></i>Tòa nhà</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/dashboard/apartments"><i class="fas fa-home me-2"></i>Căn hộ & Phí</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/dashboard/resident"><i class="fas fa-users me-2"></i>Quản lý cư dân</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/dashboard/staff"><i class="fas fa-users-cog me-2"></i>Quản lý nhân viên</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/dashboard/invoices"><i class="fas fa-receipt me-2"></i>Hóa đơn</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/dashboard/service-requests"><i class="fas fa-tools me-2"></i>Yêu cầu hỗ trợ</a></li>
+                    <li class="nav-item mt-4"><a class="nav-link text-danger-emphasis" href="#" id="logoutBtn"><i class="fas fa-sign-out-alt me-2"></i>Đăng xuất</a></li>
                 </ul>
             </div>
         </nav>
 
         <!-- Main -->
         <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
-            <div class="page-header mb-4">
+            <div class="d-flex justify-content-between align-items-start mb-4">
                 <div>
                     <h4><i class="fas fa-users-cog text-primary"></i> Quản lý nhân viên</h4>
                     <nav aria-label="breadcrumb"><ol class="breadcrumb mb-0">
@@ -87,119 +44,92 @@
                         <li class="breadcrumb-item active">Nhân viên</li>
                     </ol></nav>
                 </div>
-                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createModal">
-                    <i class="fas fa-user-plus me-1"></i> Thêm nhân viên
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#sCreateModal"
+                        id="btnAddStaff">
+                    <i class="fas fa-user-plus me-1"></i>Thêm nhân viên
                 </button>
             </div>
 
-            <div id="alertContainer"></div>
+            <div id="sAlertContainer"></div>
 
             <!-- Stats -->
             <div class="row g-3 mb-4">
                 <div class="col-6 col-md-3">
-                    <div class="stat-card primary">
-                        <div class="stat-icon icon-blue"><i class="fas fa-users"></i></div>
-                        <div><div class="stat-value" id="statTotal">0</div><div class="stat-label">Tổng nhân viên</div></div>
+                    <div class="stat-card">
+                        <div class="stat-icon icon-blue"><i class="fas fa-users-cog"></i></div>
+                        <div><div class="stat-value" id="sStatTotal">0</div><div class="stat-label">Tổng</div></div>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="stat-card success">
+                    <div class="stat-card">
                         <div class="stat-icon icon-green"><i class="fas fa-user-check"></i></div>
-                        <div><div class="stat-value" id="statActive">0</div><div class="stat-label">Đang làm việc</div></div>
+                        <div><div class="stat-value" id="sStatActive">0</div><div class="stat-label">Đang làm</div></div>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="stat-card warning">
+                    <div class="stat-card">
                         <div class="stat-icon icon-orange"><i class="fas fa-user-clock"></i></div>
-                        <div><div class="stat-value" id="statOnLeave">0</div><div class="stat-label">Nghỉ phép</div></div>
+                        <div><div class="stat-value" id="sStatOnLeave">0</div><div class="stat-label">Nghỉ phép</div></div>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="stat-card danger">
+                    <div class="stat-card">
                         <div class="stat-icon icon-red"><i class="fas fa-user-slash"></i></div>
-                        <div><div class="stat-value" id="statResigned">0</div><div class="stat-label">Đã nghỉ việc</div></div>
+                        <div><div class="stat-value" id="sStatResigned">0</div><div class="stat-label">Đã nghỉ</div></div>
                     </div>
                 </div>
             </div>
 
-            <!-- Filter Bar -->
-            <div class="content-card mb-3">
-                <div class="d-flex flex-wrap gap-2 align-items-end">
-                    <div>
-                        <label class="form-label small fw-semibold mb-1">🔍 Tìm kiếm</label>
-                        <input type="text" id="searchInput" class="form-control form-control-sm" style="width:220px"
-                               placeholder="Tên, username, email, SĐT...">
-                    </div>
-                    <div>
-                        <label class="form-label small fw-semibold mb-1">Quyền</label>
-                        <select id="filterRole" class="form-select form-select-sm" style="width:150px">
-                            <option value="">Tất cả role</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="form-label small fw-semibold mb-1">Trạng thái</label>
-                        <select id="filterStatus" class="form-select form-select-sm" style="width:140px">
-                            <option value="">Tất cả</option>
-                            <option value="ACTIVE">✅ Đang làm</option>
-                            <option value="ON_LEAVE">🟡 Nghỉ phép</option>
-                            <option value="RESIGNED">🔴 Đã nghỉ</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="form-label small fw-semibold mb-1">Sắp xếp</label>
-                        <select id="sortField" class="form-select form-select-sm" style="width:130px">
-                            <option value="fullName">Họ tên</option>
-                            <option value="username">Username</option>
-                            <option value="createAt">Ngày tạo</option>
-                            <option value="hiredAt">Ngày vào làm</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="form-label small fw-semibold mb-1">&nbsp;</label>
-                        <select id="sortDir" class="form-select form-select-sm" style="width:100px">
-                            <option value="asc">A → Z</option>
-                            <option value="desc">Z → A</option>
-                        </select>
-                    </div>
-                    <div class="d-flex gap-2 mt-3">
-                        <button class="btn btn-primary btn-sm" id="btnSearch"><i class="fas fa-search me-1"></i>Tìm</button>
-                        <button class="btn btn-outline-secondary btn-sm" id="btnReset"><i class="fas fa-redo me-1"></i>Đặt lại</button>
-                    </div>
+            <!-- Filter bar -->
+            <div class="content-card mb-3 py-2">
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <input type="text" id="sSearchInput" class="form-control form-control-sm"
+                           style="width:220px" placeholder="🔍 Tên, username, email, chức vụ...">
+                    <select id="sRoleFilter" class="form-select form-select-sm" style="width:160px">
+                        <option value="">-- Tất cả vai trò --</option>
+                    </select>
+                    <select id="sStatusFilter" class="form-select form-select-sm" style="width:150px">
+                        <option value="">-- Tất cả trạng thái --</option>
+                        <option value="ACTIVE">✅ Đang làm</option>
+                        <option value="ON_LEAVE">⏳ Nghỉ phép</option>
+                        <option value="RESIGNED">🔴 Đã nghỉ</option>
+                    </select>
+                    <button class="btn btn-primary btn-sm" id="sBtnSearch">Tìm</button>
+                    <button class="btn btn-outline-secondary btn-sm" id="sBtnReset"><i class="fas fa-redo"></i></button>
                 </div>
             </div>
 
             <!-- Table -->
             <div class="content-card">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <span class="text-muted small" id="tableInfo"></span>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted small" id="sTableInfo"></span>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle">
                         <thead class="table-light">
                         <tr>
-                            <th style="width:80px">ID</th>
-                            <th>Họ tên</th>
-                            <th>Email</th>
-                            <th>Điện thoại</th>
-                            <th>Vị trí / Phòng ban</th>
-                            <th>Quyền</th>
+                            <th>Nhân viên</th>
+                            <th>Liên hệ</th>
+                            <th>Chức vụ / Phòng ban</th>
+                            <th>Vai trò</th>
                             <th>Trạng thái</th>
-                            <th style="width:100px">Thao tác</th>
+                            <th>Lần cuối đăng nhập</th>
+                            <th>Thao tác</th>
                         </tr>
                         </thead>
                         <tbody id="staffTableBody">
-                        <tr><td colspan="8" class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Đang tải...</td></tr>
+                        <tr><td colspan="7" class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Đang tải...</td></tr>
                         </tbody>
                     </table>
                 </div>
-                <div id="paginationContainer" class="mt-3"></div>
+                <div id="sPaginationContainer" class="mt-3"></div>
             </div>
         </main>
     </div>
 </div>
 
-<!-- Modal Tạo mới -->
-<div class="modal fade" id="createModal" tabindex="-1">
+<!-- ═══════ MODAL TẠO NHÂN VIÊN ═══════ -->
+<div class="modal fade" id="sCreateModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
@@ -207,80 +137,79 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div id="createFormAlert"></div>
-                <form id="createForm">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Username <span class="text-danger">*</span></label>
-                            <input type="text" id="formUsername" class="form-control" placeholder="vd: nguyen.van.a" required>
+                <div id="sCreateAlert"></div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Username <span class="text-danger">*</span></label>
+                        <input type="text" id="sFormUsername" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Mật khẩu</label>
+                        <div class="input-group">
+                            <input type="password" id="sFormPassword" class="form-control"
+                                   placeholder="Để trống để tự sinh ngẫu nhiên">
+                            <button class="btn btn-outline-secondary" type="button"
+                                    onclick="togglePwd('sFormPassword',this)" title="Hiện/Ẩn">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-outline-primary" type="button"
+                                    onclick="genStaffPassword()" title="Tự sinh mật khẩu">
+                                <i class="fas fa-random"></i>
+                            </button>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">
-                                Mật khẩu
-<!--                                <span class="text-muted fw-normal small ms-1">(để trống → tự sinh khi nhập email)</span>-->
-                            </label>
-                            <div class="input-group">
-                                <input type="password" id="formPassword" class="form-control"
-                                       placeholder="Để trống để tự sinh ngẫu nhiên"
-                                       autocomplete="new-password">
-                                <button class="btn btn-outline-secondary" type="button"
-                                        onclick="togglePwd('formPassword',this)">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                <button class="btn btn-outline-info" type="button"
-                                        title="Sinh lại mật khẩu ngẫu nhiên"
-                                        onclick="genStaffPassword()">
-                                    <i class="fas fa-magic"></i>
-                                </button>
-                            </div>
-                            <div id="formPasswordDisplay" class="d-none small mt-1"></div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Họ và tên <span class="text-danger">*</span></label>
-                            <input type="text" id="formFullName" class="form-control" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Email <span class="text-danger">*</span></label>
-                            <input type="email" id="formEmail" class="form-control"
-                                   placeholder="vd: nguyen.van.a@company.com"
-                                   title="Nhập email rồi click ra ngoài để tự sinh mật khẩu">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Số điện thoại</label>
-                            <input type="text" id="formPhone" class="form-control" placeholder="0912345678">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Ngày sinh</label>
-                            <input type="date" id="formDob" class="form-control">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">Giới tính <span class="text-danger">*</span></label>
-                            <select id="formGender" class="form-select" required>
-                                <option value="">-- Chọn --</option>
-                                <option value="M">Nam</option>
-                                <option value="F">Nữ</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">Vị trí</label>
-                            <input type="text" id="formPosition" class="form-control" placeholder="vd: Staff">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">Phòng ban</label>
-                            <input type="text" id="formDepartment" class="form-control" placeholder="vd: Customer Service">
-                        </div>
-                        <div class="col-md-12">
-                            <label class="form-label fw-semibold">Quyền (Role) <span class="text-danger">*</span></label>
-                            <select id="formRole" class="form-select" required>
-                                <option value="">-- Chọn role --</option>
-                            </select>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle text-info me-1"></i>
+                            Để trống → hệ thống tự sinh và <strong>gửi email</strong> cho nhân viên.
                         </div>
                     </div>
-                </form>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Họ và tên <span class="text-danger">*</span></label>
+                        <input type="text" id="sFormFullName" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Email <span class="text-danger">*</span></label>
+                        <input type="email" id="sFormEmail" class="form-control" required>
+                        <div class="form-text">Email nhận thông báo tài khoản & mật khẩu.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Số điện thoại <span class="text-danger">*</span></label>
+                        <input type="text" id="sFormPhone" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Vai trò <span class="text-danger">*</span></label>
+                        <select id="sFormRoleId" class="form-select" required>
+                            <option value="">-- Chọn vai trò --</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Chức vụ</label>
+                        <input type="text" id="sFormPosition" class="form-control" placeholder="VD: Kế toán viên">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Phòng ban</label>
+                        <input type="text" id="sFormDepartment" class="form-control" placeholder="VD: Kế toán">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Giới tính <span class="text-danger">*</span></label>
+                        <select id="sFormGender" class="form-select" required>
+                            <option value="">-- Chọn --</option>
+                            <option value="M">Nam</option>
+                            <option value="F">Nữ</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Ngày sinh</label>
+                        <input type="date" id="sFormDob" class="form-control">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Ngày vào làm</label>
+                        <input type="date" id="sFormHiredAt" class="form-control">
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                <button type="button" class="btn btn-primary" id="btnCreateSubmit">
+                <button type="button" class="btn btn-primary" id="sBtnCreateSubmit">
                     <i class="fas fa-save me-1"></i>Lưu
                 </button>
             </div>
@@ -288,74 +217,121 @@
     </div>
 </div>
 
-<!-- Modal Chỉnh sửa -->
-<div class="modal fade" id="editModal" tabindex="-1">
+<!-- ═══════ MODAL SỬA NHÂN VIÊN ═══════ -->
+<div class="modal fade" id="sEditModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title"><i class="fas fa-user-edit me-2"></i>Chỉnh sửa nhân viên
-                    <small class="ms-2 opacity-75" id="editStaffId"></small>
+                <h5 class="modal-title">
+                    <i class="fas fa-user-edit me-2"></i>Chỉnh sửa nhân viên
+                    <small class="ms-2 opacity-75" id="sEditStaffId"></small>
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div id="editFormAlert"></div>
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Họ và tên</label>
-                        <input type="text" id="editFullName" class="form-control">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Email</label>
-                        <input type="email" id="editEmail" class="form-control">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Số điện thoại</label>
-                        <input type="text" id="editPhone" class="form-control">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Ngày sinh</label>
-                        <input type="date" id="editDob" class="form-control">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-semibold">Giới tính</label>
-                        <select id="editGender" class="form-select">
-                            <option value="M">Nam</option>
-                            <option value="F">Nữ</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-semibold">Vị trí</label>
-                        <input type="text" id="editPosition" class="form-control">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-semibold">Phòng ban</label>
-                        <input type="text" id="editDepartment" class="form-control">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Quyền (Role)</label>
-                        <select id="editFormRole" class="form-select"></select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Trạng thái</label>
-                        <select id="editStatus" class="form-select">
-                            <option value="ACTIVE">✅ Đang làm việc</option>
-                            <option value="ON_LEAVE">🟡 Nghỉ phép</option>
-                            <option value="RESIGNED">🔴 Đã nghỉ việc</option>
-                        </select>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label fw-semibold">Mật khẩu mới <small class="text-muted">(để trống nếu không đổi)</small></label>
-                        <div class="input-group">
-                            <input type="password" id="editNewPassword" class="form-control" placeholder="Ít nhất 6 ký tự">
-                            <button class="btn btn-outline-secondary" type="button" onclick="togglePwd('editNewPassword',this)"><i class="fas fa-eye"></i></button>
+                <div id="sEditAlert"></div>
+                <ul class="nav nav-tabs mb-3">
+                    <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#sTabBasic">Thông tin cơ bản</a></li>
+                    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#sTabSecurity">Bảo mật</a></li>
+                </ul>
+                <div class="tab-content">
+
+                    <!-- Tab thông tin cơ bản -->
+                    <div class="tab-pane fade show active" id="sTabBasic">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Họ và tên</label>
+                                <input type="text" id="sEditFullName" class="form-control">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Email</label>
+                                <input type="email" id="sEditEmail" class="form-control">
+                                <div class="form-text">Email dùng để nhận mật khẩu khi reset.</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Số điện thoại</label>
+                                <input type="text" id="sEditPhone" class="form-control">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Chức vụ</label>
+                                <input type="text" id="sEditPosition" class="form-control">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Phòng ban</label>
+                                <input type="text" id="sEditDepartment" class="form-control">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Vai trò</label>
+                                <select id="sEditRoleId" class="form-select">
+                                    <option value="">-- Chọn --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Giới tính</label>
+                                <select id="sEditGender" class="form-select">
+                                    <option value="M">Nam</option>
+                                    <option value="F">Nữ</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Ngày sinh</label>
+                                <input type="date" id="sEditDob" class="form-control">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Trạng thái</label>
+                                <select id="sEditStatus" class="form-select">
+                                    <option value="ACTIVE">✅ Đang làm</option>
+                                    <option value="ON_LEAVE">⏳ Nghỉ phép</option>
+                                    <option value="RESIGNED">🔴 Đã nghỉ</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
-                </div>
+
+                    <!-- ═══ Tab Bảo mật — Reset mật khẩu tự sinh ═══ -->
+                    <div class="tab-pane fade" id="sTabSecurity">
+                        <div class="alert alert-info d-flex gap-2 align-items-start">
+                            <i class="fas fa-shield-alt mt-1 flex-shrink-0"></i>
+                            <div>
+                                Hệ thống sẽ <strong>tự sinh mật khẩu ngẫu nhiên 12 ký tự</strong> (chữ hoa, chữ thường,
+                                số, ký tự đặc biệt) và <strong>gửi về Gmail</strong> của nhân viên.
+                                Nhân viên cần đăng nhập và tự đổi mật khẩu ngay sau khi nhận.
+                            </div>
+                        </div>
+
+                        <div id="sResetPwdAlert" class="mb-3"></div>
+
+                        <div class="border rounded p-3 bg-light">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <div>
+                                    <div class="fw-semibold mb-1">
+                                        <i class="fas fa-envelope text-primary me-1"></i>
+                                        Email nhận mật khẩu:
+                                    </div>
+                                    <div class="font-monospace" id="sResetPwdEmailDisplay"
+                                         style="color:var(--bs-primary)">—</div>
+                                </div>
+                                <div class="text-muted small">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Cập nhật email ở tab <strong>Thông tin cơ bản</strong> nếu cần thay đổi.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 d-flex gap-2 align-items-center">
+                            <button type="button" class="btn btn-warning" id="btnResetStaffPwd"
+                                    onclick="doResetStaffPassword()">
+                                <i class="fas fa-key me-2"></i>Tạo mật khẩu ngẫu nhiên &amp; gửi email
+                            </button>
+                            <small class="text-muted">Thao tác này không thể hoàn tác.</small>
+                        </div>
+                    </div>
+
+                </div><!-- /tab-content -->
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                <button type="button" class="btn btn-warning" id="btnEditSubmit">
+                <button type="button" class="btn btn-warning" id="sBtnEditSubmit">
                     <i class="fas fa-save me-1"></i>Lưu thay đổi
                 </button>
             </div>
@@ -365,100 +341,410 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="/js/common.js"></script>
-<script src="/js/staff-management.js"></script>
 <script>
-    // Auth check
+    // ─── Auth check ────────────────────────────────────────────────────────────
     (function() {
-        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-        if (!token) { window.location.href = '/login'; return; }
-        try {
-            const info = JSON.parse(localStorage.getItem('userInfo') || sessionStorage.getItem('userInfo') || '{}');
-            const nameEl = document.getElementById('sidebarUser');
-            if (nameEl) nameEl.textContent = info.fullName || info.username || '';
-        } catch(e) {}
-    })();
-    document.getElementById('logoutBtn').addEventListener('click', e => {
-        e.preventDefault();
-        if (confirm('Đăng xuất?')) {
-            localStorage.removeItem('token'); localStorage.removeItem('userInfo');
-            sessionStorage.removeItem('token'); sessionStorage.removeItem('userInfo');
-            window.location.href = '/login';
+        if (!isLoggedIn()) { window.location.href = '/login'; return; }
+        const info = getUserInfo();
+        if (!info || info.userType !== 'staff') { window.location.href = '/login'; return; }
+        const nameEl = document.getElementById('sidebarUser');
+        if (nameEl) nameEl.textContent = info.fullName || info.username || '';
+
+        // Ẩn nút tạo và nút xóa nếu không phải ADMIN/MANAGER
+        if (!['ADMIN','MANAGER'].includes(info.role)) {
+            document.getElementById('btnAddStaff')?.remove();
         }
+    })();
+
+    document.getElementById('logoutBtn').addEventListener('click', e => {
+        e.preventDefault(); if (confirm('Đăng xuất?')) logout();
     });
+
+    const API = '/api/staff-management';
+    let _currentEditId = null;
+    let _roles = [];
+    let _currentPage = 0;
+    const PAGE_SIZE = 10;
+
+    // ─── Helpers ───────────────────────────────────────────────────────────────
+    function showAlert(containerId, msg, type = 'danger') {
+        document.getElementById(containerId).innerHTML =
+            `<div class="alert alert-${type} alert-dismissible py-2">
+                ${msg}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+             </div>`;
+    }
     function togglePwd(id, btn) {
         const el = document.getElementById(id);
         el.type = el.type === 'password' ? 'text' : 'password';
         btn.innerHTML = el.type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
     }
-    StaffMgmt.init();
-
-    /* ── Auto-gen password khi nhập email (Staff create form) ── */
-
-    // Hàm sinh password ngẫu nhiên
     function genStaffPassword() {
-        const UPPER   = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-        const LOWER   = 'abcdefghjkmnpqrstuvwxyz';
-        const DIGITS  = '23456789';
-        const SPECIAL = '@#$%&*!';
-        const ALL     = UPPER + LOWER + DIGITS + SPECIAL;
-        const arr = [
-            UPPER[Math.floor(Math.random() * UPPER.length)],
-            LOWER[Math.floor(Math.random() * LOWER.length)],
-            DIGITS[Math.floor(Math.random() * DIGITS.length)],
-            SPECIAL[Math.floor(Math.random() * SPECIAL.length)],
-        ];
-        for (let i = 4; i < 12; i++)
-            arr.push(ALL[Math.floor(Math.random() * ALL.length)]);
-        for (let i = arr.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [arr[i], arr[j]] = [arr[j], arr[i]];
-        }
-        const pwd = arr.join('');
-
-        const pwdEl  = document.getElementById('formPassword');
-        const dispEl = document.getElementById('formPasswordDisplay');
-        pwdEl.value = pwd;
-        pwdEl.type  = 'text';   // hiện password để admin thấy
-
-        if (dispEl) {
-            dispEl.innerHTML = `
-              <div class="d-flex align-items-center gap-2 flex-wrap">
-                <span class="badge bg-info text-dark">
-                  <i class="fas fa-magic me-1"></i>Mật khẩu tự sinh
-                </span>
-                <span class="text-muted">— sẽ gửi tới email nhân viên</span>
-                <button type="button" class="btn btn-sm btn-outline-secondary py-0"
-                        onclick="navigator.clipboard.writeText(document.getElementById('formPassword').value);
-                                 this.textContent='✓ Đã copy'">
-                    <i class="fas fa-copy"></i> Copy
-                </button>
-              </div>`;
-            dispEl.classList.remove('d-none');
-        }
-        return pwd;
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#$%';
+        let p = '';
+        for (let i = 0; i < 12; i++) p += chars[Math.floor(Math.random() * chars.length)];
+        const el = document.getElementById('sFormPassword');
+        el.type = 'text';
+        el.value = p;
     }
 
-    // Khi rời khỏi field email → tự sinh password nếu chưa có
-    document.getElementById('formEmail').addEventListener('blur', function() {
-        const pwdEl = document.getElementById('formPassword');
-        if (this.value.trim() && !pwdEl.value.trim()) {
-            genStaffPassword();
+    // ─── Load roles dropdown ────────────────────────────────────────────────────
+    async function loadRoles() {
+        try {
+            const res  = await apiRequest(`${API}/roles`);
+            _roles = await res.json();
+            const opts = _roles.map(r => `<option value="${r.id}">${r.name} — ${r.description||''}</option>`).join('');
+            document.getElementById('sFormRoleId').insertAdjacentHTML('beforeend', opts);
+            document.getElementById('sEditRoleId').insertAdjacentHTML('beforeend', opts);
+            document.getElementById('sRoleFilter').insertAdjacentHTML('beforeend', opts);
+        } catch(e) { console.error('loadRoles error', e); }
+    }
+
+    // ─── Stats ──────────────────────────────────────────────────────────────────
+    async function loadStats() {
+        try {
+            const res  = await apiRequest(`${API}/stats`);
+            const data = await res.json();
+            document.getElementById('sStatTotal').textContent   = data.total   || 0;
+            document.getElementById('sStatActive').textContent  = data.active  || 0;
+            document.getElementById('sStatOnLeave').textContent = data.onLeave || 0;
+            document.getElementById('sStatResigned').textContent= data.resigned|| 0;
+        } catch(e) {}
+    }
+
+    // ─── List ───────────────────────────────────────────────────────────────────
+    async function loadList(page = 0) {
+        _currentPage = page;
+        showLoading();
+        try {
+            const params = new URLSearchParams({ page, size: PAGE_SIZE });
+            const search = document.getElementById('sSearchInput').value.trim();
+            const role   = document.getElementById('sRoleFilter').value;
+            const status = document.getElementById('sStatusFilter').value;
+            if (search) params.set('search', search);
+            if (role)   params.set('roleId', role);
+            if (status) params.set('status', status);
+
+            const res  = await apiRequest(`${API}?${params}`);
+            const data = await res.json();
+            renderTable(data.content || []);
+            document.getElementById('sTableInfo').textContent =
+                `Hiển thị ${(data.content||[]).length} / ${data.totalElements || 0} nhân viên`;
+            renderPagination(data, 'sPaginationContainer', 'loadList');
+        } catch(e) {
+            showAlert('sAlertContainer', 'Không thể tải danh sách: ' + e.message);
+        } finally { hideLoading(); }
+    }
+
+    // ─── Render table ───────────────────────────────────────────────────────────
+    function renderTable(list) {
+        const tbody = document.getElementById('staffTableBody');
+        const info  = getUserInfo();
+        const canEdit = ['ADMIN','MANAGER'].includes(info?.role);
+
+        if (!list.length) {
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">
+                <i class="fas fa-users-cog fa-2x d-block mb-2 opacity-25"></i>Không có dữ liệu</td></tr>`;
+            return;
         }
+
+        const statusBadge = {
+            ACTIVE:'bg-success', ON_LEAVE:'bg-warning text-dark', RESIGNED:'bg-danger'
+        };
+        const statusLabel = {
+            ACTIVE:'Đang làm', ON_LEAVE:'Nghỉ phép', RESIGNED:'Đã nghỉ'
+        };
+        const roleBadge = {
+            ADMIN:'bg-danger', MANAGER:'bg-primary', ACCOUNTANT:'bg-info',
+            TECHNICIAN:'bg-warning text-dark', RECEPTIONIST:'bg-secondary'
+        };
+
+        tbody.innerHTML = list.map(s => `
+            <tr>
+                <td>
+                    <div class="fw-semibold">${escHtml(s.fullName)}</div>
+                    <small class="text-muted">@${escHtml(s.username)}</small>
+                </td>
+                <td>
+                    <div class="small">${escHtml(s.email||'—')}</div>
+                    <div class="small text-muted">${escHtml(s.phone||'—')}</div>
+                </td>
+                <td>
+                    <div class="small">${escHtml(s.position||'—')}</div>
+                    <small class="text-muted">${escHtml(s.department||'—')}</small>
+                </td>
+                <td><span class="badge ${roleBadge[s.roleName]||'bg-secondary'}">${escHtml(s.roleName)}</span></td>
+                <td><span class="badge ${statusBadge[s.status]||'bg-secondary'}">${statusLabel[s.status]||s.status}</span></td>
+                <td><small class="text-muted">${s.lastLogin ? new Date(s.lastLogin).toLocaleString('vi-VN') : '—'}</small></td>
+                <td>
+                    <div class="d-flex gap-1">
+                        ${canEdit ? `
+                        <button class="btn btn-sm btn-outline-primary" title="Chỉnh sửa"
+                                onclick="openEdit('${s.id}')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning" title="Reset mật khẩu nhanh"
+                                onclick="quickResetPwd('${s.id}','${escHtml(s.fullName)}','${escHtml(s.email||'')}')">
+                            <i class="fas fa-key"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" title="Vô hiệu hóa"
+                                onclick="confirmDeactivate('${s.id}','${escHtml(s.fullName)}')">
+                            <i class="fas fa-ban"></i>
+                        </button>` : `<span class="text-muted small">Chỉ xem</span>`}
+                    </div>
+                </td>
+            </tr>`).join('');
+    }
+
+    // ─── Open edit modal ────────────────────────────────────────────────────────
+    async function openEdit(id) {
+        _currentEditId = id;
+        showLoading();
+        try {
+            const res  = await apiRequest(`${API}/${id}`);
+            const data = await res.json();
+
+            document.getElementById('sEditStaffId').textContent = `(${id})`;
+            document.getElementById('sEditFullName').value   = data.fullName   || '';
+            document.getElementById('sEditEmail').value      = data.email      || '';
+            document.getElementById('sEditPhone').value      = data.phone      || '';
+            document.getElementById('sEditPosition').value   = data.position   || '';
+            document.getElementById('sEditDepartment').value = data.department || '';
+            document.getElementById('sEditGender').value     = data.gender     || 'M';
+            document.getElementById('sEditDob').value        = data.dob        || '';
+            document.getElementById('sEditStatus').value     = data.status     || 'ACTIVE';
+            document.getElementById('sEditRoleId').value     = data.roleId     || '';
+
+            // Reset security tab
+            document.getElementById('sResetPwdAlert').innerHTML = '';
+            document.getElementById('sResetPwdEmailDisplay').textContent = data.email || '(chưa có email)';
+
+            // Kích hoạt tab basic
+            const bsTab = new bootstrap.Tab(document.querySelector('#sEditModal .nav-link.active'));
+            bsTab?.show();
+
+            document.getElementById('sEditAlert').innerHTML = '';
+            new bootstrap.Modal(document.getElementById('sEditModal')).show();
+        } catch(e) {
+            showAlert('sAlertContainer', 'Không thể tải thông tin nhân viên: ' + e.message);
+        } finally { hideLoading(); }
+    }
+
+    // Cập nhật email display trên tab bảo mật khi chuyển tab
+    document.querySelector('a[href="#sTabSecurity"]')?.addEventListener('click', () => {
+        const email = document.getElementById('sEditEmail')?.value?.trim() || '';
+        const el    = document.getElementById('sResetPwdEmailDisplay');
+        if (el) el.textContent = email || '(chưa có email)';
+        document.getElementById('sResetPwdAlert').innerHTML = '';
     });
 
-    // Nếu admin tự nhập password → ẩn badge tự sinh
-    document.getElementById('formPassword').addEventListener('input', function() {
-        const dispEl = document.getElementById('formPasswordDisplay');
-        if (dispEl && this.value.trim()) dispEl.classList.add('d-none');
+    // ─── Reset mật khẩu từ TAB TRONG MODAL EDIT ────────────────────────────────
+    // Gọi API POST /api/staff-management/{id}/reset-password
+    // Service tự sinh mật khẩu random 12 ký tự và gửi email
+    async function doResetStaffPassword() {
+        const id    = _currentEditId;
+        const email = document.getElementById('sEditEmail')?.value?.trim() || '';
+        const name  = document.getElementById('sEditFullName')?.value?.trim() || 'nhân viên này';
+
+        if (!email) {
+            document.getElementById('sResetPwdAlert').innerHTML =
+                `<div class="alert alert-warning py-2">
+                    <i class="fas fa-exclamation-triangle me-1"></i>
+                    Nhân viên chưa có email. Vui lòng điền email ở tab <strong>Thông tin cơ bản</strong>
+                    và lưu lại trước khi reset mật khẩu.
+                 </div>`;
+            return;
+        }
+
+        if (!confirm(`Tạo mật khẩu ngẫu nhiên mới cho "${name}" và gửi về:\n${email}?\n\nMật khẩu cũ sẽ bị thay thế ngay lập tức.`)) return;
+
+        const btn = document.getElementById('btnResetStaffPwd');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang xử lý...';
+        showLoading();
+
+        try {
+            const res = await apiRequest(`${API}/${id}/reset-password`, { method: 'POST' });
+            if (res.ok) {
+                const msg = await res.text();
+                document.getElementById('sResetPwdAlert').innerHTML =
+                    `<div class="alert alert-success py-2">
+                        <i class="fas fa-check-circle me-1"></i>
+                        Đã gửi mật khẩu mới về <strong>${escHtml(email)}</strong>.
+                        ${escHtml(msg)}
+                     </div>`;
+            } else {
+                const errMsg = await res.text();
+                document.getElementById('sResetPwdAlert').innerHTML =
+                    `<div class="alert alert-danger py-2">
+                        <i class="fas fa-times-circle me-1"></i>${escHtml(errMsg)}
+                     </div>`;
+            }
+        } catch(e) {
+            document.getElementById('sResetPwdAlert').innerHTML =
+                `<div class="alert alert-danger py-2">Lỗi kết nối: ${escHtml(e.message)}</div>`;
+        } finally {
+            hideLoading();
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-key me-2"></i>Tạo mật khẩu ngẫu nhiên &amp; gửi email';
+        }
+    }
+
+    // ─── Reset mật khẩu NHANH từ nút trong bảng (không cần mở modal) ───────────
+    async function quickResetPwd(id, name, email) {
+        if (!email) {
+            showAlert('sAlertContainer',
+                `⚠ Nhân viên <strong>${escHtml(name)}</strong> chưa có email. Vui lòng cập nhật email trước.`,
+                'warning');
+            return;
+        }
+        if (!confirm(`Reset mật khẩu cho "${name}"?\n\nMật khẩu mới sẽ được tự sinh ngẫu nhiên và gửi về:\n${email}`)) return;
+        showLoading();
+        try {
+            const res = await apiRequest(`${API}/${id}/reset-password`, { method: 'POST' });
+            if (res.ok) {
+                showAlert('sAlertContainer',
+                    `✅ Đã reset mật khẩu và gửi email cho <strong>${escHtml(name)}</strong>`, 'success');
+            } else {
+                showAlert('sAlertContainer', await res.text(), 'danger');
+            }
+        } catch(e) {
+            showAlert('sAlertContainer', 'Lỗi: ' + e.message, 'danger');
+        } finally { hideLoading(); }
+    }
+
+    // ─── Submit create ──────────────────────────────────────────────────────────
+    document.getElementById('sBtnCreateSubmit').addEventListener('click', async () => {
+        const body = {
+            username:   document.getElementById('sFormUsername').value.trim(),
+            password:   document.getElementById('sFormPassword').value || null,
+            fullName:   document.getElementById('sFormFullName').value.trim(),
+            email:      document.getElementById('sFormEmail').value.trim(),
+            phone:      document.getElementById('sFormPhone').value.trim(),
+            roleId:     document.getElementById('sFormRoleId').value,
+            position:   document.getElementById('sFormPosition').value.trim(),
+            department: document.getElementById('sFormDepartment').value.trim(),
+            gender:     document.getElementById('sFormGender').value,
+            dob:        document.getElementById('sFormDob').value || null,
+            hiredAt:    document.getElementById('sFormHiredAt').value
+                ? document.getElementById('sFormHiredAt').value + 'T00:00:00' : null
+        };
+
+        if (!body.username || !body.fullName || !body.phone || !body.roleId || !body.gender) {
+            showAlert('sCreateAlert', 'Vui lòng điền đầy đủ các trường bắt buộc.', 'warning');
+            return;
+        }
+
+        showLoading();
+        try {
+            const res = await apiRequest(API, { method: 'POST', body: JSON.stringify(body) });
+            if (res.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('sCreateModal'))?.hide();
+                showAlert('sAlertContainer', '✅ Tạo nhân viên thành công! Kiểm tra email để lấy mật khẩu.', 'success');
+                loadList(_currentPage);
+                loadStats();
+                // Reset form
+                ['sFormUsername','sFormPassword','sFormFullName','sFormEmail','sFormPhone',
+                 'sFormPosition','sFormDepartment','sFormDob','sFormHiredAt']
+                    .forEach(id => document.getElementById(id).value = '');
+                document.getElementById('sFormRoleId').value = '';
+                document.getElementById('sFormGender').value = '';
+            } else {
+                showAlert('sCreateAlert', await res.text(), 'danger');
+            }
+        } catch(e) {
+            showAlert('sCreateAlert', 'Lỗi: ' + e.message, 'danger');
+        } finally { hideLoading(); }
     });
 
-    // Reset display khi đóng modal
-    document.getElementById('createModal').addEventListener('hidden.bs.modal', function() {
-        const dispEl = document.getElementById('formPasswordDisplay');
-        if (dispEl) { dispEl.innerHTML = ''; dispEl.classList.add('d-none'); }
-        const pwdEl = document.getElementById('formPassword');
-        if (pwdEl) pwdEl.type = 'password';
+    // ─── Submit edit ────────────────────────────────────────────────────────────
+    document.getElementById('sBtnEditSubmit').addEventListener('click', async () => {
+        const body = {
+            fullName:   document.getElementById('sEditFullName').value.trim(),
+            email:      document.getElementById('sEditEmail').value.trim() || null,
+            phone:      document.getElementById('sEditPhone').value.trim(),
+            position:   document.getElementById('sEditPosition').value.trim(),
+            department: document.getElementById('sEditDepartment').value.trim(),
+            roleId:     document.getElementById('sEditRoleId').value,
+            gender:     document.getElementById('sEditGender').value,
+            dob:        document.getElementById('sEditDob').value || null,
+            status:     document.getElementById('sEditStatus').value
+        };
+
+        showLoading();
+        try {
+            const res = await apiRequest(`${API}/${_currentEditId}`, {
+                method: 'PUT', body: JSON.stringify(body)
+            });
+            if (res.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('sEditModal'))?.hide();
+                showAlert('sAlertContainer', '✅ Cập nhật nhân viên thành công!', 'success');
+                loadList(_currentPage);
+                loadStats();
+            } else {
+                showAlert('sEditAlert', await res.text(), 'danger');
+            }
+        } catch(e) {
+            showAlert('sEditAlert', 'Lỗi: ' + e.message, 'danger');
+        } finally { hideLoading(); }
     });
+
+    // ─── Deactivate ─────────────────────────────────────────────────────────────
+    async function confirmDeactivate(id, name) {
+        if (!confirm(`Vô hiệu hóa tài khoản nhân viên "${name}"?\nTài khoản sẽ bị đặt thành RESIGNED.`)) return;
+        showLoading();
+        try {
+            const res = await apiRequest(`${API}/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                showAlert('sAlertContainer', `✅ Đã vô hiệu hóa nhân viên <strong>${escHtml(name)}</strong>`, 'success');
+                loadList(_currentPage);
+                loadStats();
+            } else {
+                showAlert('sAlertContainer', await res.text(), 'danger');
+            }
+        } catch(e) {
+            showAlert('sAlertContainer', 'Lỗi: ' + e.message, 'danger');
+        } finally { hideLoading(); }
+    }
+
+    // ─── Search / filter ────────────────────────────────────────────────────────
+    document.getElementById('sBtnSearch').addEventListener('click', () => loadList(0));
+    document.getElementById('sBtnReset').addEventListener('click', () => {
+        document.getElementById('sSearchInput').value = '';
+        document.getElementById('sRoleFilter').value  = '';
+        document.getElementById('sStatusFilter').value = '';
+        loadList(0);
+    });
+    document.getElementById('sSearchInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') loadList(0);
+    });
+
+    // ─── Pagination helper ───────────────────────────────────────────────────────
+    function renderPagination(data, containerId, callbackName) {
+        const total = data.totalPages || 0;
+        const cur   = data.currentPage || 0;
+        const container = document.getElementById(containerId);
+        if (!container || total <= 1) { if (container) container.innerHTML = ''; return; }
+        let html = '<nav><ul class="pagination pagination-sm mb-0">';
+        html += `<li class="page-item ${cur===0?'disabled':''}">
+            <a class="page-link" href="#" onclick="${callbackName}(${cur-1});return false">‹</a></li>`;
+        for (let i = 0; i < total; i++) {
+            if (i > 0 && i < total-1 && Math.abs(i-cur) > 2) {
+                if (i === 1 || i === total-2) html += '<li class="page-item disabled"><span class="page-link">…</span></li>';
+                continue;
+            }
+            html += `<li class="page-item ${i===cur?'active':''}">
+                <a class="page-link" href="#" onclick="${callbackName}(${i});return false">${i+1}</a></li>`;
+        }
+        html += `<li class="page-item ${cur===total-1?'disabled':''}">
+            <a class="page-link" href="#" onclick="${callbackName}(${cur+1});return false">›</a></li>`;
+        html += '</ul></nav>';
+        container.innerHTML = html;
+    }
+
+    // ─── Init ────────────────────────────────────────────────────────────────────
+    loadRoles();
+    loadStats();
+    loadList(0);
 </script>
 </body>
 </html>

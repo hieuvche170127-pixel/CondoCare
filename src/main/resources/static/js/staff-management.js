@@ -66,9 +66,14 @@ function formatDateTime(val) {
     return new Date(val).toLocaleString('vi-VN');
 }
 
-function escHtml(str) {
-    if (!str) return '';
-    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+// escHtml và generateLocalPassword đã được khai báo trong common.js.
+// Giữ lại đây như fallback phòng trường hợp load độc lập.
+if (typeof escHtml === 'undefined') {
+    window.escHtml = function escHtml(str) {
+        if (str == null) return '';
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                          .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    };
 }
 
 function renderPagination(pageData, containerId, onPageClick) {
@@ -384,10 +389,18 @@ const ResidentMgmt = {
             const data = await res.json();
             if (document.getElementById('rStatTotal'))    document.getElementById('rStatTotal').textContent    = data.total    || 0;
             if (document.getElementById('rStatActive'))   document.getElementById('rStatActive').textContent   = data.active   || 0;
+            if (document.getElementById('rStatPending'))  document.getElementById('rStatPending').textContent  = data.pending  || 0;
             if (document.getElementById('rStatInactive')) document.getElementById('rStatInactive').textContent = data.inactive || 0;
             if (document.getElementById('rStatOwners'))   document.getElementById('rStatOwners').textContent   = data.owners   || 0;
             if (document.getElementById('rStatTenants'))  document.getElementById('rStatTenants').textContent  = data.tenants  || 0;
             if (document.getElementById('rStatGuests'))   document.getElementById('rStatGuests').textContent   = data.guests   || 0;
+            // Badge "Chờ duyệt" trên tab filter
+            const badge = document.getElementById('pendingBadge');
+            if (badge) {
+                const n = data.pending || 0;
+                badge.textContent = n;
+                badge.style.display = n > 0 ? '' : 'none';
+            }
         } catch(e) { console.error('Load resident stats error', e); }
     },
 
@@ -563,18 +576,39 @@ const ResidentMgmt = {
         try {
             const res  = await apiRequest(`${API_RESIDENT}/${id}`);
             const data = await res.json();
-            const fields = { rEditFullName: data.fullName, rEditEmail: data.email,
-                rEditPhone: data.phone, rEditIdNumber: data.idNumber,
-                rEditDob: data.dob, rEditGender: data.gender,
-                rEditType: data.type, rEditStatus: data.status,
+            // Các field bắt buộc có trong modal
+            const fields = {
+                rEditFullName:  data.fullName,
+                rEditEmail:     data.email,
+                rEditPhone:     data.phone,
+                rEditIdNumber:  data.idNumber,
+                rEditDob:       data.dob,
+                rEditGender:    data.gender,
+                rEditType:      data.type,
+                rEditStatus:    data.status,
                 rEditApartment: data.apartmentId || '',
+                // Các field tuỳ chọn — có thể không tồn tại trong một số layout HTML
                 rEditTempResidence: data.tempResidence || '',
-                rEditTempAbsence: data.tempAbsence || '' };
-            Object.entries(fields).forEach(([id, val]) => {
-                const el = document.getElementById(id); if (el) el.value = val || '';
+                rEditTempAbsence:   data.tempAbsence   || '',
+            };
+            Object.entries(fields).forEach(([elId, val]) => {
+                const el = document.getElementById(elId);
+                if (el) el.value = val || '';
             });
-            document.getElementById('rEditResidentId').textContent = data.id;
-            document.getElementById('rEditNewPassword').value = '';
+
+            const idEl = document.getElementById('rEditResidentId');
+            if (idEl) idEl.textContent = data.id;
+
+            // rEditNewPassword là field tuỳ chọn (có thể không có trong layout dùng tab Bảo mật riêng)
+            const pwdEl = document.getElementById('rEditNewPassword');
+            if (pwdEl) pwdEl.value = '';
+
+            // Reset alert trong modal
+            ['rEditFormAlert','rResetPwdAlert'].forEach(aid => {
+                const a = document.getElementById(aid);
+                if (a) a.innerHTML = '';
+            });
+
             new bootstrap.Modal(document.getElementById('rEditModal')).show();
         } catch(e) {
             showMgmtAlert('rAlertContainer', 'Không thể tải thông tin cư dân', 'danger');
@@ -599,9 +633,10 @@ const ResidentMgmt = {
                 type:          document.getElementById('rEditType').value,
                 status:        document.getElementById('rEditStatus').value,
                 apartmentId:   nb(document.getElementById('rEditApartment').value),
-                tempResidence: nb(document.getElementById('rEditTempResidence').value),
-                tempAbsence:   nb(document.getElementById('rEditTempAbsence').value),
-                newPassword:   nb(document.getElementById('rEditNewPassword').value),
+                // Các field tuỳ chọn — dùng optional chaining để không throw khi element không tồn tại
+                tempResidence: nb(document.getElementById('rEditTempResidence')?.value),
+                tempAbsence:   nb(document.getElementById('rEditTempAbsence')?.value),
+                newPassword:   nb(document.getElementById('rEditNewPassword')?.value),
             };
             // Validate phía client trước khi gửi
             if (!body.fullName) {

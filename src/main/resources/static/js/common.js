@@ -165,6 +165,25 @@ function formatDateTime(dateString) {
     return new Date(dateString).toLocaleString('vi-VN');
 }
 
+/* ─── HTML escaping (dùng chung toàn app) ────────────────── */
+function escHtml(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+/* ─── Sinh mật khẩu ngẫu nhiên (dùng chung) ─────────────── */
+function generateLocalPassword(len = 12) {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#$%';
+    let p = '';
+    for (let i = 0; i < len; i++) p += chars[Math.floor(Math.random() * chars.length)];
+    return p;
+}
+
 /* ─── Debounce ───────────────────────────────────────────── */
 function debounce(func, wait) {
     let timeout;
