@@ -31,7 +31,7 @@ public class ApartmentController {
 
     /** GET /api/apartments/stats */
     @GetMapping("/api/apartments/stats")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT','TECHNICIAN','RECEPTIONIST')")
     public ResponseEntity<?> getStats() {
         try { return ResponseEntity.ok(service.getStats()); }
         catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
@@ -43,7 +43,7 @@ public class ApartmentController {
 
     /** GET /api/buildings */
     @GetMapping("/api/buildings")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT','TECHNICIAN','RECEPTIONIST')")
     public ResponseEntity<?> getAllBuildings() {
         try { return ResponseEntity.ok(service.getAllBuildings()); }
         catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
@@ -51,7 +51,7 @@ public class ApartmentController {
 
     /** GET /api/buildings/{id} */
     @GetMapping("/api/buildings/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT','TECHNICIAN','RECEPTIONIST')")
     public ResponseEntity<?> getBuildingDetail(@PathVariable String id) {
         try { return ResponseEntity.ok(service.getBuildingDetail(id)); }
         catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
@@ -95,7 +95,7 @@ public class ApartmentController {
      * Params: buildingId (optional), status (optional: EMPTY|OCCUPIED|MAINTENANCE)
      */
     @GetMapping("/api/apartments")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT','TECHNICIAN','RECEPTIONIST')")
     public ResponseEntity<?> getAllApartments(
             @RequestParam(required = false) String buildingId,
             @RequestParam(required = false) String status) {
@@ -108,7 +108,7 @@ public class ApartmentController {
      * Trả về chi tiết căn hộ kèm danh sách phí áp dụng và ước tính chi phí tháng.
      */
     @GetMapping("/api/apartments/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT','TECHNICIAN','RECEPTIONIST')")
     public ResponseEntity<?> getApartmentDetail(@PathVariable String id) {
         try { return ResponseEntity.ok(service.getApartmentDetail(id)); }
         catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
@@ -154,7 +154,7 @@ public class ApartmentController {
      * status: ACTIVE | INACTIVE (tuỳ chọn)
      */
     @GetMapping("/api/fee-templates")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT','TECHNICIAN','RECEPTIONIST')")
     public ResponseEntity<?> getFeeTemplates(
             @RequestParam String buildingId,
             @RequestParam(required = false) String status) {
@@ -168,7 +168,7 @@ public class ApartmentController {
      * Frontend dùng để hiển thị quick-add suggestions.
      */
     @GetMapping("/api/fee-templates/hanoi-decree")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT','TECHNICIAN','RECEPTIONIST')")
     public ResponseEntity<?> getHanoiDecreeSuggestions() {
         try { return ResponseEntity.ok(service.getHanoiDecreeSuggestions()); }
         catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
