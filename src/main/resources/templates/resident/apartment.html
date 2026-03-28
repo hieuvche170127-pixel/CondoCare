@@ -9,7 +9,45 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/resident.css">
-
+    <style>
+        /* Fee card */
+        .fee-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: .6rem 0;
+            border-bottom: 1px dashed #e9ecef;
+            gap: .5rem;
+        }
+        .fee-row:last-child { border-bottom: none; }
+        .fee-row .fee-name  { font-weight: 600; color: #344; font-size: .9rem; }
+        .fee-row .fee-meta  { font-size: .78rem; color: #888; }
+        .fee-row .fee-amt   { font-weight: 700; font-size: 1rem; color: #1a237e; white-space: nowrap; }
+        .fee-total-box {
+            background: linear-gradient(135deg, #1a237e10, #3949ab15);
+            border: 1.5px solid #3949ab30;
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+        }
+        /* Decree accordion */
+        .decree-badge {
+            display: inline-block;
+            background: #fff3e0;
+            color: #e65100;
+            font-size: .72rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 20px;
+            border: 1px solid #ffcc8080;
+            letter-spacing: .3px;
+        }
+        .decree-table th { font-size: .78rem; background: #f8f9fa; }
+        .decree-table td { font-size: .83rem; vertical-align: middle; }
+        .highlight-row td { background: #e8f5e9 !important; font-weight: 600; }
+        /* Tag type badge */
+        .fee-type-svc  { background: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; }
+        .fee-type-pkg  { background: #f3e5f5; color: #6a1b9a; border: 1px solid #ce93d8; }
+    </style>
 </head>
 <body>
 <div id="loading" class="loading"><div class="spinner"></div></div>
@@ -46,9 +84,17 @@
         document.getElementById('residentSidebar').classList.toggle('open'));
 
     const STATUS_LABEL = { EMPTY:'Trống', OCCUPIED:'Đang ở', MAINTENANCE:'Đang bảo trì' };
-    const RENTAL_LABEL = { AVAILABLE:'Có thể thuê', RENTED:'Đang cho thuê', OWNER:'Chủ sở hữu' };
     const TYPE_LABEL   = { OWNER:'Chủ sở hữu', TENANT:'Người thuê', GUEST:'Khách' };
 
+    /* ── Format tiền ── */
+    function fmtVND(n) {
+        if (!n && n !== 0) return '—';
+        return new Intl.NumberFormat('vi-VN', { style:'currency', currency:'VND' }).format(n);
+    }
+
+    /* ════════════════════════════════════════════════════════
+       LOAD DỮ LIỆU CHÍNH
+    ════════════════════════════════════════════════════════ */
     async function loadApartment() {
         showLoading();
         try {
@@ -67,88 +113,385 @@
                 return;
             }
 
-            document.getElementById('aptContent').innerHTML = `
-            <div class="row g-3">
-                <!-- Thông tin căn hộ -->
-                <div class="col-md-6">
-                    <div class="content-card h-100">
-                        <div class="card-title"><i class="fas fa-home me-2"></i>Căn hộ ${data.number}</div>
+            /* ── Lấy thêm chi tiết phí từ ApartmentService ── */
+            let aptDetail = null;
+            if (data.id) {
+                try {
+                    const r2 = await apiRequest(`${API_BASE_URL}/apartments/${data.id}`);
+                    if (r2 && r2.ok) aptDetail = await r2.json();
+                } catch(_) {}
+            }
 
-                        <div class="apt-info-row">
-                            <span class="label"><i class="fas fa-hashtag me-2"></i>Số căn hộ</span>
-                            <span class="value">${data.number}</span>
+            renderPage(data, aptDetail);
+
+        } catch(e) {
+            showResidentAlert('alertContainer', 'Không thể tải thông tin căn hộ: ' + e.message);
+        } finally { hideLoading(); }
+    }
+
+    /* ════════════════════════════════════════════════════════
+       RENDER TOÀN BỘ TRANG
+    ════════════════════════════════════════════════════════ */
+    function renderPage(data, detail) {
+        const statusBadge = {
+            OCCUPIED:    '<span class="badge bg-success">Đang ở</span>',
+            MAINTENANCE: '<span class="badge bg-warning text-dark">Đang bảo trì</span>',
+            EMPTY:       '<span class="badge bg-secondary">Trống</span>',
+        }[data.status] || `<span class="badge bg-secondary">${data.status}</span>`;
+
+        /* ── Render phí dịch vụ ── */
+        const fees = detail?.activeFees || [];
+        const totalEstimated = detail?.totalEstimatedMonthly || 0;
+
+        let feeSection = '';
+        if (fees.length) {
+            const feeRows = fees.map(f => {
+                const tagCls  = f.type === 'PARKING' ? 'fee-type-pkg' : 'fee-type-svc';
+                const tagText = f.type === 'PARKING' ? 'Gửi xe' : 'Dịch vụ';
+                let metaText = '';
+                if (f.unit === 'PER_M2')
+                    metaText = `${fmtVND(f.amount)} × ${data.area} m²`;
+                else if (f.unit === 'PER_APT')
+                    metaText = `${fmtVND(f.amount)} / căn`;
+                else
+                    metaText = `Cố định`;
+
+                return `
+                <div class="fee-row">
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span class="badge ${tagCls}" style="font-size:.7rem;">${tagText}</span>
+                            <span class="fee-name">${f.name}</span>
                         </div>
-                        <div class="apt-info-row">
-                            <span class="label"><i class="fas fa-layer-group me-2"></i>Tầng</span>
-                            <span class="value">${data.floor}</span>
-                        </div>
-                        <div class="apt-info-row">
-                            <span class="label"><i class="fas fa-ruler-combined me-2"></i>Diện tích</span>
-                            <span class="value">${data.area} m²</span>
-                        </div>
-                        <div class="apt-info-row">
-                            <span class="label"><i class="fas fa-toggle-on me-2"></i>Trạng thái</span>
-                            <span class="value">
-                                <span class="badge ${data.status==='OCCUPIED'?'bg-success':data.status==='MAINTENANCE'?'bg-warning text-dark':'bg-secondary'}">
-                                    ${STATUS_LABEL[data.status] || data.status}
-                                </span>
-                            </span>
-                        </div>
-                        <div class="apt-info-row">
-                            <span class="label"><i class="fas fa-users me-2"></i>Số cư dân</span>
-                            <span class="value">${data.totalResident || 0} người</span>
-                        </div>
-                        ${data.description ? `
-                        <div class="apt-info-row flex-column">
-                            <span class="label mb-1"><i class="fas fa-info-circle me-2"></i>Mô tả</span>
-                            <span class="value">${data.description}</span>
-                        </div>` : ''}
+                        <div class="fee-meta">${metaText} — Hiệu lực từ ${f.effectiveFrom || '—'}</div>
                     </div>
-                </div>
+                    <div class="fee-amt">${fmtVND(f.estimatedAmount)}</div>
+                </div>`;
+            }).join('');
 
-                <!-- Thông tin tòa nhà -->
-                <div class="col-md-6">
-                    <div class="content-card h-100">
-                        <div class="card-title"><i class="fas fa-city me-2"></i>Tòa nhà</div>
+            feeSection = `
+            <!-- Bảng phí dịch vụ áp dụng -->
+            <div class="col-12">
+                <div class="content-card">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div class="card-title mb-0">
+                            <i class="fas fa-receipt me-2 text-primary"></i>Phí dịch vụ áp dụng cho căn hộ
+                        </div>
+                        <a href="/resident/invoices" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-file-invoice-dollar me-1"></i>Xem hóa đơn
+                        </a>
+                    </div>
 
-                        <div class="apt-info-row">
-                            <span class="label"><i class="fas fa-building me-2"></i>Tên tòa</span>
-                            <span class="value">${data.buildingName || '—'}</span>
-                        </div>
-                        <div class="apt-info-row">
-                            <span class="label"><i class="fas fa-map-marker-alt me-2"></i>Địa chỉ</span>
-                            <span class="value">${data.buildingAddress || '—'}</span>
-                        </div>
-                        <div class="apt-info-row">
-                            <span class="label"><i class="fas fa-sort-amount-up me-2"></i>Tổng số tầng</span>
-                            <span class="value">${data.totalFloors || '—'}</span>
-                        </div>
-                        <div class="apt-info-row">
-                            <span class="label"><i class="fas fa-user me-2"></i>Loại cư trú</span>
-                            <span class="value">
-                                <span class="badge bg-primary">${TYPE_LABEL[data.residentType] || data.residentType}</span>
-                            </span>
+                    <div class="mb-3">${feeRows}</div>
+
+                    <!-- Tổng ước tính -->
+                    <div class="fee-total-box">
+                        <div class="row align-items-center">
+                            <div class="col">
+                                <div class="text-muted small mb-1">Ước tính chi phí hàng tháng</div>
+                                <div class="fw-bold fs-4" style="color:#1a237e;">${fmtVND(totalEstimated)}</div>
+                                <div class="text-muted" style="font-size:.75rem;">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Chưa bao gồm tiền điện & nước (EVN thu trực tiếp)
+                                </div>
+                            </div>
+                            <div class="col-auto text-end">
+                                <div class="text-muted small">Diện tích căn hộ</div>
+                                <div class="fw-bold fs-5">${data.area} m²</div>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Ghi chú liên hệ -->
-                <div class="col-12">
-                    <div class="content-card">
-                        <div class="card-title"><i class="fas fa-phone-alt me-2"></i>Liên hệ Ban quản lý</div>
-                        <p class="mb-1">Nếu cần hỗ trợ hoặc có vấn đề về căn hộ, vui lòng:</p>
-                        <ul class="mb-0">
-                            <li>Đến trực tiếp văn phòng Ban quản lý tại <strong>Tầng 1, Tòa A</strong></li>
-                            <li>Gửi <a href="/resident/requests">Yêu cầu hỗ trợ</a> qua hệ thống</li>
-                            <li>Hotline: <strong>0900 000 000</strong> (8h–17h, T2–T6)</li>
-                        </ul>
+                    <!-- Ghi chú nghị định - collapsible -->
+                    <div class="mt-3">
+                        <button class="btn btn-link btn-sm p-0 text-decoration-none"
+                                data-bs-toggle="collapse" data-bs-target="#decreeInfo">
+                            <i class="fas fa-gavel me-1 text-warning"></i>
+                            <span class="decree-badge">QĐ 33/2025/QĐ-UBND</span>
+                            <span class="text-muted ms-1" style="font-size:.8rem;">
+                                Khung giá phí quản lý vận hành chung cư Hà Nội
+                                <i class="fas fa-chevron-down ms-1" style="font-size:.7rem;"></i>
+                            </span>
+                        </button>
+                        <div class="collapse mt-2" id="decreeInfo">
+                            ${renderDecreeInfo(data.area, fees)}
+                        </div>
                     </div>
                 </div>
             </div>`;
+        } else {
+            /* Không có phí nào ACTIVE */
+            feeSection = `
+            <div class="col-12">
+                <div class="content-card">
+                    <div class="card-title mb-2">
+                        <i class="fas fa-receipt me-2 text-primary"></i>Phí dịch vụ áp dụng
+                    </div>
+                    <div class="text-center text-muted py-3">
+                        <i class="fas fa-info-circle fa-2x mb-2 d-block opacity-25"></i>
+                        Ban quản lý chưa cấu hình mẫu phí cho tòa nhà này.<br>
+                        Vui lòng liên hệ để biết thêm chi tiết.
+                    </div>
+                </div>
+            </div>`;
+        }
 
-        } catch(e) {
-            showResidentAlert('alertContainer', 'Không thể tải thông tin căn hộ.');
-        } finally { hideLoading(); }
+        /* ── Xe của cư dân ── */
+        const vehicles = data.vehicles || [];
+        let vehicleRows = '';
+        if (vehicles.length) {
+            const typeLabel = { MOTORBIKE:'Xe máy', CAR:'Ô tô', BICYCLE:'Xe đạp',
+                                ELECTRIC_BIKE:'Xe điện', OTHER:'Khác' };
+            const statusCls = { APPROVED:'bg-success', PENDING:'bg-warning text-dark', REJECTED:'bg-danger' };
+            vehicleRows = vehicles.map(v => `
+                <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
+                    <div>
+                        <span class="fw-semibold">${typeLabel[v.type]||v.type}</span>
+                        ${v.licensePlate ? `<span class="ms-2 badge bg-light text-dark border font-monospace">${v.licensePlate}</span>` : ''}
+                        ${v.brand ? `<small class="text-muted ms-1">${v.brand}${v.color?' – '+v.color:''}</small>` : ''}
+                    </div>
+                    <span class="badge ${statusCls[v.pendingStatus]||'bg-secondary'}">
+                        ${{APPROVED:'Đã duyệt',PENDING:'Chờ duyệt',REJECTED:'Từ chối'}[v.pendingStatus]||v.pendingStatus}
+                    </span>
+                </div>`).join('');
+        } else {
+            vehicleRows = `<div class="text-muted small text-center py-2">Chưa đăng ký phương tiện</div>`;
+        }
+
+        /* ── Thẻ từ ── */
+        const cards = data.accessCards || [];
+        let cardHtml = cards.length
+            ? cards.map(c => `
+                <div class="apt-info-row">
+                    <span class="label"><i class="fas fa-id-card me-2"></i>Thẻ từ</span>
+                    <span class="value">
+                        <span class="font-monospace">${c.cardNumber}</span>
+                        <span class="badge ms-2 ${c.status==='ACTIVE'?'bg-success':'bg-danger'}">${c.status}</span>
+                    </span>
+                </div>
+                ${c.expiredAt ? `
+                <div class="apt-info-row">
+                    <span class="label"><i class="fas fa-calendar-times me-2"></i>Hết hạn thẻ</span>
+                    <span class="value">${new Date(c.expiredAt).toLocaleDateString('vi-VN')}</span>
+                </div>` : ''}`).join('')
+            : `<div class="apt-info-row">
+                    <span class="label"><i class="fas fa-id-card me-2"></i>Thẻ từ</span>
+                    <span class="value text-muted">Chưa cấp thẻ</span>
+               </div>`;
+
+        /* ── Ghép HTML ── */
+        document.getElementById('aptContent').innerHTML = `
+        <div class="row g-3">
+
+            <!-- Thông tin căn hộ -->
+            <div class="col-md-6">
+                <div class="content-card h-100">
+                    <div class="card-title"><i class="fas fa-home me-2"></i>Căn hộ ${data.number}</div>
+                    <div class="apt-info-row">
+                        <span class="label"><i class="fas fa-hashtag me-2"></i>Số căn hộ</span>
+                        <span class="value fw-bold text-primary">${data.number}</span>
+                    </div>
+                    <div class="apt-info-row">
+                        <span class="label"><i class="fas fa-layer-group me-2"></i>Tầng</span>
+                        <span class="value">Tầng ${data.floor}</span>
+                    </div>
+                    <div class="apt-info-row">
+                        <span class="label"><i class="fas fa-ruler-combined me-2"></i>Diện tích</span>
+                        <span class="value fw-semibold">${data.area} m²</span>
+                    </div>
+                    <div class="apt-info-row">
+                        <span class="label"><i class="fas fa-toggle-on me-2"></i>Trạng thái</span>
+                        <span class="value">${statusBadge}</span>
+                    </div>
+                    <div class="apt-info-row">
+                        <span class="label"><i class="fas fa-users me-2"></i>Số cư dân</span>
+                        <span class="value">${data.totalResident || 0} người</span>
+                    </div>
+                    <div class="apt-info-row">
+                        <span class="label"><i class="fas fa-user-tag me-2"></i>Loại cư trú</span>
+                        <span class="value">
+                            <span class="badge bg-primary">${TYPE_LABEL[data.residentType]||data.residentType}</span>
+                        </span>
+                    </div>
+                    ${cardHtml}
+                    ${data.description ? `
+                    <div class="apt-info-row flex-column align-items-start">
+                        <span class="label mb-1"><i class="fas fa-info-circle me-2"></i>Mô tả</span>
+                        <span class="value text-muted">${data.description}</span>
+                    </div>` : ''}
+                </div>
+            </div>
+
+            <!-- Thông tin tòa nhà -->
+            <div class="col-md-6">
+                <div class="content-card h-100">
+                    <div class="card-title"><i class="fas fa-city me-2"></i>Tòa nhà</div>
+                    <div class="apt-info-row">
+                        <span class="label"><i class="fas fa-building me-2"></i>Tên tòa</span>
+                        <span class="value fw-semibold">${data.buildingName||'—'}</span>
+                    </div>
+                    <div class="apt-info-row">
+                        <span class="label"><i class="fas fa-map-marker-alt me-2"></i>Địa chỉ</span>
+                        <span class="value">${data.buildingAddress||'—'}</span>
+                    </div>
+                    <div class="apt-info-row">
+                        <span class="label"><i class="fas fa-sort-amount-up me-2"></i>Tổng số tầng</span>
+                        <span class="value">${data.totalFloors||'—'} tầng</span>
+                    </div>
+
+                    <!-- Xe đăng ký -->
+                    <div class="card-title mt-3 mb-2" style="font-size:.85rem;">
+                        <i class="fas fa-motorcycle me-2"></i>Phương tiện đã đăng ký
+                    </div>
+                    ${vehicleRows}
+                </div>
+            </div>
+
+            <!-- PHẦN PHÍ DỊCH VỤ -->
+            ${feeSection}
+
+            <!-- Liên hệ -->
+            <div class="col-12">
+                <div class="content-card">
+                    <div class="card-title"><i class="fas fa-phone-alt me-2"></i>Liên hệ Ban quản lý</div>
+                    <div class="row g-2">
+                        <div class="col-md-4 text-center border-end">
+                            <i class="fas fa-map-marker-alt text-primary mb-1 d-block"></i>
+                            <small class="text-muted">Văn phòng</small>
+                            <div class="fw-semibold small">Tầng 1, Tòa A</div>
+                        </div>
+                        <div class="col-md-4 text-center border-end">
+                            <i class="fas fa-phone text-success mb-1 d-block"></i>
+                            <small class="text-muted">Hotline</small>
+                            <div class="fw-semibold small">0900 000 000</div>
+                            <div class="text-muted" style="font-size:.72rem;">8h–17h, T2–T6</div>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <i class="fas fa-tools text-warning mb-1 d-block"></i>
+                            <small class="text-muted">Yêu cầu hỗ trợ</small>
+                            <div><a href="/resident/requests" class="btn btn-sm btn-outline-warning mt-1">
+                                Gửi yêu cầu →
+                            </a></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>`;
+    }
+
+    /* ════════════════════════════════════════════════════════
+       RENDER THÔNG TIN NGHỊ ĐỊNH (collapsible)
+    ════════════════════════════════════════════════════════ */
+    function renderDecreeInfo(area, fees) {
+        /* Tính ví dụ cho căn hộ này theo từng khung giá */
+        const minElev  = 1200, defElev  = 7000, maxElev  = 16500;
+        const minNoElev = 700, defNoElev = 2500, maxNoElev = 5000;
+        const areaNum = parseFloat(area) || 0;
+        // Trong renderDecreeInfo() — thêm highlight row dựa vào area
+        const applicableRate = fees.find(f =>
+            f.type === 'SERVICE' && f.unit === 'PER_M2' &&
+            (f.minArea == null || areaNum >= f.minArea) &&
+            (f.maxArea == null || areaNum <= f.maxArea)
+        )?.amount;
+
+        /* Lấy mức phí PER_M2 SERVICE hiện tại (nếu có) để highlight */
+        const currentRate = fees.find(f => f.type === 'SERVICE' && f.unit === 'PER_M2')?.amount;
+
+        const highlightRow = (rate) => currentRate && Math.abs(parseFloat(currentRate) - rate) < 1;
+
+        return `
+        <div class="border rounded-3 p-3 bg-light">
+            <div class="mb-2">
+                <span class="decree-badge">QĐ 33/2025/QĐ-UBND Hà Nội</span>
+                <span class="text-muted ms-2" style="font-size:.8rem;">Hiệu lực từ 01/05/2025</span>
+            </div>
+            <p class="text-muted mb-2" style="font-size:.82rem;">
+                Khung giá phí <strong>quản lý vận hành</strong> nhà chung cư tại Hà Nội.
+                Mức cụ thể do hội nghị nhà chung cư quyết định trong khung cho phép.
+            </p>
+
+            <!-- Bảng khung giá -->
+            <div class="table-responsive mb-2">
+                <table class="table table-sm table-bordered decree-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Loại chung cư</th>
+                            <th class="text-end">Tối thiểu</th>
+                            <th class="text-center text-success">Mức phổ biến</th>
+                            <th class="text-end">Tối đa</th>
+                            ${areaNum > 0 ? '<th class="text-end">Ước tính (căn bạn)</th>' : ''}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="${highlightRow(defElev)?'highlight-row':''}">
+                            <td><i class="fas fa-elevator text-info me-1"></i>Có thang máy</td>
+                            <td class="text-end">${fmtVND(minElev)}/m²</td>
+                            <td class="text-center fw-bold text-success">${fmtVND(defElev)}/m²</td>
+                            <td class="text-end">${fmtVND(maxElev)}/m²</td>
+                            ${areaNum > 0 ? `<td class="text-end">
+                                <span class="text-muted" style="font-size:.75rem;">${fmtVND(minElev*areaNum)}–${fmtVND(maxElev*areaNum)}</span>
+                            </td>` : ''}
+                        </tr>
+                        <tr class="${highlightRow(defNoElev)?'highlight-row':''}">
+                            <td><i class="fas fa-stairs text-secondary me-1"></i>Không thang máy</td>
+                            <td class="text-end">${fmtVND(minNoElev)}/m²</td>
+                            <td class="text-center fw-bold text-success">${fmtVND(defNoElev)}/m²</td>
+                            <td class="text-end">${fmtVND(maxNoElev)}/m²</td>
+                            ${areaNum > 0 ? `<td class="text-end">
+                                <span class="text-muted" style="font-size:.75rem;">${fmtVND(minNoElev*areaNum)}–${fmtVND(maxNoElev*areaNum)}</span>
+                            </td>` : ''}
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Phí gửi xe thực tế -->
+            <p class="fw-semibold mb-1" style="font-size:.82rem;">Phí gửi xe (mức thực tế phổ biến tại Hà Nội):</p>
+            <div class="row g-2 mb-2">
+                <div class="col-6 col-md-3">
+                    <div class="border rounded-2 p-2 text-center bg-white">
+                        <i class="fas fa-motorcycle text-primary mb-1 d-block"></i>
+                        <div class="fw-semibold" style="font-size:.82rem;">Xe máy</div>
+                        <div class="text-primary fw-bold">100.000 đ</div>
+                        <div class="text-muted" style="font-size:.7rem;">/xe/tháng</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="border rounded-2 p-2 text-center bg-white">
+                        <i class="fas fa-car text-success mb-1 d-block"></i>
+                        <div class="fw-semibold" style="font-size:.82rem;">Ô tô</div>
+                        <div class="text-success fw-bold">1.200.000 đ</div>
+                        <div class="text-muted" style="font-size:.7rem;">/xe/tháng</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="border rounded-2 p-2 text-center bg-white">
+                        <i class="fas fa-bolt text-warning mb-1 d-block"></i>
+                        <div class="fw-semibold" style="font-size:.82rem;">Xe điện</div>
+                        <div class="text-warning fw-bold">100.000 đ</div>
+                        <div class="text-muted" style="font-size:.7rem;">/xe/tháng</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="border rounded-2 p-2 text-center bg-white">
+                        <i class="fas fa-bicycle text-secondary mb-1 d-block"></i>
+                        <div class="fw-semibold" style="font-size:.82rem;">Xe đạp</div>
+                        <div class="text-secondary fw-bold">50.000 đ</div>
+                        <div class="text-muted" style="font-size:.7rem;">/xe/tháng</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lưu ý quan trọng -->
+            <div class="alert alert-warning py-2 mb-0" style="font-size:.8rem;">
+                <i class="fas fa-exclamation-triangle me-1"></i>
+                <strong>Lưu ý:</strong> Khung giá trên chưa bao gồm:
+                dịch vụ cao cấp (bể bơi, xông hơi, gym), truyền hình cáp, internet.
+                Tiền <strong>điện và nước</strong> do <strong>EVN thu trực tiếp</strong>,
+                không nằm trong hóa đơn của Ban quản lý.
+            </div>
+        </div>`;
     }
 
     loadApartment();

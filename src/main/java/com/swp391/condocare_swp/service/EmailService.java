@@ -86,9 +86,6 @@ public class EmailService {
 
     // ─── DUYỆT TÀI KHOẢN PENDING ─────────────────────────────────────────────
 
-    /**
-     * Gửi khi Manager duyệt tài khoản tự đăng ký.
-     */
     public void sendAccountApprovedEmail(String toEmail, String fullName) {
         try {
             SimpleMailMessage msg = new SimpleMailMessage();
@@ -114,9 +111,6 @@ public class EmailService {
         }
     }
 
-    /**
-     * Gửi khi Manager từ chối tài khoản tự đăng ký.
-     */
     public void sendAccountRejectedEmail(String toEmail, String fullName, String reason) {
         try {
             SimpleMailMessage msg = new SimpleMailMessage();
@@ -133,6 +127,52 @@ public class EmailService {
             logger.info("Account rejected email sent to: {}", toEmail);
         } catch (Exception e) {
             logger.error("Failed to send account rejected email to {}: {}", toEmail, e.getMessage());
+        }
+    }
+
+    // ─── YÊU CẦU HỖ TRỢ ─────────────────────────────────────────────────────
+
+    /**
+     * Gửi email cho cư dân khi yêu cầu hỗ trợ hoàn thành (DONE).
+     * Cư dân cần đăng nhập hệ thống để xác nhận.
+     *
+     * @param toEmail      Email cư dân
+     * @param fullName     Tên đầy đủ cư dân
+     * @param requestId    Mã yêu cầu (VD: SR001)
+     * @param requestTitle Tiêu đề yêu cầu
+     * @param staffName    Tên nhân viên đã xử lý
+     * @param note         Ghi chú hoàn thành (có thể null)
+     */
+    public void sendServiceRequestDoneEmail(String toEmail, String fullName,
+                                            String requestId, String requestTitle,
+                                            String staffName, String note) {
+        try {
+            SimpleMailMessage msg = new SimpleMailMessage();
+            msg.setFrom(fromEmail);
+            msg.setTo(toEmail);
+            msg.setSubject("CondoCare — Yêu cầu hỗ trợ của bạn đã được hoàn thành");
+            msg.setText(
+                    "Xin chào " + fullName + ",\n\n" +
+                            "Yêu cầu hỗ trợ của bạn đã được xử lý xong. Thông tin chi tiết:\n\n" +
+                            "─────────────────────────────\n" +
+                            "  Mã yêu cầu   : " + requestId + "\n" +
+                            "  Tiêu đề      : " + requestTitle + "\n" +
+                            "  Nhân viên    : " + (staffName != null ? staffName : "Ban quản lý") + "\n" +
+                            (note != null && !note.isBlank()
+                                    ? "  Ghi chú      : " + note + "\n"
+                                    : "") +
+                            "─────────────────────────────\n\n" +
+                            "✅ Vui lòng đăng nhập hệ thống để xem ảnh xác nhận và xác nhận hoàn thành:\n" +
+                            "http://localhost:8080/resident/requests\n\n" +
+                            "Nếu bạn chưa hài lòng với kết quả xử lý, vui lòng liên hệ trực tiếp\n" +
+                            "Ban quản lý tòa nhà để được hỗ trợ thêm.\n\n" +
+                            "Trân trọng,\nBan quản lý CondoCare");
+            mailSender.send(msg);
+            logger.info("Service request done email sent to {} for request {}", toEmail, requestId);
+        } catch (Exception e) {
+            // Không throw — lỗi email không được làm gián đoạn luồng chính
+            logger.error("Failed to send service request done email to {} (SR: {}): {}",
+                    toEmail, requestId, e.getMessage());
         }
     }
 }

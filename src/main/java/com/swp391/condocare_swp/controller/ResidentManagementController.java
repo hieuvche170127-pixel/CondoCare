@@ -22,7 +22,6 @@ public class ResidentManagementController {
     private static final Logger logger = LoggerFactory.getLogger(ResidentManagementController.class);
     @Autowired private ResidentManagementService service;
 
-    /** GET /api/resident-management/stats */
     @GetMapping("/stats")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
     public ResponseEntity<?> getStats() {
@@ -30,7 +29,6 @@ public class ResidentManagementController {
         catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
     }
 
-    /** GET /api/resident-management?page=&size=&search=&type=&status=&apartmentId= */
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
     public ResponseEntity<?> listResidents(
@@ -53,7 +51,6 @@ public class ResidentManagementController {
         }
     }
 
-    /** GET /api/resident-management/{id} */
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
     public ResponseEntity<?> getResident(@PathVariable String id) {
@@ -61,7 +58,6 @@ public class ResidentManagementController {
         catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
     }
 
-    /** POST /api/resident-management — Manager tạo cư dân trực tiếp (ACTIVE ngay) */
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<?> createResident(@Valid @RequestBody ResidentCreateRequest request) {
@@ -72,7 +68,6 @@ public class ResidentManagementController {
         }
     }
 
-    /** PUT /api/resident-management/{id} */
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<?> updateResident(@PathVariable String id,
@@ -84,7 +79,6 @@ public class ResidentManagementController {
         }
     }
 
-    /** DELETE /api/resident-management/{id} — soft delete */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<?> deactivateResident(@PathVariable String id) {
@@ -97,11 +91,6 @@ public class ResidentManagementController {
 
     // ── LUỒNG DUYỆT PENDING ───────────────────────────────────────────────────
 
-    /**
-     * PUT /api/resident-management/{id}/approve
-     * Body: { "apartmentId": "APT001", "type": "TENANT", "note": "..." }
-     * Manager duyệt tài khoản PENDING → ACTIVE, tự động cấp thẻ ra vào.
-     */
     @PutMapping("/{id}/approve")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<?> approveResident(@PathVariable String id,
@@ -117,11 +106,6 @@ public class ResidentManagementController {
         }
     }
 
-    /**
-     * PUT /api/resident-management/{id}/reject
-     * Body: { "reason": "..." }
-     * Manager từ chối tài khoản PENDING → INACTIVE.
-     */
     @PutMapping("/{id}/reject")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<?> rejectResident(@PathVariable String id,
@@ -131,6 +115,24 @@ public class ResidentManagementController {
             return ResponseEntity.ok(service.rejectResident(id, reason));
         } catch (Exception e) {
             logger.error("Error rejecting resident {}", id, e);
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    // ── RESET MẬT KHẨU ───────────────────────────────────────────────────────
+
+    /**
+     * POST /api/resident-management/{id}/reset-password
+     * Tự sinh mật khẩu random → lưu DB → gửi email cho cư dân.
+     * Yêu cầu cư dân phải có email mới gửi được.
+     */
+    @PostMapping("/{id}/reset-password")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    public ResponseEntity<?> resetPassword(@PathVariable String id) {
+        try {
+            return ResponseEntity.ok(service.resetPassword(id));
+        } catch (Exception e) {
+            logger.error("Error resetting password for resident {}", id, e);
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }

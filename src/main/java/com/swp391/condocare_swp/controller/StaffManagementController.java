@@ -23,7 +23,6 @@ public class StaffManagementController {
     private static final Logger logger = LoggerFactory.getLogger(StaffManagementController.class);
     @Autowired private StaffManagementService service;
 
-    /** GET /api/staff-management/roles — ADMIN + MANAGER (để dropdown khi tạo) */
     @GetMapping("/roles")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<?> getRoles() {
@@ -31,7 +30,6 @@ public class StaffManagementController {
         catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
     }
 
-    /** GET /api/staff-management/stats — ADMIN + MANAGER */
     @GetMapping("/stats")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<?> getStats() {
@@ -39,7 +37,6 @@ public class StaffManagementController {
         catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
     }
 
-    /** GET /api/staff-management — ADMIN + MANAGER */
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<?> listStaff(
@@ -61,7 +58,6 @@ public class StaffManagementController {
         }
     }
 
-    /** GET /api/staff-management/{id} — ADMIN + MANAGER */
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<?> getStaff(@PathVariable String id) {
@@ -69,7 +65,6 @@ public class StaffManagementController {
         catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
     }
 
-    /** POST /api/staff-management — chỉ ADMIN */
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> createStaff(@Valid @RequestBody StaffCreateRequest request) {
@@ -81,7 +76,6 @@ public class StaffManagementController {
         }
     }
 
-    /** PUT /api/staff-management/{id} — chỉ ADMIN */
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateStaff(@PathVariable String id,
@@ -94,7 +88,6 @@ public class StaffManagementController {
         }
     }
 
-    /** DELETE /api/staff-management/{id} — chỉ ADMIN */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deleteStaff(@PathVariable String id) {
@@ -102,6 +95,24 @@ public class StaffManagementController {
             return ResponseEntity.ok(service.deleteStaff(id));
         } catch (Exception e) {
             logger.error("Error deleting staff {}", id, e);
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    // ── RESET MẬT KHẨU ───────────────────────────────────────────────────────
+
+    /**
+     * POST /api/staff-management/{id}/reset-password
+     * Tự sinh mật khẩu random → lưu DB → gửi email cho nhân viên.
+     * Yêu cầu nhân viên phải có email mới gửi được.
+     */
+    @PostMapping("/{id}/reset-password")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> resetPassword(@PathVariable String id) {
+        try {
+            return ResponseEntity.ok(service.resetPassword(id));
+        } catch (Exception e) {
+            logger.error("Error resetting password for staff {}", id, e);
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }

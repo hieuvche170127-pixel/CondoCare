@@ -379,11 +379,18 @@
                     </div>
 
                     <div class="tab-pane fade" id="tabSecurity">
-                        <div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>Để trống nếu không muốn thay đổi mật khẩu.</div>
-                        <label class="form-label fw-semibold">Mật khẩu mới</label>
-                        <div class="input-group">
-                            <input type="password" id="rEditNewPassword" class="form-control" placeholder="Ít nhất 6 ký tự">
-                            <button class="btn btn-outline-secondary" type="button" onclick="togglePwd('rEditNewPassword',this)"><i class="fas fa-eye"></i></button>
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Hệ thống sẽ <strong>tự sinh mật khẩu ngẫu nhiên</strong> và gửi về email của cư dân.
+                            Cư dân cần có email hợp lệ để nhận mật khẩu mới.
+                        </div>
+                        <div id="rResetPwdAlert" class="mb-3"></div>
+                        <div class="d-flex align-items-center gap-3">
+                            <button type="button" class="btn btn-warning" id="btnResetResidentPwd"
+                                    onclick="doResetResidentPassword()">
+                                <i class="fas fa-key me-2"></i>Tạo mật khẩu ngẫu nhiên & gửi email
+                            </button>
+                            <small class="text-muted" id="rResetPwdEmailHint"></small>
                         </div>
                     </div>
                 </div>
@@ -518,6 +525,10 @@
                         <button class="btn btn-sm btn-outline-primary" title="Chỉnh sửa"
                                 onclick="ResidentMgmt.openEdit('${r.id}')">
                             <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning" title="Reset mật khẩu"
+                                onclick="confirmResetResidentPwd('${r.id}','${escHtml(r.fullName)}','${escHtml(r.email||'')}')">
+                            <i class="fas fa-key"></i>
                         </button>`}
                         <button class="btn btn-sm btn-outline-danger" title="Vô hiệu hóa"
                                 onclick="ResidentMgmt.confirmDeactivate('${r.id}','${escHtml(r.fullName)}')">
@@ -674,6 +685,84 @@
     document.body.insertAdjacentHTML('beforeend', `
         <select id="rSortField" class="d-none"><option value="fullName">fullName</option></select>
         <select id="rSortDir" class="d-none"><option value="asc">asc</option></select>`);
+
+    // ── Reset mật khẩu từ nút ngoài bảng ────────────────────────
+    async function confirmResetResidentPwd(id, name, email) {
+        if (!email) {
+            showMgmtAlert('rAlertContainer',
+                `⚠ Cư dân <strong>${name}</strong> chưa có email. Vui lòng cập nhật email trước.`, 'warning');
+            return;
+        }
+        if (!confirm(`Reset mật khẩu cho "${name}"?\n\nMật khẩu mới sẽ được tự sinh ngẫu nhiên và gửi về:\n${email}`)) return;
+        showLoading();
+        try {
+            const res = await apiRequest(
+                `${API_BASE_URL}/resident-management/${id}/reset-password`,
+                { method: 'POST' }
+            );
+            if (res.ok) {
+                showMgmtAlert('rAlertContainer',
+                    `✅ Đã reset mật khẩu và gửi email cho <strong>${name}</strong>`, 'success');
+            } else {
+                showMgmtAlert('rAlertContainer', await res.text(), 'danger');
+            }
+        } catch(e) {
+            showMgmtAlert('rAlertContainer', 'Lỗi: ' + e.message, 'danger');
+        } finally { hideLoading(); }
+    }
+
+    // ── Reset mật khẩu từ nút trong tab Bảo mật của modal edit ──
+    async function doResetResidentPassword() {
+        const id    = ResidentMgmt.currentEditId;
+        const email = document.getElementById('rEditEmail')?.value?.trim() || '';
+        const name  = document.getElementById('rEditFullName')?.value?.trim() || 'cư dân này';
+
+        if (!email) {
+            document.getElementById('rResetPwdAlert').innerHTML =
+                `<div class="alert alert-warning py-2">
+                    <i class="fas fa-exclamation-triangle me-1"></i>
+                    Cư dân chưa có email. Vui lòng điền email ở tab <strong>Thông tin cơ bản</strong> và lưu trước.
+                 </div>`;
+            return;
+        }
+        if (!confirm(`Gửi mật khẩu ngẫu nhiên mới về email ${email}?`)) return;
+
+        const btn = document.getElementById('btnResetResidentPwd');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang xử lý...';
+        showLoading();
+        try {
+            const res = await apiRequest(
+                `${API_BASE_URL}/resident-management/${id}/reset-password`,
+                { method: 'POST' }
+            );
+            if (res.ok) {
+                document.getElementById('rResetPwdAlert').innerHTML =
+                    `<div class="alert alert-success py-2">
+                        <i class="fas fa-check-circle me-1"></i>
+                        Đã gửi mật khẩu mới về <strong>${email}</strong>
+                     </div>`;
+            } else {
+                document.getElementById('rResetPwdAlert').innerHTML =
+                    `<div class="alert alert-danger py-2">${await res.text()}</div>`;
+            }
+        } catch(e) {
+            document.getElementById('rResetPwdAlert').innerHTML =
+                `<div class="alert alert-danger py-2">Lỗi: ${e.message}</div>`;
+        } finally {
+            hideLoading();
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-key me-2"></i>Tạo mật khẩu ngẫu nhiên & gửi email';
+        }
+    }
+
+    // Hiện email hint và reset alert khi chuyển sang tab Bảo mật
+    document.querySelector('a[href="#tabSecurity"]')?.addEventListener('click', () => {
+        const email = document.getElementById('rEditEmail')?.value?.trim() || '';
+        const hint  = document.getElementById('rResetPwdEmailHint');
+        if (hint) hint.textContent = email ? `Email nhận: ${email}` : 'Chưa có email';
+        document.getElementById('rResetPwdAlert').innerHTML = '';
+    });
 
     ResidentMgmt.init();
 </script>

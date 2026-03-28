@@ -16,10 +16,14 @@ import java.util.Map;
 
 /**
  * REST Controller quản lý hóa đơn (phía Staff) — Mô hình B.
- * Hóa đơn chỉ gồm phí dịch vụ + phí gửi xe.
- * Điện / nước do EVN thu — KHÔNG có endpoint meter-reading ở đây.
  *
- * Base: /api/invoice-management
+ * Phân quyền:
+ *   GET  (xem danh sách, thống kê, chi tiết, preview) → ADMIN, MANAGER, ACCOUNTANT
+ *   POST (tạo hóa đơn)                                → ADMIN, MANAGER
+ *   PATCH (cập nhật trạng thái)                       → ADMIN, MANAGER
+ *   DELETE (xóa hóa đơn)                              → ADMIN, MANAGER
+ *
+ * ACCOUNTANT chỉ có quyền XEM — không tạo/sửa/xóa.
  */
 @RestController
 @RequestMapping("/api/invoice-management")
@@ -28,9 +32,11 @@ public class InvoiceManagementController {
     private static final Logger logger = LoggerFactory.getLogger(InvoiceManagementController.class);
     @Autowired private InvoiceManagementService service;
 
+    // ─── ĐỌC (ACCOUNTANT + ADMIN + MANAGER) ──────────────────────────────────
+
     /** GET /api/invoice-management/stats */
     @GetMapping("/stats")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<?> getStats() {
         try { return ResponseEntity.ok(service.getStats()); }
         catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
@@ -41,7 +47,7 @@ public class InvoiceManagementController {
      * Params: page, size, search, status, apartmentId, month, year, sort, direction
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<?> listInvoices(
             @RequestParam(defaultValue = "0")   int page,
             @RequestParam(defaultValue = "10")  int size,
@@ -66,7 +72,7 @@ public class InvoiceManagementController {
 
     /** GET /api/invoice-management/{id} */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<?> getInvoice(@PathVariable String id) {
         try { return ResponseEntity.ok(service.getInvoiceDetail(id)); }
         catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
@@ -74,12 +80,10 @@ public class InvoiceManagementController {
 
     /**
      * GET /api/invoice-management/preview
-     * Params: apartmentId, month, year
-     * Xem trước phí dự tính trước khi tạo hóa đơn.
-     * Trả về danh sách từng dòng phí + tổng tiền dự tính.
+     * ACCOUNTANT xem được preview — chỉ để kiểm tra, không tạo được hóa đơn.
      */
     @GetMapping("/preview")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
     public ResponseEntity<?> previewInvoice(
             @RequestParam String apartmentId,
             @RequestParam Integer month,
@@ -92,12 +96,23 @@ public class InvoiceManagementController {
     }
 
     /**
+     * GET /api/invoice-management/fee-templates?buildingId=BLD001
+     */
+    @GetMapping("/fee-templates")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
+    public ResponseEntity<?> getActiveFeeTemplates(@RequestParam String buildingId) {
+        try { return ResponseEntity.ok(service.getActiveFeesForBuilding(buildingId)); }
+        catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
+    }
+
+    // ─── GHI (chỉ ADMIN + MANAGER) ────────────────────────────────────────────
+
+    /**
      * POST /api/invoice-management
-     * Tạo hóa đơn — hệ thống tự tính phí từ FeeTemplate + số xe APPROVED.
-     * Body: { apartmentId, month, year }
+     * Tạo hóa đơn — ACCOUNTANT KHÔNG được tạo.
      */
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<?> createInvoice(@Valid @RequestBody InvoiceCreateRequest request) {
         try {
             logger.info("POST /api/invoice-management — apt: {}, {}/{}",
@@ -111,11 +126,10 @@ public class InvoiceManagementController {
 
     /**
      * PATCH /api/invoice-management/{id}/status
-     * Body: { "status": "PAID" | "UNPAID" | "OVERDUE" }
-     * Staff đánh dấu thanh toán thủ công (CASH/BANKING).
+     * Đánh dấu trạng thái — ACCOUNTANT KHÔNG được thay đổi.
      */
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<?> updateStatus(
             @PathVariable String id,
             @RequestBody Map<String, String> body) {
@@ -129,7 +143,10 @@ public class InvoiceManagementController {
         }
     }
 
-    /** DELETE /api/invoice-management/{id} — chỉ được xóa nếu chưa PAID */
+    /**
+     * DELETE /api/invoice-management/{id}
+     * Chỉ ADMIN + MANAGER — không bao gồm ACCOUNTANT.
+     */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<?> deleteInvoice(@PathVariable String id) {
@@ -138,16 +155,5 @@ public class InvoiceManagementController {
             logger.error("Error deleting invoice {}", id, e);
             return ResponseEntity.badRequest().body(e.getMessage());
         }
-    }
-
-    /**
-     * GET /api/invoice-management/fee-templates?buildingId=BLD001
-     * Lấy danh sách FeeTemplate ACTIVE của tòa nhà — dùng cho UI hiển thị
-     */
-    @GetMapping("/fee-templates")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
-    public ResponseEntity<?> getActiveFeeTemplates(@RequestParam String buildingId) {
-        try { return ResponseEntity.ok(service.getActiveFeesForBuilding(buildingId)); }
-        catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
     }
 }

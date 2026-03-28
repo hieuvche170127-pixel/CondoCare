@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Căn hộ & Phí dịch vụ - CondoCare</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div id="loading" class="loading"><div class="spinner"></div></div>
+
+<div class="container-fluid">
+    <div class="row">
+
+        <!-- ── Sidebar ─────────────────────────────────────────────────────────── -->
+        <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse" id="sidebarNav">
+            <div class="position-sticky pt-3">
+                <div class="text-center mb-4">
+                    <h5 class="text-white fw-bold"><i class="fas fa-building me-1"></i> CondoCare</h5>
+                    <small class="text-white-50" id="sidebarUser"></small>
+                </div>
+                <ul class="nav flex-column">
+                    <li class="nav-item"><a class="nav-link" href="/dashboard"><i class="fas fa-tachometer-alt me-2"></i>Tổng quan</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/dashboard/buildings"><i class="fas fa-building me-2"></i>Tòa nhà</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/dashboard/apartments"><i class="fas fa-home me-2"></i>Căn hộ & Phí</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/dashboard/resident"><i class="fas fa-users me-2"></i>Quản lý cư dân</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/dashboard/staff"><i class="fas fa-users-cog me-2"></i>Quản lý nhân viên</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/dashboard/invoices"><i class="fas fa-receipt me-2"></i>Hóa đơn</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/dashboard/service-requests"><i class="fas fa-tools me-2"></i>Yêu cầu hỗ trợ</a></li>
+                    <li class="nav-item mt-4">
+                        <a class="nav-link text-danger-emphasis" href="#" id="logoutBtn">
+                            <i class="fas fa-sign-out-alt me-2"></i>Đăng xuất
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- ── Main content ──────────────────────────────────────────────────────── -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h4 class="fw-bold mb-0"><i class="fas fa-home text-primary me-2"></i>Căn hộ & Phí dịch vụ</h4>
+                    <small class="text-muted">Quản lý căn hộ và mẫu phí theo QĐ 33/2025/QĐ-UBND Hà Nội</small>
+                </div>
+            </div>
+
+            <!-- Stat cards -->
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-xl-3">
+                    <div class="stat-card primary">
+                        <div class="stat-icon icon-blue"><i class="fas fa-building"></i></div>
+                        <div><div class="stat-label">Tổng tòa nhà</div><div class="stat-number" id="statBuildings">—</div></div>
+                    </div>
+                </div>
+                <div class="col-6 col-xl-3">
+                    <div class="stat-card success">
+                        <div class="stat-icon icon-green"><i class="fas fa-home"></i></div>
+                        <div><div class="stat-label">Tổng căn hộ</div><div class="stat-number" id="statTotal">—</div></div>
+                    </div>
+                </div>
+                <div class="col-6 col-xl-3">
+                    <div class="stat-card warning">
+                        <div class="stat-icon icon-orange"><i class="fas fa-users"></i></div>
+                        <div><div class="stat-label">Đang có người</div><div class="stat-number" id="statOccupied">—</div></div>
+                    </div>
+                </div>
+                <div class="col-6 col-xl-3">
+                    <div class="stat-card danger">
+                        <div class="stat-icon icon-red"><i class="fas fa-door-open"></i></div>
+                        <div><div class="stat-label">Trống</div><div class="stat-number" id="statEmpty">—</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Nav tabs -->
+            <ul class="nav nav-tabs mb-3" id="mainTabs">
+                <li class="nav-item">
+                    <button class="nav-link active" id="tabAptBtn" onclick="switchTab('apt')">
+                        <i class="fas fa-home me-1"></i>Căn hộ
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" id="tabFeeBtn" onclick="switchTab('fee')">
+                        <i class="fas fa-money-bill-wave me-1"></i>Mẫu phí dịch vụ
+                    </button>
+                </li>
+            </ul>
+
+            <!-- ═══════════════════════ TAB: APARTMENT ═══════════════════════ -->
+            <div id="tabApt">
+                <!-- Filter -->
+                <div class="card mb-3">
+                    <div class="card-body py-2">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control form-control-sm" id="aptSearch"
+                                       placeholder="Tìm mã, số căn hộ...">
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select form-select-sm" id="aptBuildingFilter">
+                                    <option value="">— Tất cả tòa nhà —</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <select class="form-select form-select-sm" id="aptStatusFilter">
+                                    <option value="">— Trạng thái —</option>
+                                    <option value="EMPTY">Trống</option>
+                                    <option value="OCCUPIED">Có người</option>
+                                    <option value="MAINTENANCE">Bảo trì</option>
+                                </select>
+                            </div>
+                            <div class="col-auto">
+                                <button class="btn btn-primary btn-sm" onclick="loadApartments()">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm ms-1" onclick="resetAptFilter()">
+                                    <i class="fas fa-redo"></i>
+                                </button>
+                            </div>
+                            <div class="col-auto ms-auto">
+                                <button class="btn btn-primary btn-sm" id="btnAddApt" onclick="openCreateApt()">
+                                    <i class="fas fa-plus me-1"></i>Thêm căn hộ
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Apartment table -->
+                <div class="card">
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                <tr>
+                                    <th class="ps-3">Mã</th>
+                                    <th>Số căn hộ</th>
+                                    <th>Tòa nhà</th>
+                                    <th>Tầng</th>
+                                    <th class="text-end">Diện tích</th>
+                                    <th>Trạng thái</th>
+                                    <th>Cư trú</th>
+                                    <th>Cư dân</th>
+                                    <th>Ước tính/tháng</th>
+                                    <th></th>
+                                </tr>
+                                </thead>
+                                <tbody id="aptTableBody">
+                                <tr><td colspan="10" class="text-center py-4 text-muted">Đang tải...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="aptInfo" class="px-3 py-2 text-muted small border-top"></div>
+                    </div>
+                </div>
+            </div><!-- /tabApt -->
+
+            <!-- ═══════════════════════ TAB: FEE TEMPLATE ═══════════════════════ -->
+            <div id="tabFee" class="d-none">
+
+                <!-- Decree info banner -->
+                <div class="alert alert-info py-2 mb-3">
+                    <i class="fas fa-gavel me-2"></i>
+                    <strong>QĐ 33/2025/QĐ-UBND Hà Nội</strong> (hiệu lực 01/05/2025) —
+                    Phí QLVH chung cư <strong>có thang máy</strong>: 1.200 – 16.500 đ/m²/tháng |
+                    <strong>không thang máy</strong>: 700 – 5.000 đ/m²/tháng.
+                    <span class="text-muted small">Không bao gồm bể bơi, xông hơi, internet.</span>
+                </div>
+
+                <!-- Filter -->
+                <div class="card mb-3">
+                    <div class="card-body py-2">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-3">
+                                <select class="form-select form-select-sm" id="feeBuildingFilter">
+                                    <option value="">— Chọn tòa nhà —</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <select class="form-select form-select-sm" id="feeStatusFilter">
+                                    <option value="">— Tất cả —</option>
+                                    <option value="ACTIVE">Đang áp dụng</option>
+                                    <option value="INACTIVE">Đã tắt</option>
+                                </select>
+                            </div>
+                            <div class="col-auto">
+                                <button class="btn btn-primary btn-sm" onclick="loadFeeTemplates()">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                            <div class="col-auto ms-auto">
+                                <button class="btn btn-outline-info btn-sm me-1" onclick="openDecreeSuggestions()">
+                                    <i class="fas fa-lightbulb me-1"></i>Gợi ý theo NĐ
+                                </button>
+                                <button class="btn btn-primary btn-sm" id="btnAddFee" onclick="openCreateFee()">
+                                    <i class="fas fa-plus me-1"></i>Thêm mẫu phí
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fee table -->
+                <div class="card">
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                <tr>
+                                    <th class="ps-3">Tên phí</th>
+                                    <th>Tòa nhà</th>
+                                    <th>Loại</th>
+                                    <th class="text-end">Đơn giá</th>
+                                    <th>Đơn vị</th>
+                                    <th>Khung diện tích</th>
+                                    <th>Hiệu lực từ</th>
+                                    <th>Đến ngày</th>
+                                    <th>Trạng thái</th>
+                                    <th></th>
+                                </tr>
+                                </thead>
+                                <tbody id="feeTableBody">
+                                <tr><td colspan="10" class="text-center py-4 text-muted">
+                                    Chọn tòa nhà để xem mẫu phí
+                                </td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div><!-- /tabFee -->
+
+        </main>
+    </div>
+</div>
+
+<!-- ═══════════════════════ MODAL: TẠO / SỬA CĂN HỘ ═══════════════════════ -->
+<div class="modal fade" id="aptModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="aptModalTitle">
+                    <i class="fas fa-plus-circle text-primary me-2"></i>Thêm căn hộ mới
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="aptAlert"></div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Tòa nhà <span class="text-danger">*</span></label>
+                        <select class="form-select" id="aptFormBuilding">
+                            <option value="">— Chọn tòa nhà —</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">
+                            Số căn hộ <span class="text-danger">*</span>
+                            <small class="text-muted fw-normal">(VD: A101, B202)</small>
+                        </label>
+                        <input type="text" class="form-control text-uppercase" id="aptFormNumber"
+                               placeholder="VD: A101" maxlength="10">
+                        <div id="aptDuplicateWarn" class="d-none text-danger small mt-1">
+                            <i class="fas fa-exclamation-triangle"></i> Số căn hộ này đã tồn tại trong tòa nhà!
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Tầng <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="aptFormFloor" min="1" max="100" placeholder="1">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Diện tích (m²) <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="aptFormArea" min="1" step="0.01" placeholder="75.5">
+                    </div>
+                    <div class="col-md-4" id="aptStatusGroup">
+                        <label class="form-label fw-semibold">Trạng thái</label>
+                        <select class="form-select" id="aptFormStatus">
+                            <option value="EMPTY">Trống</option>
+                            <option value="OCCUPIED">Có người</option>
+                            <option value="MAINTENANCE">Bảo trì</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Mô tả</label>
+                        <textarea class="form-control" id="aptFormDesc" rows="2"
+                                  placeholder="Hướng Đông Nam, view hồ..."></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" id="btnSaveApt" onclick="saveApartment()">
+                    <i class="fas fa-save me-1"></i>Lưu
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════ MODAL: CHI TIẾT CĂN HỘ ═══════════════════════ -->
+<div class="modal fade" id="aptDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-home text-info me-2"></i>Chi tiết căn hộ
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="aptDetailBody">Đang tải...</div>
+            <div class="modal-footer" id="aptDetailFooter">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════ MODAL: TẠO / SỬA MẪU PHÍ ═══════════════════════ -->
+<div class="modal fade" id="feeModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="feeModalTitle">
+                    <i class="fas fa-plus-circle text-primary me-2"></i>Thêm mẫu phí
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="feeAlert"></div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Tòa nhà <span class="text-danger">*</span></label>
+                        <select class="form-select" id="feeFormBuilding">
+                            <option value="">— Chọn tòa nhà —</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Tên phí <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="feeFormName"
+                               placeholder="VD: Phí quản lý, Phí gửi xe máy">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Loại phí <span class="text-danger">*</span></label>
+                        <select class="form-select" id="feeFormType" onchange="onFeeTypeChange()">
+                            <option value="SERVICE">Dịch vụ quản lý</option>
+                            <option value="PARKING">Gửi xe</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Đơn vị tính <span class="text-danger">*</span></label>
+                        <select class="form-select" id="feeFormUnit" onchange="onFeeUnitChange()">
+                            <option value="PER_M2">đ / m² / tháng</option>
+                            <option value="PER_APT">đ / căn / tháng</option>
+                            <option value="FIXED">Cố định (FIXED)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Đơn giá (VNĐ) <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="feeFormAmount" min="0" step="100"
+                               placeholder="7000">
+                        <div id="feeRangeHint" class="text-muted small mt-1"></div>
+                    </div>
+
+                    <!-- Chỉ hiện khi SERVICE + PER_M2 -->
+                    <div class="col-12" id="elevatorGroup" style="display:none">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="feeFormHasElevator" checked
+                                   onchange="onFeeUnitChange()">
+                            <label class="form-check-label" for="feeFormHasElevator">
+                                Tòa nhà <strong>có thang máy</strong>
+                                <small class="text-muted">(ảnh hưởng khung giá QĐ 33/2025)</small>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Khung diện tích áp dụng — chỉ hiện khi PER_M2 -->
+                    <div class="col-12" id="areaRangeGroup" style="display:none">
+                        <div class="alert alert-light border py-2 mb-0">
+                            <small class="fw-semibold">
+                                <i class="fas fa-ruler-combined me-1 text-info"></i>
+                                Giới hạn diện tích áp dụng
+                                <span class="text-muted fw-normal">(để trống = không giới hạn)</span>
+                            </small>
+                            <div class="row g-2 mt-1">
+                                <div class="col-6">
+                                    <label class="form-label small mb-1">Diện tích tối thiểu (m²)</label>
+                                    <input type="number" class="form-control form-control-sm"
+                                           id="feeFormMinArea" min="0" step="0.5" placeholder="VD: 50">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-1">Diện tích tối đa (m²)</label>
+                                    <input type="number" class="form-control form-control-sm"
+                                           id="feeFormMaxArea" min="0" step="0.5" placeholder="VD: 100">
+                                </div>
+                            </div>
+                            <div class="text-muted mt-1" style="font-size:.75rem;">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Hóa đơn chỉ áp dụng mẫu phí này cho căn hộ có diện tích nằm trong khoảng trên.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Hiệu lực từ <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="feeFormEffFrom">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Đến ngày <small class="text-muted">(để trống = vô thời hạn)</small></label>
+                        <input type="date" class="form-control" id="feeFormEffTo">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" id="btnSaveFee" onclick="saveFeeTemplate()">
+                    <i class="fas fa-save me-1"></i>Lưu
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════ MODAL: GỢI Ý NGHỊ ĐỊNH ═══════════════════════ -->
+<div class="modal fade" id="decreeModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info bg-opacity-10">
+                <h5 class="modal-title">
+                    <i class="fas fa-gavel text-info me-2"></i>
+                    Gợi ý phí theo QĐ 33/2025/QĐ-UBND Hà Nội
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="decreeBody">Đang tải...</div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/common.js"></script>
+<script>
+    /* ════════════════════════════════════════════════════════════════
+       INIT
+    ════════════════════════════════════════════════════════════════ */
+    const API = API_BASE_URL;
+    let _buildings  = [];
+    let _apartments = [];
+    let _editAptId  = null;
+    let _editFeeId  = null;
+    const isReadOnly = () => {
+        const info = getUserInfo() || {};
+        return info.role === 'STAFF';
+    };
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const token = getToken();
+        if (!token) return window.location.href = '/login';
+
+        const info = getUserInfo() || {};
+        document.getElementById('sidebarUser').textContent = info.fullName || info.username || '';
+
+        // Ẩn nút thêm/sửa với STAFF role
+        if (isReadOnly()) {
+            document.getElementById('btnAddApt')?.remove();
+            document.getElementById('btnAddFee')?.remove();
+        }
+
+        document.getElementById('logoutBtn').addEventListener('click', e => {
+            e.preventDefault(); if (confirm('Đăng xuất?')) logout();
+        });
+
+        await loadStats();
+        await loadBuildings();
+        loadApartments();
+    });
+
+    /* ════════════════════════════════════════════════════════════════
+       TAB SWITCH
+    ════════════════════════════════════════════════════════════════ */
+    function switchTab(tab) {
+        document.getElementById('tabApt').classList.toggle('d-none', tab !== 'apt');
+        document.getElementById('tabFee').classList.toggle('d-none', tab !== 'fee');
+        document.getElementById('tabAptBtn').classList.toggle('active', tab === 'apt');
+        document.getElementById('tabFeeBtn').classList.toggle('active', tab === 'fee');
+        if (tab === 'fee') loadFeeTemplates();
+    }
+
+    /* ════════════════════════════════════════════════════════════════
+       STATS
+    ════════════════════════════════════════════════════════════════ */
+    async function loadStats() {
+        try {
+            const res = await apiRequest(`${API}/apartments/stats`);
+            const d   = await res.json();
+            document.getElementById('statBuildings').textContent = d.totalBuildings  ?? '—';
+            document.getElementById('statTotal').textContent     = d.totalApartments ?? '—';
+            document.getElementById('statOccupied').textContent  = d.occupied        ?? '—';
+            document.getElementById('statEmpty').textContent     = d.empty           ?? '—';
+        } catch(e) { console.error('Stats error', e); }
+    }
+
+    /* ════════════════════════════════════════════════════════════════
+       BUILDINGS — dùng để populate dropdowns
+    ════════════════════════════════════════════════════════════════ */
+    async function loadBuildings() {
+        try {
+            const res = await apiRequest(`${API}/buildings`);
+            _buildings = await res.json();
+            const selects = ['aptBuildingFilter','feeBuildingFilter','aptFormBuilding','feeFormBuilding'];
+            selects.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                // Giữ option đầu rồi thêm các tòa nhà
+                while (el.options.length > 1) el.remove(1);
+                _buildings.forEach(b => {
+                    const o = document.createElement('option');
+                    o.value = b.id; o.textContent = b.name;
+                    el.appendChild(o);
+                });
+            });
+        } catch(e) { console.error('Buildings error', e); }
+    }
+
+    /* ════════════════════════════════════════════════════════════════
+       APARTMENTS
+    ════════════════════════════════════════════════════════════════ */
+    async function loadApartments() {
+        const buildingId = document.getElementById('aptBuildingFilter').value;
+        const status     = document.getElementById('aptStatusFilter').value;
+        const search     = document.getElementById('aptSearch').value.trim().toLowerCase();
+
+        const params = new URLSearchParams();
+        if (buildingId) params.set('buildingId', buildingId);
+        if (status)     params.set('status', status);
+
+        const tbody = document.getElementById('aptTableBody');
+        tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-muted">
+            <i class="fas fa-spinner fa-spin me-2"></i>Đang tải...</td></tr>`;
+        showLoading();
+        try {
+            const res = await apiRequest(`${API}/apartments?${params}`);
+            _apartments = await res.json();
+
+            let list = _apartments;
+            if (search) list = list.filter(a =>
+                a.id.toLowerCase().includes(search) ||
+                a.number.toLowerCase().includes(search) ||
+                (a.buildingName||'').toLowerCase().includes(search));
+
+            renderAptTable(list);
+            document.getElementById('aptInfo').textContent =
+                `Tìm thấy ${list.length} căn hộ${search ? ' (đã lọc từ ' + _apartments.length + ')' : ''}`;
+        } catch(e) {
+            tbody.innerHTML = `<tr><td colspan="10" class="text-center text-danger py-4">
+                <i class="fas fa-exclamation-circle me-2"></i>${e.message}</td></tr>`;
+        } finally { hideLoading(); }
+    }
+
+    function renderAptTable(list) {
+        const tbody = document.getElementById('aptTableBody');
+        if (!list.length) {
+            tbody.innerHTML = `<tr><td colspan="10" class="text-center py-5 text-muted">
+                <i class="fas fa-home fa-2x mb-2 d-block opacity-25"></i>Không có căn hộ nào</td></tr>`;
+            return;
+        }
+        const statusCls   = { EMPTY:'bg-secondary', OCCUPIED:'bg-success', MAINTENANCE:'bg-warning text-dark' };
+        const statusLabel = { EMPTY:'Trống', OCCUPIED:'Có người', MAINTENANCE:'Bảo trì' };
+        tbody.innerHTML = list.map(a => `
+            <tr>
+                <td class="ps-3 font-monospace small text-muted">${a.id}</td>
+                <td><strong class="text-primary">${a.number}</strong></td>
+                <td><small>${a.buildingName || '—'}</small></td>
+                <td>${a.floor}</td>
+                <td class="text-end">${a.area} m²</td>
+                <td><span class="badge ${statusCls[a.status]||'bg-secondary'}">${statusLabel[a.status]||a.status}</span></td>
+                <td><small class="text-muted">${rentalLabel(a.rentalStatus)}</small></td>
+                <td>${a.totalResidents ?? 0} người</td>
+                <td class="text-end">
+                    <span class="text-success fw-semibold" id="est_${a.id}">—</span>
+                </td>
+                <td>
+                    <div class="d-flex gap-1">
+                        <button class="btn btn-sm btn-outline-info" onclick="openAptDetail('${a.id}')"
+                                title="Chi tiết & phí"><i class="fas fa-eye"></i></button>
+                        ${!isReadOnly() ? `
+                        <button class="btn btn-sm btn-outline-primary" onclick="openEditApt('${a.id}')"
+                                title="Sửa"><i class="fas fa-edit"></i></button>` : ''}
+                    </div>
+                </td>
+            </tr>`).join('');
+        // Load ước tính phí cho từng căn hộ
+        list.forEach(a => loadAptEstimate(a.id));
+    }
+
+    async function loadAptEstimate(aptId) {
+        try {
+            const res = await apiRequest(`${API}/apartments/${aptId}`);
+            const d   = await res.json();
+            const el = document.getElementById(`est_${aptId}`);
+            if (el && d.totalEstimatedMonthly != null) {
+                el.textContent = fmtVND(d.totalEstimatedMonthly);
+            }
+        } catch(e) {}
+    }
+
+    function rentalLabel(s) {
+        return { AVAILABLE:'Cho thuê', RENTED:'Đang thuê', OWNER_OCCUPIED:'Chủ ở' }[s] || s || '—';
+    }
+
+    function resetAptFilter() {
+        document.getElementById('aptSearch').value = '';
+        document.getElementById('aptBuildingFilter').value = '';
+        document.getElementById('aptStatusFilter').value = '';
+        loadApartments();
+    }
+
+    /* ── Mở modal tạo căn hộ ── */
+    function openCreateApt() {
+        _editAptId = null;
+        document.getElementById('aptModalTitle').innerHTML =
+            '<i class="fas fa-plus-circle text-primary me-2"></i>Thêm căn hộ mới';
+        document.getElementById('aptFormBuilding').value = '';
+        document.getElementById('aptFormNumber').value   = '';
+        document.getElementById('aptFormFloor').value    = '';
+        document.getElementById('aptFormArea').value     = '';
+        document.getElementById('aptFormStatus').value   = 'EMPTY';
+        document.getElementById('aptFormDesc').value     = '';
+        document.getElementById('aptAlert').innerHTML    = '';
+        document.getElementById('aptDuplicateWarn').classList.add('d-none');
+        document.getElementById('aptStatusGroup').style.display = 'none'; // chỉ hiện khi edit
+        new bootstrap.Modal('#aptModal').show();
+    }
+
+    /* ── Mở modal sửa căn hộ ── */
+    async function openEditApt(id) {
+        _editAptId = id;
+        try {
+            const res = await apiRequest(`${API}/apartments/${id}`);
+            const a   = await res.json();
+            document.getElementById('aptModalTitle').innerHTML =
+                `<i class="fas fa-edit text-primary me-2"></i>Sửa căn hộ ${a.number}`;
+            document.getElementById('aptFormBuilding').value = a.buildingId || '';
+            document.getElementById('aptFormNumber').value   = a.number;
+            document.getElementById('aptFormFloor').value    = a.floor;
+            document.getElementById('aptFormArea').value     = a.area;
+            document.getElementById('aptFormStatus').value   = a.status;
+            document.getElementById('aptFormDesc').value     = a.description || '';
+            document.getElementById('aptAlert').innerHTML    = '';
+            document.getElementById('aptDuplicateWarn').classList.add('d-none');
+            document.getElementById('aptStatusGroup').style.display = '';
+            new bootstrap.Modal('#aptModal').show();
+        } catch(e) { alert('Lỗi: ' + e.message); }
+    }
+
+    /* ── Lưu căn hộ (tạo hoặc cập nhật) ── */
+    async function saveApartment() {
+        const buildingId = document.getElementById('aptFormBuilding').value;
+        const number     = document.getElementById('aptFormNumber').value.trim().toUpperCase();
+        const floor      = document.getElementById('aptFormFloor').value;
+        const area       = document.getElementById('aptFormArea').value;
+        const status     = document.getElementById('aptFormStatus').value;
+        const desc       = document.getElementById('aptFormDesc').value.trim();
+        const alertEl    = document.getElementById('aptAlert');
+
+        if (!number || !floor || !area) {
+            alertEl.innerHTML = alertHtml('Vui lòng điền đầy đủ thông tin bắt buộc.', 'warning');
+            return;
+        }
+        if (!_editAptId && !buildingId) {
+            alertEl.innerHTML = alertHtml('Vui lòng chọn tòa nhà.', 'warning');
+            return;
+        }
+
+        const btn = document.getElementById('btnSaveApt');
+        btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang lưu...';
+
+        try {
+            let res;
+            if (_editAptId) {
+                res = await apiRequest(`${API}/apartments/${_editAptId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ floor, area, status, description: desc })
+                });
+            } else {
+                res = await apiRequest(`${API}/apartments`, {
+                    method: 'POST',
+                    body: JSON.stringify({ buildingId, number, floor, area, description: desc })
+                });
+            }
+            if (!res.ok) {
+                const msg = await res.text();
+                // Nếu lỗi trùng số căn hộ → hiện inline warning
+                if (msg.toLowerCase().includes('đã tồn tại') || msg.toLowerCase().includes('trùng')) {
+                    document.getElementById('aptDuplicateWarn').classList.remove('d-none');
+                }
+                alertEl.innerHTML = alertHtml(msg, 'danger');
+                return;
+            }
+            bootstrap.Modal.getInstance(document.getElementById('aptModal')).hide();
+            await loadStats();
+            loadApartments();
+        } catch(e) {
+            alertEl.innerHTML = alertHtml(e.message, 'danger');
+        } finally {
+            btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i>Lưu';
+        }
+    }
+
+    /* ── Chi tiết căn hộ với danh sách phí ── */
+    async function openAptDetail(id) {
+        const body   = document.getElementById('aptDetailBody');
+        const footer = document.getElementById('aptDetailFooter');
+        body.innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Đang tải...</div>';
+        footer.innerHTML = '<button class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>';
+        new bootstrap.Modal('#aptDetailModal').show();
+
+        try {
+            const res = await apiRequest(`${API}/apartments/${id}`);
+            const d   = await res.json();
+
+            const statusBadge = {
+                EMPTY:       '<span class="badge bg-secondary">Trống</span>',
+                OCCUPIED:    '<span class="badge bg-success">Có người</span>',
+                MAINTENANCE: '<span class="badge bg-warning text-dark">Bảo trì</span>',
+            }[d.status] || `<span class="badge bg-secondary">${d.status}</span>`;
+
+            // Danh sách phí ACTIVE
+            const fees = d.activeFees || [];
+            let feeRows = fees.length ? fees.map(f => `
+                <tr>
+                    <td>
+                        <span class="badge ${f.type==='PARKING'?'bg-primary':'bg-info'} me-2">
+                            ${f.typeLabel}
+                        </span>${f.name}
+                    </td>
+                    <td>${f.unitLabel}</td>
+                    <td class="text-end">${fmtVND(f.amount)}</td>
+                    <td class="text-end fw-semibold text-success">${fmtVND(f.estimatedAmount)}</td>
+                    <td><small class="text-muted">${f.effectiveFrom||''}</small></td>
+                </tr>`).join('') :
+                `<tr><td colspan="5" class="text-center text-muted py-3">
+                    <i class="fas fa-info-circle me-1"></i>Chưa có mẫu phí ACTIVE nào.<br>
+                    <a href="#" onclick="bootstrap.Modal.getInstance(document.getElementById('aptDetailModal')).hide();switchTab('fee')">
+                        Thêm mẫu phí →
+                    </a>
+                </td></tr>`;
+
+            body.innerHTML = `
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="text-muted small">Số căn hộ</label>
+                        <div class="fs-4 fw-bold text-primary">${d.number}</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="text-muted small">Tòa nhà</label>
+                        <div class="fw-semibold">${d.buildingName||'—'}</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="text-muted small">Trạng thái</label>
+                        <div>${statusBadge}</div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="text-muted small">Tầng</label>
+                        <div>Tầng ${d.floor}</div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="text-muted small">Diện tích</label>
+                        <div><strong>${d.area} m²</strong></div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="text-muted small">Cư dân hiện tại</label>
+                        <div>${d.totalResidents ?? 0} người</div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="text-muted small">Phương tiện</label>
+                        <div>${d.totalVehicles ?? 0} xe</div>
+                    </div>
+                    ${d.description ? `
+                    <div class="col-12">
+                        <label class="text-muted small">Mô tả</label>
+                        <div class="text-muted">${d.description}</div>
+                    </div>` : ''}
+                    <div class="col-12"><hr class="my-1"></div>
+
+                    <!-- Phí dịch vụ áp dụng -->
+                    <div class="col-12">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <strong>Phí dịch vụ áp dụng (ACTIVE)</strong>
+                            <div class="bg-success bg-opacity-10 rounded px-3 py-1 text-success fw-bold">
+                                Ước tính/tháng: ${fmtVND(d.totalEstimatedMonthly || 0)}
+                            </div>
+                        </div>
+                        <div class="alert alert-light border py-2 mb-2">
+                            <small class="text-muted">
+                                <i class="fas fa-gavel me-1 text-info"></i>
+                                Căn cứ <strong>QĐ 33/2025/QĐ-UBND Hà Nội</strong>:
+                                Chung cư có thang máy 1.200–16.500 đ/m²/tháng,
+                                không thang máy 700–5.000 đ/m²/tháng.
+                                <em>Chưa bao gồm điện, nước (do EVN thu trực tiếp).</em>
+                            </small>
+                        </div>
+                        <table class="table table-sm table-bordered mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Tên phí</th>
+                                    <th>Đơn vị</th>
+                                    <th class="text-end">Đơn giá</th>
+                                    <th class="text-end">Ước tính căn này</th>
+                                    <th>Hiệu lực từ</th>
+                                </tr>
+                            </thead>
+                            <tbody>${feeRows}</tbody>
+                        </table>
+                    </div>
+                </div>`;
+
+            if (!isReadOnly()) {
+                footer.innerHTML = `
+                    <button class="btn btn-outline-primary btn-sm me-2"
+                            onclick="bootstrap.Modal.getInstance(document.getElementById('aptDetailModal')).hide();openEditApt('${id}')">
+                        <i class="fas fa-edit me-1"></i>Sửa thông tin
+                    </button>
+                    <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Đóng</button>`;
+            }
+        } catch(e) {
+            body.innerHTML = `<div class="text-danger text-center py-3">Không tải được chi tiết: ${e.message}</div>`;
+        }
+    }
+
+    /* ════════════════════════════════════════════════════════════════
+       FEE TEMPLATES
+    ════════════════════════════════════════════════════════════════ */
+    async function loadFeeTemplates() {
+        const buildingId = document.getElementById('feeBuildingFilter').value;
+        const status     = document.getElementById('feeStatusFilter').value;
+        const tbody      = document.getElementById('feeTableBody');
+
+        if (!buildingId) {
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-muted">
+                <i class="fas fa-building me-1"></i>Chọn tòa nhà để xem mẫu phí</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-muted">
+            <i class="fas fa-spinner fa-spin me-2"></i>Đang tải...</td></tr>`;
+        showLoading();
+        try {
+            const params = new URLSearchParams({ buildingId });
+            if (status) params.set('status', status);
+            const res  = await apiRequest(`${API}/fee-templates?${params}`);
+            const list = await res.json();
+            renderFeeTable(list);
+        } catch(e) {
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-3">${e.message}</td></tr>`;
+        } finally { hideLoading(); }
+    }
+
+    function renderFeeTable(list) {
+        const tbody = document.getElementById('feeTableBody');
+        if (!list.length) {
+            tbody.innerHTML = `<tr><td colspan="10" class="text-center py-5 text-muted">
+                <i class="fas fa-money-bill-wave fa-2x mb-2 d-block opacity-25"></i>
+                Chưa có mẫu phí nào. <a href="#" onclick="openCreateFee()">Thêm mẫu phí →</a>
+            </td></tr>`;
+            return;
+        }
+        tbody.innerHTML = list.map(f => `
+            <tr class="${f.status==='INACTIVE'?'text-muted opacity-60':''}">
+                <td class="ps-3 fw-semibold">${f.name}</td>
+                <td><small>${f.buildingName||'—'}</small></td>
+                <td>
+                    <span class="badge ${f.type==='PARKING'?'bg-primary':'bg-info'} bg-opacity-75">
+                        ${f.typeLabel}
+                    </span>
+                </td>
+                <td class="text-end fw-semibold">${fmtVND(f.amount)}</td>
+                <td><small class="text-muted">${f.unitLabel}</small></td>
+                <td>
+                    ${f.areaRange
+                        ? `<small class="text-info"><i class="fas fa-ruler-combined me-1"></i>${f.areaRange}</small>`
+                        : '<small class="text-muted">—</small>'}
+                </td>
+                <td><small>${f.effectiveFrom||'—'}</small></td>
+                <td><small>${f.effectiveTo||'Vô thời hạn'}</small></td>
+                <td>
+                    <span class="badge ${f.status==='ACTIVE'?'bg-success':'bg-secondary'}">
+                        ${f.statusLabel}
+                    </span>
+                </td>
+                <td>
+                    ${!isReadOnly() ? `
+                    <div class="d-flex gap-1">
+                        <button class="btn btn-sm btn-outline-primary" onclick="openEditFee('${f.id}')"
+                                title="Sửa"><i class="fas fa-edit"></i></button>
+                        ${f.status==='ACTIVE' ? `
+                        <button class="btn btn-sm btn-outline-danger" onclick="deactivateFee('${f.id}')"
+                                title="Vô hiệu hóa"><i class="fas fa-ban"></i></button>` : ''}
+                    </div>` : ''}
+                </td>
+            </tr>`).join('');
+    }
+
+    /* ── Mở modal tạo mẫu phí ── */
+    function openCreateFee() {
+        _editFeeId = null;
+        document.getElementById('feeModalTitle').innerHTML =
+            '<i class="fas fa-plus-circle text-primary me-2"></i>Thêm mẫu phí mới';
+        const building = document.getElementById('feeBuildingFilter').value;
+        document.getElementById('feeFormBuilding').value = building || '';
+        document.getElementById('feeFormName').value     = '';
+        document.getElementById('feeFormType').value     = 'SERVICE';
+        document.getElementById('feeFormUnit').value     = 'PER_M2';
+        document.getElementById('feeFormAmount').value   = '';
+        document.getElementById('feeFormEffFrom').value  = new Date().toISOString().split('T')[0];
+        document.getElementById('feeFormEffTo').value    = '';
+        document.getElementById('feeFormMinArea').value  = '';
+        document.getElementById('feeFormMaxArea').value  = '';
+        document.getElementById('feeAlert').innerHTML    = '';
+        document.getElementById('feeFormHasElevator').checked = true;
+        onFeeTypeChange(); onFeeUnitChange();
+        new bootstrap.Modal('#feeModal').show();
+    }
+
+    /* ── Mở modal sửa mẫu phí ── */
+    async function openEditFee(id) {
+        _editFeeId = id;
+        try {
+            // Lấy data từ bảng đang render (không cần gọi thêm API)
+            const btn = document.querySelector(`button[onclick="openEditFee('${id}')"]`);
+            const row = btn?.closest('tr');
+            if (!row) { openCreateFee(); return; }
+
+            document.getElementById('feeModalTitle').innerHTML =
+                '<i class="fas fa-edit text-primary me-2"></i>Sửa mẫu phí';
+            document.getElementById('feeAlert').innerHTML = '';
+            // Refetch để lấy đầy đủ data
+            const buildingId = document.getElementById('feeBuildingFilter').value;
+            const res  = await apiRequest(`${API}/fee-templates?buildingId=${buildingId}`);
+            const list = await res.json();
+            const f    = list.find(x => x.id === id);
+            if (!f) return;
+            document.getElementById('feeFormBuilding').value = f.buildingId || '';
+            document.getElementById('feeFormName').value     = f.name;
+            document.getElementById('feeFormType').value     = f.type;
+            document.getElementById('feeFormUnit').value     = f.unit;
+            document.getElementById('feeFormAmount').value   = f.amount;
+            document.getElementById('feeFormEffFrom').value  = f.effectiveFrom || '';
+            document.getElementById('feeFormEffTo').value    = f.effectiveTo || '';
+            document.getElementById('feeFormMinArea').value  = f.minArea != null ? f.minArea : '';
+            document.getElementById('feeFormMaxArea').value  = f.maxArea != null ? f.maxArea : '';
+            onFeeTypeChange(); onFeeUnitChange();
+            new bootstrap.Modal('#feeModal').show();
+        } catch(e) { alert('Lỗi: ' + e.message); }
+    }
+
+    /* ── Lưu mẫu phí ── */
+    async function saveFeeTemplate() {
+        const buildingId = document.getElementById('feeFormBuilding').value;
+        const name       = document.getElementById('feeFormName').value.trim();
+        const type       = document.getElementById('feeFormType').value;
+        const unit       = document.getElementById('feeFormUnit').value;
+        const amount     = document.getElementById('feeFormAmount').value;
+        const effFrom    = document.getElementById('feeFormEffFrom').value;
+        const effTo      = document.getElementById('feeFormEffTo').value;
+        const hasElevator = document.getElementById('feeFormHasElevator').checked;
+        const alertEl    = document.getElementById('feeAlert');
+
+        if (!buildingId || !name || !amount || !effFrom) {
+            alertEl.innerHTML = alertHtml('Vui lòng điền đầy đủ thông tin bắt buộc.', 'warning');
+            return;
+        }
+
+        const btn = document.getElementById('btnSaveFee');
+        btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang lưu...';
+
+        const payload = { buildingId, name, type, unit, amount, effectiveFrom: effFrom,
+            effectiveTo: effTo || null, hasElevator,
+            minArea: document.getElementById('feeFormMinArea').value || null,
+            maxArea: document.getElementById('feeFormMaxArea').value || null };
+
+        try {
+            let res;
+            if (_editFeeId) {
+                res = await apiRequest(`${API}/fee-templates/${_editFeeId}`, {
+                    method: 'PUT', body: JSON.stringify(payload)
+                });
+            } else {
+                res = await apiRequest(`${API}/fee-templates`, {
+                    method: 'POST', body: JSON.stringify(payload)
+                });
+            }
+            if (!res.ok) { alertEl.innerHTML = alertHtml(await res.text(), 'danger'); return; }
+            bootstrap.Modal.getInstance(document.getElementById('feeModal')).hide();
+            loadFeeTemplates();
+        } catch(e) {
+            alertEl.innerHTML = alertHtml(e.message, 'danger');
+        } finally {
+            btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i>Lưu';
+        }
+    }
+
+    /* ── Vô hiệu hóa mẫu phí ── */
+    async function deactivateFee(id) {
+        if (!confirm('Vô hiệu hóa mẫu phí này? Hóa đơn đã phát hành không bị ảnh hưởng.')) return;
+        try {
+            const res = await apiRequest(`${API}/fee-templates/${id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error(await res.text());
+            loadFeeTemplates();
+        } catch(e) { alert('Lỗi: ' + e.message); }
+    }
+
+    /* ── UI helpers cho fee form ── */
+    function onFeeTypeChange() {
+        const type = document.getElementById('feeFormType').value;
+        const unit = document.getElementById('feeFormUnit');
+        if (type === 'PARKING') {
+            unit.value = 'FIXED';
+            // Gợi ý 100.000 cho gửi xe máy
+            if (!document.getElementById('feeFormAmount').value)
+                document.getElementById('feeFormAmount').value = '100000';
+        }
+        onFeeUnitChange();
+    }
+
+    function onFeeUnitChange() {
+        const type = document.getElementById('feeFormType').value;
+        const unit = document.getElementById('feeFormUnit').value;
+        const elevator     = document.getElementById('elevatorGroup');
+        const areaRange    = document.getElementById('areaRangeGroup');
+        const hint         = document.getElementById('feeRangeHint');
+
+        const showElevator = type === 'SERVICE' && unit === 'PER_M2';
+        elevator.style.display  = showElevator ? '' : 'none';
+        areaRange.style.display = unit === 'PER_M2' ? '' : 'none';
+
+        if (!showElevator) {
+            // Không phải PER_M2 → clear area range
+            document.getElementById('feeFormMinArea').value = '';
+            document.getElementById('feeFormMaxArea').value = '';
+        }
+
+        if (type === 'SERVICE' && unit === 'PER_M2') {
+            const hasElevator = document.getElementById('feeFormHasElevator').checked;
+            hint.innerHTML = hasElevator
+                ? '<i class="fas fa-info-circle text-info"></i> QĐ 33/2025: <strong>1.200 – 16.500</strong> đ/m²/tháng (có thang máy)'
+                : '<i class="fas fa-info-circle text-info"></i> QĐ 33/2025: <strong>700 – 5.000</strong> đ/m²/tháng (không thang máy)';
+        } else if (type === 'SERVICE' && unit === 'PER_APT') {
+            hint.innerHTML = '<small class="text-muted">Tính cố định theo mỗi căn hộ</small>';
+        } else {
+            hint.innerHTML = '';
+        }
+    }
+
+    /* ── Gợi ý theo Nghị định ── */
+    async function openDecreeSuggestions() {
+        const decreeBody = document.getElementById('decreeBody');
+        decreeBody.innerHTML = '<div class="text-center py-3"><i class="fas fa-spinner fa-spin"></i> Đang tải...</div>';
+        new bootstrap.Modal('#decreeModal').show();
+        try {
+            const res = await apiRequest(`${API}/fee-templates/hanoi-decree`);
+            const d   = await res.json();
+            const svc1 = d.serviceFeesWithElevator;
+            const svc2 = d.serviceFeesNoElevator;
+            const pkg  = d.parkingFeeSuggestions || [];
+
+            decreeBody.innerHTML = `
+                <div class="alert alert-warning py-2">
+                    <i class="fas fa-gavel me-2"></i>
+                    <strong>${d.decree}</strong> — Hiệu lực từ ${d.effectiveDate}<br>
+                    <small class="text-muted">${d.note}</small>
+                </div>
+
+                <h6 class="fw-bold mb-2">Phí quản lý vận hành (SERVICE)</h6>
+                <table class="table table-sm table-bordered mb-3">
+                    <thead class="table-light"><tr>
+                        <th>Loại chung cư</th><th>Đơn vị</th>
+                        <th class="text-end">Tối thiểu</th>
+                        <th class="text-end">Gợi ý</th>
+                        <th class="text-end">Tối đa</th>
+                        <th></th>
+                    </tr></thead>
+                    <tbody>
+                        <tr>
+                            <td>Có thang máy</td>
+                            <td>đ/m²/tháng</td>
+                            <td class="text-end">${fmtVND(svc1.minAmount)}</td>
+                            <td class="text-end fw-bold text-primary">${fmtVND(svc1.defaultAmount)}</td>
+                            <td class="text-end">${fmtVND(svc1.maxAmount)}</td>
+                            <td><button class="btn btn-sm btn-outline-primary"
+                                    onclick="prefillFee('Phí quản lý vận hành','SERVICE','PER_M2',${svc1.defaultAmount},true)">
+                                Dùng →</button></td>
+                        </tr>
+                        <tr>
+                            <td>Không thang máy</td>
+                            <td>đ/m²/tháng</td>
+                            <td class="text-end">${fmtVND(svc2.minAmount)}</td>
+                            <td class="text-end fw-bold text-primary">${fmtVND(svc2.defaultAmount)}</td>
+                            <td class="text-end">${fmtVND(svc2.maxAmount)}</td>
+                            <td><button class="btn btn-sm btn-outline-primary"
+                                    onclick="prefillFee('Phí quản lý vận hành','SERVICE','PER_M2',${svc2.defaultAmount},false)">
+                                Dùng →</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h6 class="fw-bold mb-2">Phí gửi xe (PARKING) — Mức thực tế Hà Nội</h6>
+                <table class="table table-sm table-bordered">
+                    <thead class="table-light"><tr>
+                        <th>Loại xe</th><th>Gợi ý</th><th>Mô tả</th><th></th>
+                    </tr></thead>
+                    <tbody>
+                        ${pkg.map(p => `<tr>
+                            <td>${p.label}</td>
+                            <td class="fw-bold text-primary">${fmtVND(p.defaultAmount)}</td>
+                            <td><small class="text-muted">${p.description}</small></td>
+                            <td><button class="btn btn-sm btn-outline-primary"
+                                    onclick="prefillFee('${p.label}','PARKING','FIXED',${p.defaultAmount},true)">
+                                Dùng →</button></td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>`;
+        } catch(e) {
+            decreeBody.innerHTML = `<div class="text-danger">Lỗi: ${e.message}</div>`;
+        }
+    }
+
+    function prefillFee(name, type, unit, amount, hasElevator) {
+        bootstrap.Modal.getInstance(document.getElementById('decreeModal')).hide();
+        setTimeout(() => {
+            _editFeeId = null;
+            document.getElementById('feeModalTitle').innerHTML =
+                '<i class="fas fa-plus-circle text-primary me-2"></i>Thêm mẫu phí mới';
+            const building = document.getElementById('feeBuildingFilter').value;
+            document.getElementById('feeFormBuilding').value = building || '';
+            document.getElementById('feeFormName').value     = name;
+            document.getElementById('feeFormType').value     = type;
+            document.getElementById('feeFormUnit').value     = unit;
+            document.getElementById('feeFormAmount').value   = amount;
+            document.getElementById('feeFormHasElevator').checked = hasElevator;
+            document.getElementById('feeFormEffFrom').value  = new Date().toISOString().split('T')[0];
+            document.getElementById('feeFormEffTo').value    = '';
+            document.getElementById('feeFormMinArea').value  = '';
+            document.getElementById('feeFormMaxArea').value  = '';
+            document.getElementById('feeAlert').innerHTML    = '';
+            onFeeTypeChange(); onFeeUnitChange();
+            new bootstrap.Modal('#feeModal').show();
+        }, 300);
+    }
+
+    /* ════════════════════════════════════════════════════════════════
+       HELPERS
+    ════════════════════════════════════════════════════════════════ */
+    function fmtVND(amount) {
+        if (amount == null || amount === 0) return '—';
+        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+    }
+
+    function alertHtml(msg, type) {
+        const icon = type === 'success' ? 'fa-check-circle' :
+                     type === 'warning' ? 'fa-exclamation-triangle' : 'fa-exclamation-circle';
+        return `<div class="alert alert-${type} alert-dismissible fade show py-2">
+            <i class="fas ${icon} me-2"></i>${msg}
+            <button type="button" class="btn-close py-2" data-bs-dismiss="alert"></button>
+        </div>`;
+    }
+</script>
+</body>
+</html>
