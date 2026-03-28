@@ -388,6 +388,12 @@
         const minElev  = 1200, defElev  = 7000, maxElev  = 16500;
         const minNoElev = 700, defNoElev = 2500, maxNoElev = 5000;
         const areaNum = parseFloat(area) || 0;
+        // Trong renderDecreeInfo() — thêm highlight row dựa vào area
+        const applicableRate = fees.find(f =>
+            f.type === 'SERVICE' && f.unit === 'PER_M2' &&
+            (f.minArea == null || areaNum >= f.minArea) &&
+            (f.maxArea == null || areaNum <= f.maxArea)
+        )?.amount;
 
         /* Lấy mức phí PER_M2 SERVICE hiện tại (nếu có) để highlight */
         const currentRate = fees.find(f => f.type === 'SERVICE' && f.unit === 'PER_M2')?.amount;

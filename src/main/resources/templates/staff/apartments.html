@@ -218,6 +218,7 @@
                                     <th>Loại</th>
                                     <th class="text-end">Đơn giá</th>
                                     <th>Đơn vị</th>
+                                    <th>Khung diện tích</th>
                                     <th>Hiệu lực từ</th>
                                     <th>Đến ngày</th>
                                     <th>Trạng thái</th>
@@ -225,7 +226,7 @@
                                 </tr>
                                 </thead>
                                 <tbody id="feeTableBody">
-                                <tr><td colspan="9" class="text-center py-4 text-muted">
+                                <tr><td colspan="10" class="text-center py-4 text-muted">
                                     Chọn tòa nhà để xem mẫu phí
                                 </td></tr>
                                 </tbody>
@@ -369,11 +370,39 @@
                     <!-- Chỉ hiện khi SERVICE + PER_M2 -->
                     <div class="col-12" id="elevatorGroup" style="display:none">
                         <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="feeFormHasElevator" checked>
+                            <input class="form-check-input" type="checkbox" id="feeFormHasElevator" checked
+                                   onchange="onFeeUnitChange()">
                             <label class="form-check-label" for="feeFormHasElevator">
                                 Tòa nhà <strong>có thang máy</strong>
                                 <small class="text-muted">(ảnh hưởng khung giá QĐ 33/2025)</small>
                             </label>
+                        </div>
+                    </div>
+
+                    <!-- Khung diện tích áp dụng — chỉ hiện khi PER_M2 -->
+                    <div class="col-12" id="areaRangeGroup" style="display:none">
+                        <div class="alert alert-light border py-2 mb-0">
+                            <small class="fw-semibold">
+                                <i class="fas fa-ruler-combined me-1 text-info"></i>
+                                Giới hạn diện tích áp dụng
+                                <span class="text-muted fw-normal">(để trống = không giới hạn)</span>
+                            </small>
+                            <div class="row g-2 mt-1">
+                                <div class="col-6">
+                                    <label class="form-label small mb-1">Diện tích tối thiểu (m²)</label>
+                                    <input type="number" class="form-control form-control-sm"
+                                           id="feeFormMinArea" min="0" step="0.5" placeholder="VD: 50">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-1">Diện tích tối đa (m²)</label>
+                                    <input type="number" class="form-control form-control-sm"
+                                           id="feeFormMaxArea" min="0" step="0.5" placeholder="VD: 100">
+                                </div>
+                            </div>
+                            <div class="text-muted mt-1" style="font-size:.75rem;">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Hóa đơn chỉ áp dụng mẫu phí này cho căn hộ có diện tích nằm trong khoảng trên.
+                            </div>
                         </div>
                     </div>
 
@@ -838,7 +867,7 @@
     function renderFeeTable(list) {
         const tbody = document.getElementById('feeTableBody');
         if (!list.length) {
-            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-muted">
+            tbody.innerHTML = `<tr><td colspan="10" class="text-center py-5 text-muted">
                 <i class="fas fa-money-bill-wave fa-2x mb-2 d-block opacity-25"></i>
                 Chưa có mẫu phí nào. <a href="#" onclick="openCreateFee()">Thêm mẫu phí →</a>
             </td></tr>`;
@@ -855,6 +884,11 @@
                 </td>
                 <td class="text-end fw-semibold">${fmtVND(f.amount)}</td>
                 <td><small class="text-muted">${f.unitLabel}</small></td>
+                <td>
+                    ${f.areaRange
+                        ? `<small class="text-info"><i class="fas fa-ruler-combined me-1"></i>${f.areaRange}</small>`
+                        : '<small class="text-muted">—</small>'}
+                </td>
                 <td><small>${f.effectiveFrom||'—'}</small></td>
                 <td><small>${f.effectiveTo||'Vô thời hạn'}</small></td>
                 <td>
@@ -888,6 +922,8 @@
         document.getElementById('feeFormAmount').value   = '';
         document.getElementById('feeFormEffFrom').value  = new Date().toISOString().split('T')[0];
         document.getElementById('feeFormEffTo').value    = '';
+        document.getElementById('feeFormMinArea').value  = '';
+        document.getElementById('feeFormMaxArea').value  = '';
         document.getElementById('feeAlert').innerHTML    = '';
         document.getElementById('feeFormHasElevator').checked = true;
         onFeeTypeChange(); onFeeUnitChange();
@@ -919,6 +955,8 @@
             document.getElementById('feeFormAmount').value   = f.amount;
             document.getElementById('feeFormEffFrom').value  = f.effectiveFrom || '';
             document.getElementById('feeFormEffTo').value    = f.effectiveTo || '';
+            document.getElementById('feeFormMinArea').value  = f.minArea != null ? f.minArea : '';
+            document.getElementById('feeFormMaxArea').value  = f.maxArea != null ? f.maxArea : '';
             onFeeTypeChange(); onFeeUnitChange();
             new bootstrap.Modal('#feeModal').show();
         } catch(e) { alert('Lỗi: ' + e.message); }
@@ -945,7 +983,9 @@
         btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang lưu...';
 
         const payload = { buildingId, name, type, unit, amount, effectiveFrom: effFrom,
-            effectiveTo: effTo || null, hasElevator };
+            effectiveTo: effTo || null, hasElevator,
+            minArea: document.getElementById('feeFormMinArea').value || null,
+            maxArea: document.getElementById('feeFormMaxArea').value || null };
 
         try {
             let res;
@@ -994,11 +1034,19 @@
     function onFeeUnitChange() {
         const type = document.getElementById('feeFormType').value;
         const unit = document.getElementById('feeFormUnit').value;
-        const elevator = document.getElementById('elevatorGroup');
-        const hint     = document.getElementById('feeRangeHint');
+        const elevator     = document.getElementById('elevatorGroup');
+        const areaRange    = document.getElementById('areaRangeGroup');
+        const hint         = document.getElementById('feeRangeHint');
 
         const showElevator = type === 'SERVICE' && unit === 'PER_M2';
-        elevator.style.display = showElevator ? '' : 'none';
+        elevator.style.display  = showElevator ? '' : 'none';
+        areaRange.style.display = unit === 'PER_M2' ? '' : 'none';
+
+        if (!showElevator) {
+            // Không phải PER_M2 → clear area range
+            document.getElementById('feeFormMinArea').value = '';
+            document.getElementById('feeFormMaxArea').value = '';
+        }
 
         if (type === 'SERVICE' && unit === 'PER_M2') {
             const hasElevator = document.getElementById('feeFormHasElevator').checked;
@@ -1100,6 +1148,8 @@
             document.getElementById('feeFormHasElevator').checked = hasElevator;
             document.getElementById('feeFormEffFrom').value  = new Date().toISOString().split('T')[0];
             document.getElementById('feeFormEffTo').value    = '';
+            document.getElementById('feeFormMinArea').value  = '';
+            document.getElementById('feeFormMaxArea').value  = '';
             document.getElementById('feeAlert').innerHTML    = '';
             onFeeTypeChange(); onFeeUnitChange();
             new bootstrap.Modal('#feeModal').show();

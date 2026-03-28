@@ -292,6 +292,16 @@ public class ApartmentService {
         ft.setStatus(FeeTemplate.FeeStatus.ACTIVE);
         ft.setCreatedBy(staff);
 
+        // minArea / maxArea — chỉ có ý nghĩa với PER_M2, để NULL với các loại khác
+        if (FeeTemplate.FeeUnit.PER_M2.name().equals(unit)) {
+            String minAreaStr = body.get("minArea") != null ? body.get("minArea").toString() : null;
+            String maxAreaStr = body.get("maxArea") != null ? body.get("maxArea").toString() : null;
+            ft.setMinArea(minAreaStr != null && !minAreaStr.isBlank()
+                    ? new BigDecimal(minAreaStr) : null);
+            ft.setMaxArea(maxAreaStr != null && !maxAreaStr.isBlank()
+                    ? new BigDecimal(maxAreaStr) : null);
+        }
+
         feeTemplateRepo.save(ft);
         logger.info("Created fee template {} for building {}", ft.getId(), buildingId);
         return mapFeeTemplate(ft);
@@ -329,6 +339,22 @@ public class ApartmentService {
 
         if (body.containsKey("status") && body.get("status") != null)
             ft.setStatus(FeeTemplate.FeeStatus.valueOf(body.get("status").toString()));
+
+        // Cập nhật minArea / maxArea (chỉ áp dụng khi unit là PER_M2)
+        if (ft.getUnit() == FeeTemplate.FeeUnit.PER_M2) {
+            if (body.containsKey("minArea")) {
+                String v = body.get("minArea") != null ? body.get("minArea").toString() : null;
+                ft.setMinArea(v != null && !v.isBlank() ? new BigDecimal(v) : null);
+            }
+            if (body.containsKey("maxArea")) {
+                String v = body.get("maxArea") != null ? body.get("maxArea").toString() : null;
+                ft.setMaxArea(v != null && !v.isBlank() ? new BigDecimal(v) : null);
+            }
+        } else {
+            // Không phải PER_M2 → clear về null
+            ft.setMinArea(null);
+            ft.setMaxArea(null);
+        }
 
         feeTemplateRepo.save(ft);
         logger.info("Updated fee template: {}", id);
@@ -485,6 +511,17 @@ public class ApartmentService {
         m.put("effectiveTo",   ft.getEffectiveTo());
         m.put("status",        ft.getStatus().name());
         m.put("statusLabel",   ft.getStatus() == FeeTemplate.FeeStatus.ACTIVE ? "Đang áp dụng" : "Không hoạt động");
+        m.put("minArea",       ft.getMinArea());
+        m.put("maxArea",       ft.getMaxArea());
+        // Mô tả khung diện tích cho UI
+        if (ft.getUnit() == FeeTemplate.FeeUnit.PER_M2
+                && (ft.getMinArea() != null || ft.getMaxArea() != null)) {
+            String areaRange = (ft.getMinArea() != null ? ft.getMinArea() + " m²" : "0 m²")
+                    + " – " + (ft.getMaxArea() != null ? ft.getMaxArea() + " m²" : "không giới hạn");
+            m.put("areaRange", areaRange);
+        } else {
+            m.put("areaRange", null);
+        }
         if (ft.getBuilding() != null) {
             m.put("buildingId",   ft.getBuilding().getId());
             m.put("buildingName", ft.getBuilding().getName());

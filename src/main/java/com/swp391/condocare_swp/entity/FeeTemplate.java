@@ -62,6 +62,12 @@ public class FeeTemplate {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "min_area")
+    private BigDecimal minArea; // null = không giới hạn dưới
+
+    @Column(name = "max_area")
+    private BigDecimal maxArea; // null = không giới hạn trên
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -177,15 +178,15 @@ public class ResidentDashboardService {
 
     private Map<String, Object> mapInvoice(Invoice inv) {
         Map<String, Object> m = new LinkedHashMap<>();
-        m.put("id",          inv.getId());
-        m.put("month",       inv.getMonth());
-        m.put("year",        inv.getYear());
-        m.put("totalAmount", inv.getTotalAmount() != null ? inv.getTotalAmount() : BigDecimal.ZERO);
-        m.put("status",      inv.getStatus().name());
-        m.put("issuedAt",    inv.getIssuedAt()  != null ? inv.getIssuedAt().toString()  : null);
-        m.put("dueDate",     inv.getDueDate()   != null ? inv.getDueDate().toString()   : null);
-        m.put("paidAt",      inv.getPaidAt()    != null ? inv.getPaidAt().toString()    : null);
-        m.put("createdBy",   inv.getCreatedBy() != null ? inv.getCreatedBy().getFullName() : "Hệ thống");
+        m.put("id",        inv.getId());
+        m.put("month",     inv.getMonth());
+        m.put("year",      inv.getYear());
+        m.put("totalAmt",  inv.getTotalAmount() != null ? inv.getTotalAmount() : BigDecimal.ZERO);
+        m.put("status",    inv.getStatus().name());
+        m.put("issuedAt",  inv.getIssuedAt()  != null ? inv.getIssuedAt().toString()  : null);
+        m.put("dueDate",   inv.getDueDate()   != null ? inv.getDueDate().toString()   : null);
+        m.put("paidAt",    inv.getPaidAt()    != null ? inv.getPaidAt().toString()    : null);
+        m.put("createdBy", inv.getCreatedBy() != null ? inv.getCreatedBy().getFullName() : "Hệ thống");
 
         // Chi tiết từng dòng phí (thay cho electricAmount/waterAmount cũ)
         List<InvoiceFeeDetail> details = detailRepo.findByInvoiceId(inv.getId());
@@ -209,8 +210,8 @@ public class ResidentDashboardService {
                 .filter(d -> d.getFeeType() == FeeTemplate.FeeType.PARKING)
                 .map(InvoiceFeeDetail::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        m.put("serviceAmount", serviceTotal);
-        m.put("parkingAmount", parkingTotal);
+        m.put("serviceTotal", serviceTotal);
+        m.put("parkingTotal", parkingTotal);
 
         return m;
     }
@@ -400,6 +401,83 @@ public class ResidentDashboardService {
         invoice.setPaidAt(LocalDateTime.now());
         invoiceRepo.save(invoice);
         return "Thanh toán thành công!";
+    }
+
+    // ─── VEHICLE REGISTRATION ─────────────────────────────────────────────────
+
+    /**
+     * Cư dân đăng ký gửi xe mới.
+     * Vehicle được tạo với pending_status = PENDING, chờ BQL duyệt.
+     *
+     * @param body Map chứa: type, licensePlate?, brand?, model?, color?, durationType
+     */
+    @Transactional
+    public String registerVehicle(Map<String, String> body) {
+        Residents r = currentResident();
+
+        if (r.getApartment() == null)
+            throw new IllegalArgumentException("Bạn chưa được gán căn hộ. Không thể đăng ký gửi xe.");
+
+        // Validate type
+        String typeStr = body.get("type");
+        if (typeStr == null || typeStr.isBlank())
+            throw new IllegalArgumentException("Vui lòng chọn loại xe.");
+        Vehicle.VehicleType type;
+        try {
+            type = Vehicle.VehicleType.valueOf(typeStr.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Loại xe không hợp lệ: " + typeStr);
+        }
+
+        // Validate durationType
+        String durationStr = body.getOrDefault("durationType", "MONTHLY");
+        Vehicle.DurationType durationType;
+        try {
+            durationType = Vehicle.DurationType.valueOf(durationStr.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Thời hạn đăng ký không hợp lệ: " + durationStr);
+        }
+
+        // Kiểm tra biển số trùng (nếu có)
+        String licensePlate = body.get("licensePlate");
+        if (licensePlate != null && !licensePlate.isBlank()) {
+            licensePlate = licensePlate.trim().toUpperCase();
+            if (vehicleRepo.existsByLicensePlate(licensePlate))
+                throw new IllegalArgumentException(
+                        "Biển số " + licensePlate + " đã được đăng ký trong hệ thống.");
+        } else {
+            licensePlate = null; // xe đạp không cần biển
+        }
+
+        // Sinh Vehicle ID
+        String vehicleId = generateVehicleId();
+
+        Vehicle v = new Vehicle();
+        v.setId(vehicleId);
+        v.setType(type);
+        v.setLicensePlate(licensePlate);
+        v.setBrand(body.get("brand") != null ? body.get("brand").trim() : null);
+        v.setModel(body.get("model") != null ? body.get("model").trim() : null);
+        v.setColor(body.get("color") != null ? body.get("color").trim() : null);
+        v.setResident(r.getId());
+        v.setApartment(r.getApartment().getId());
+        v.setDurationType(durationType);
+        v.setPendingStatus(Vehicle.PendingStatus.PENDING);
+        v.setStatus(Vehicle.VehicleStatus.ACTIVE);
+
+        vehicleRepo.save(v);
+        logger.info("Vehicle registration submitted — id={}, type={}, plate={}, residentId={}",
+                vehicleId, type, licensePlate, r.getId());
+
+        return "Đăng ký gửi xe thành công! Vui lòng chờ Ban quản lý xem xét và phê duyệt.";
+    }
+
+    private synchronized String generateVehicleId() {
+        for (int i = 1; i <= 99999; i++) {
+            String id = "VH" + String.format("%06d", i);
+            if (!vehicleRepo.existsById(id)) return id;
+        }
+        return "VH" + System.currentTimeMillis() % 10000000L;
     }
 
     // ─── PRIVATE HELPERS ──────────────────────────────────────────────────────

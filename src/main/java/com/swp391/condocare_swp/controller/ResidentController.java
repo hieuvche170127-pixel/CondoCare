@@ -191,4 +191,32 @@ public class ResidentController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    /**
+     * POST /api/resident/vehicles
+     * Resident đăng ký gửi xe mới — tạo bản ghi với pending_status = PENDING.
+     * Body JSON: {
+     *   "type": "MOTORBIKE|CAR|BICYCLE|ELECTRIC_BIKE|OTHER",
+     *   "licensePlate": "29B1-12345",   // optional
+     *   "brand": "Honda",               // optional
+     *   "model": "Wave",                // optional
+     *   "color": "Đen",                 // optional
+     *   "durationType": "MONTHLY|QUARTERLY|YEARLY"
+     * }
+     */
+    @PostMapping("/vehicles")
+    public ResponseEntity<?> registerVehicle(@RequestBody Map<String, String> body) {
+        logger.info("POST /api/resident/vehicles — body: {}", body);
+        try {
+            String msg = service.registerVehicle(body);
+            return ResponseEntity.ok(msg);
+        } catch (IllegalArgumentException e) {
+            logger.warn("Validation error registering vehicle: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            logger.error("Unexpected error registering vehicle", e);
+            return ResponseEntity.internalServerError()
+                    .body("Lỗi server: " + e.getMessage());
+        }
+    }
 }

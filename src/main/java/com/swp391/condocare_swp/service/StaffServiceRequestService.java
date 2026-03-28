@@ -25,7 +25,7 @@ public class StaffServiceRequestService {
     @Autowired private ServiceRequestRepository srRepo;
     @Autowired private StaffRepository          staffRepo;
     @Autowired private NotificationService      notificationService;
-    @Autowired private EmailService             emailService;   // ← THÊM MỚI
+    @Autowired private EmailService             emailService;
 
     // ─── HELPER ───────────────────────────────────────────────────────────────
 
@@ -93,10 +93,6 @@ public class StaffServiceRequestService {
 
     // ─── ACTIONS ──────────────────────────────────────────────────────────────
 
-    /**
-     * Phân công nhân viên và chuyển PENDING → IN_PROGRESS.
-     * Resident nhận thông báo hệ thống ngay khi được giao.
-     */
     @Transactional
     public Map<String, Object> assignAndStart(String requestId, String assigneeId, String note) {
         ServiceRequest sr = findById(requestId);
@@ -117,17 +113,12 @@ public class StaffServiceRequestService {
 
         if (sr.getResident() != null) {
             notificationService.sendRequestStatusNotification(
-                    sr.getResident(), requestId, sr.getTitle(),
-                    "IN_PROGRESS", note, assignee);
+                    sr.getResident(), requestId, sr.getTitle(), "IN_PROGRESS", note, assignee);
         }
 
         return toMap(sr);
     }
 
-    /**
-     * Từ chối yêu cầu.
-     * Resident nhận thông báo kèm lý do từ chối.
-     */
     @Transactional
     public Map<String, Object> reject(String requestId, String rejectReason) {
         if (rejectReason == null || rejectReason.isBlank())
@@ -148,16 +139,12 @@ public class StaffServiceRequestService {
 
         if (sr.getResident() != null) {
             notificationService.sendRequestStatusNotification(
-                    sr.getResident(), requestId, sr.getTitle(),
-                    "REJECTED", rejectReason, staff);
+                    sr.getResident(), requestId, sr.getTitle(), "REJECTED", rejectReason, staff);
         }
 
         return toMap(sr);
     }
 
-    /**
-     * Cập nhật ghi chú trong khi xử lý.
-     */
     @Transactional
     public Map<String, Object> updateNote(String requestId, String note) {
         ServiceRequest sr = findById(requestId);
@@ -166,21 +153,12 @@ public class StaffServiceRequestService {
         return toMap(sr);
     }
 
-    /**
-     * Hoàn thành yêu cầu — Staff upload ảnh xác nhận.
-     *
-     * Sau khi lưu DB:
-     *   1. Gửi thông báo trong hệ thống (NotificationService) — như cũ.
-     *   2. *** GỬI EMAIL cho cư dân nếu có địa chỉ email. ***
-     *
-     * Email bị lỗi sẽ chỉ log WARNING, KHÔNG rollback transaction.
-     */
     @Transactional
     public Map<String, Object> markDone(String requestId, String completionImage, String note) {
         ServiceRequest sr = findById(requestId);
 
         if (sr.getStatus() != ServiceRequest.RequestStatus.IN_PROGRESS)
-            throw new RuntimeException("Chỉ có thể hoàn thành yêu cầu IN_PROGRESS. Trạng thái hiện tại: " + sr.getStatus());
+            throw new RuntimeException("Chỉ có thể hoàn thành yêu cầu IN_PROGRESS. Trạng thái: " + sr.getStatus());
 
         if (completionImage == null || completionImage.isBlank())
             throw new IllegalArgumentException("Phải upload ảnh xác nhận hoàn thành");
@@ -199,37 +177,21 @@ public class StaffServiceRequestService {
 
         logger.info("SR [{}] marked DONE by [{}]", requestId, staff.getUsername());
 
-        // 1. Thông báo trong hệ thống (giữ nguyên)
         if (sr.getResident() != null) {
             notificationService.sendRequestStatusNotification(
-                    sr.getResident(), requestId, sr.getTitle(),
-                    "DONE", note, staff);
-        }
+                    sr.getResident(), requestId, sr.getTitle(), "DONE", note, staff);
 
-        // 2. ── GỬI EMAIL ──────────────────────────────────────────────────────
-        if (sr.getResident() != null) {
             String residentEmail = sr.getResident().getEmail();
             if (residentEmail != null && !residentEmail.isBlank()) {
                 emailService.sendServiceRequestDoneEmail(
-                        residentEmail,
-                        sr.getResident().getFullName(),
-                        requestId,
-                        sr.getTitle(),
-                        staff.getFullName(),
-                        sr.getNote()          // note đã được set ở trên (có thể null)
-                );
-            } else {
-                logger.debug("SR [{}] — resident has no email, skipping done notification email", requestId);
+                        residentEmail, sr.getResident().getFullName(),
+                        requestId, sr.getTitle(), staff.getFullName(), sr.getNote());
             }
         }
-        // ─────────────────────────────────────────────────────────────────────
 
         return toMap(sr);
     }
 
-    /**
-     * Danh sách nhân viên có thể được phân công (cho dropdown).
-     */
     public List<Map<String, Object>> getAssignableStaff() {
         return staffRepo.findAll().stream()
                 .filter(s -> s.getStatus() == Staff.StaffStatus.ACTIVE)
@@ -247,7 +209,40 @@ public class StaffServiceRequestService {
                 .toList();
     }
 
-    // ─── HELPERS ──────────────────────────────────────────────────────────────
+    // ─── HELPER CHO TECHNICIAN (được gọi từ StaffServiceRequestController) ────
+
+    /**
+     * Trả về staffId từ username.
+     * Controller dùng để lấy ID của TECHNICIAN đang đăng nhập
+     * rồi truyền vào listRequests() như filter assignedToId.
+     */
+    public String getStaffIdByUsername(String username) {
+        return staffRepo.findByUsername(username)
+                .map(Staff::getId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên: " + username));
+    }
+
+    /**
+     * Kiểm tra yêu cầu có được phân công cho staffId không.
+     * Ném RuntimeException nếu không đúng —
+     * TECHNICIAN chỉ được thao tác trên yêu cầu của mình.
+     *
+     * BUG ĐÃ SỬA: dùng srRepo.findById() thay vì ServiceRequestRepository.findById()
+     * (không thể gọi static method trên interface).
+     */
+    public void assertAssignedTo(String requestId, String staffId) {
+        // ✅ ĐÚNG: dùng instance srRepo, không phải class ServiceRequestRepository
+        ServiceRequest req = srRepo.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy yêu cầu: " + requestId));
+
+        if (req.getAssignedTo() == null || !req.getAssignedTo().getId().equals(staffId)) {
+            throw new RuntimeException(
+                    "Bạn không có quyền truy cập yêu cầu này " +
+                            "(chỉ được xem yêu cầu được phân công cho bạn).");
+        }
+    }
+
+    // ─── PRIVATE ──────────────────────────────────────────────────────────────
 
     private ServiceRequest findById(String id) {
         return srRepo.findById(id)
@@ -293,30 +288,6 @@ public class StaffServiceRequestService {
             m.put("assignedToName", null);
         }
         return m;
-    }
-
-
-    /**
-     * Trả về staffId từ username (dùng cho TECHNICIAN filter).
-     */
-    public String getStaffIdByUsername(String username) {
-        return staffRepo.findByUsername(username)
-                .map(s -> s.getId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên: " + username));
-    }
-
-    /**
-     * Kiểm tra yêu cầu có được phân công cho staffId không.
-     * Ném exception nếu không — TECHNICIAN không được xem/sửa yêu cầu người khác.
-     */
-    public void assertAssignedTo(String requestId, String staffId) {
-        ServiceRequest req = ServiceRequestRepository.findById(requestId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy yêu cầu: " + requestId));
-
-        if (req.getAssignedTo() == null || !req.getAssignedTo().getId().equals(staffId)) {
-            throw new RuntimeException("Bạn không có quyền truy cập yêu cầu này " +
-                    "(chỉ được xem yêu cầu được phân công cho bạn).");
-        }
     }
 
     private Map<String, Object> toMapFull(ServiceRequest sr) {

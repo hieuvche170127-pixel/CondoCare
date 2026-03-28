@@ -20,16 +20,19 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * InvoiceManagementService — Mô hình B
- * Hóa đơn chỉ gồm: Phí quản lý (SERVICE) + Phí gửi xe (PARKING).
- * Điện / nước do EVN thu trực tiếp — KHÔNG quản lý ở đây.
+ * InvoiceManagementService — Mô hình B, phí theo khung diện tích.
  *
- * Luồng tạo hóa đơn:
- *   1. Staff chọn căn hộ + tháng/năm
- *   2. Hệ thống tự động tính phí dựa trên FeeTemplate ACTIVE của tòa nhà
- *      và số xe APPROVED của căn hộ đó trong tháng
- *   3. Snapshot từng dòng phí vào invoice_fee_detail
- *   4. Tổng tiền = tổng các dòng detail
+ * Logic lọc FeeTemplate áp dụng cho 1 căn hộ:
+ *   - PARKING / PER_APT / FIXED  : luôn áp dụng (min_area / max_area bỏ qua)
+ *   - PER_M2 (phí quản lý)       : chỉ áp dụng khi diện tích căn hộ
+ *                                  nằm trong [min_area, max_area]
+ *                                  (NULL = không giới hạn phía đó)
+ *
+ * Ví dụ 3 khung tòa A:
+ *   FT001 Phí QLVH ≤50m²     min=NULL max=50    → áp dụng cho căn ≤ 50 m²
+ *   FT002 Phí QLVH 51–100m²  min=50.01 max=100  → áp dụng cho 50.01 ≤ area ≤ 100
+ *   FT003 Phí QLVH >100m²    min=100.01 max=NULL→ áp dụng cho area > 100
+ * Mỗi căn hộ chỉ khớp đúng 1 trong 3 — không bị tính chồng.
  */
 @Service
 public class InvoiceManagementService {
@@ -82,9 +85,7 @@ public class InvoiceManagementService {
                 String aptNum  = i.getApartment() != null ? i.getApartment().getNumber().toLowerCase() : "";
                 String bldName = (i.getApartment() != null && i.getApartment().getBuilding() != null)
                         ? i.getApartment().getBuilding().getName().toLowerCase() : "";
-                return i.getId().toLowerCase().contains(kw)
-                        || aptNum.contains(kw)
-                        || bldName.contains(kw);
+                return i.getId().toLowerCase().contains(kw) || aptNum.contains(kw) || bldName.contains(kw);
             }).toList();
         }
 
@@ -103,14 +104,8 @@ public class InvoiceManagementService {
         return mapToDetailResponse(inv);
     }
 
-    // ─── TẠO HÓA ĐƠN TỰ ĐỘNG ─────────────────────────────────────────────────
+    // ─── TẠO HÓA ĐƠN ─────────────────────────────────────────────────────────
 
-    /**
-     * Tạo hóa đơn cho 1 căn hộ theo tháng/năm.
-     * Tự động tính:
-     *   - Phí quản lý = FeeTemplate (SERVICE, PER_M2) × diện tích căn hộ
-     *   - Phí gửi xe  = FeeTemplate (PARKING, FIXED) × số xe APPROVED của căn hộ (từng loại)
-     */
     @Transactional
     public Map<String, Object> createInvoice(InvoiceCreateRequest req) {
         Apartment apt = apartmentRepo.findById(req.getApartmentId())
@@ -123,7 +118,6 @@ public class InvoiceManagementService {
         String buildingId = apt.getBuilding().getId();
         Staff creator     = getCurrentStaff();
 
-        // Lấy tất cả FeeTemplate ACTIVE của tòa nhà
         List<FeeTemplate> activeTemplates =
                 feeTemplateRepo.findByBuildingIdAndStatus(buildingId, FeeTemplate.FeeStatus.ACTIVE);
 
@@ -131,15 +125,17 @@ public class InvoiceManagementService {
         BigDecimal totalAmount = BigDecimal.ZERO;
 
         for (FeeTemplate ft : activeTemplates) {
+
+            // ── FIX: Lọc theo khung diện tích ──────────────────────────────
+            if (!isApplicableToArea(ft, apt.getArea())) continue;
+
             if (ft.getType() == FeeTemplate.FeeType.SERVICE) {
-                // ── Phí quản lý ───────────────────────────────────────────────
                 BigDecimal qty    = calcServiceQty(ft, apt);
                 BigDecimal amount = ft.getAmount().multiply(qty);
                 details.add(buildDetail(ft, qty, amount));
                 totalAmount = totalAmount.add(amount);
 
             } else if (ft.getType() == FeeTemplate.FeeType.PARKING) {
-                // ── Phí gửi xe: đếm số xe APPROVED khớp loại ─────────────────
                 long vehicleCount = countApprovedVehicles(apt.getId(), ft);
                 if (vehicleCount > 0) {
                     BigDecimal qty    = BigDecimal.valueOf(vehicleCount);
@@ -152,10 +148,9 @@ public class InvoiceManagementService {
 
         if (details.isEmpty())
             throw new RuntimeException(
-                    "Không tìm thấy mẫu phí ACTIVE nào cho tòa nhà này. " +
-                            "Vui lòng cấu hình FeeTemplate trước.");
+                    "Không tìm thấy mẫu phí ACTIVE nào áp dụng được cho căn hộ này. " +
+                            "Kiểm tra lại FeeTemplate (min_area/max_area).");
 
-        // Xác định ngày đến hạn = ngày 15 tháng sau
         int dueMonth = req.getMonth() == 12 ? 1 : req.getMonth() + 1;
         int dueYear  = req.getMonth() == 12 ? req.getYear() + 1 : req.getYear();
 
@@ -169,29 +164,23 @@ public class InvoiceManagementService {
         invoice.setIssuedAt(LocalDateTime.now());
         invoice.setDueDate(LocalDate.of(dueYear, dueMonth, 15));
         invoice.setCreatedBy(creator);
-
         invoiceRepo.save(invoice);
 
-        // Lưu từng dòng detail với FK → invoice vừa tạo
         for (InvoiceFeeDetail d : details) {
             d.setId(generateDetailId());
             d.setInvoice(invoice);
             detailRepo.save(d);
         }
 
-        logger.info("Created invoice {} for apt {} ({}/{}) — total: {} — {} fee lines",
+        logger.info("Created invoice {} — apt {} ({}/{}) — total: {} — {} lines",
                 invoice.getId(), apt.getNumber(), req.getMonth(), req.getYear(),
                 totalAmount, details.size());
 
         return mapToDetailResponse(invoice);
     }
 
-    // ─── XEM PHÍ DỰ TÍNH (preview trước khi tạo) ─────────────────────────────
+    // ─── PREVIEW ──────────────────────────────────────────────────────────────
 
-    /**
-     * GET /api/invoice-management/preview?apartmentId=&month=&year=
-     * Trả về chi tiết phí dự tính — dùng để Staff xem trước trước khi bấm "Tạo hóa đơn".
-     */
     public Map<String, Object> previewInvoice(String apartmentId, Integer month, Integer year) {
         Apartment apt = apartmentRepo.findById(apartmentId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy căn hộ: " + apartmentId));
@@ -206,9 +195,13 @@ public class InvoiceManagementService {
         BigDecimal total = BigDecimal.ZERO;
 
         for (FeeTemplate ft : activeTemplates) {
+
+            // ── FIX: Lọc theo khung diện tích ──────────────────────────────
+            if (!isApplicableToArea(ft, apt.getArea())) continue;
+
             Map<String, Object> line = new LinkedHashMap<>();
-            line.put("feeName",   ft.getName());
-            line.put("feeType",   ft.getType().name());
+            line.put("feeName",    ft.getName());
+            line.put("feeType",    ft.getType().name());
             line.put("unitAmount", ft.getAmount());
 
             BigDecimal qty;
@@ -220,6 +213,7 @@ public class InvoiceManagementService {
                 long cnt = countApprovedVehicles(apt.getId(), ft);
                 qty = BigDecimal.valueOf(cnt);
                 line.put("qtyNote", cnt + " xe");
+                if (cnt == 0) continue; // Bỏ qua dòng phí gửi xe = 0
             }
 
             BigDecimal amount = ft.getAmount().multiply(qty);
@@ -232,6 +226,7 @@ public class InvoiceManagementService {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("apartmentId",     apt.getId());
         result.put("apartmentNumber", apt.getNumber());
+        result.put("area",            apt.getArea());
         result.put("month",           month);
         result.put("year",            year);
         result.put("alreadyExists",   exists);
@@ -254,7 +249,7 @@ public class InvoiceManagementService {
         return mapToResponse(invoice);
     }
 
-    // ─── XÓA HÓA ĐƠN ─────────────────────────────────────────────────────────
+    // ─── XÓA ──────────────────────────────────────────────────────────────────
 
     @Transactional
     public String deleteInvoice(String id) {
@@ -262,22 +257,24 @@ public class InvoiceManagementService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn: " + id));
         if (invoice.getStatus() == Invoice.InvoiceStatus.PAID)
             throw new RuntimeException("Không thể xóa hóa đơn đã thanh toán!");
-        invoiceRepo.delete(invoice); // cascade xóa fee_details
+        invoiceRepo.delete(invoice);
         logger.info("Deleted invoice: {}", id);
         return "Đã xóa hóa đơn thành công!";
     }
 
-    // ─── LẤY DANH SÁCH FEE TEMPLATE (dùng cho dropdown UI) ───────────────────
+    // ─── FEE TEMPLATE (dropdown) ──────────────────────────────────────────────
 
     public List<Map<String, Object>> getActiveFeesForBuilding(String buildingId) {
         return feeTemplateRepo.findByBuildingIdAndStatus(buildingId, FeeTemplate.FeeStatus.ACTIVE)
                 .stream().map(ft -> {
                     Map<String, Object> m = new LinkedHashMap<>();
-                    m.put("id",     ft.getId());
-                    m.put("name",   ft.getName());
-                    m.put("type",   ft.getType().name());
-                    m.put("amount", ft.getAmount());
-                    m.put("unit",   ft.getUnit().name());
+                    m.put("id",      ft.getId());
+                    m.put("name",    ft.getName());
+                    m.put("type",    ft.getType().name());
+                    m.put("amount",  ft.getAmount());
+                    m.put("unit",    ft.getUnit().name());
+                    m.put("minArea", ft.getMinArea());
+                    m.put("maxArea", ft.getMaxArea());
                     return m;
                 }).toList();
     }
@@ -285,10 +282,29 @@ public class InvoiceManagementService {
     // ─── PRIVATE HELPERS ──────────────────────────────────────────────────────
 
     /**
-     * Tính quantity cho phí SERVICE:
-     *   PER_M2 → diện tích căn hộ
-     *   PER_APT / FIXED → 1
+     * Kiểm tra FeeTemplate có áp dụng được cho diện tích căn hộ không.
+     *
+     * Quy tắc:
+     *  - Nếu unit KHÔNG phải PER_M2 (là PER_APT hoặc FIXED) → luôn áp dụng.
+     *  - Nếu unit là PER_M2 → kiểm tra area nằm trong [min_area, max_area].
+     *    NULL ở min_area  = không giới hạn dưới (≤ max_area là đủ).
+     *    NULL ở max_area  = không giới hạn trên (≥ min_area là đủ).
+     *    Cả hai NULL      = áp dụng cho mọi diện tích.
      */
+    private boolean isApplicableToArea(FeeTemplate ft, BigDecimal area) {
+        // Phí không tính theo m² → không cần lọc diện tích
+        if (ft.getUnit() != FeeTemplate.FeeUnit.PER_M2) return true;
+        // Không có diện tích → cho qua (tránh NPE, sẽ xử lý ở calcServiceQty)
+        if (area == null) return true;
+
+        boolean aboveMin = ft.getMinArea() == null
+                || area.compareTo(ft.getMinArea()) >= 0;
+        boolean belowMax = ft.getMaxArea() == null
+                || area.compareTo(ft.getMaxArea()) <= 0;
+
+        return aboveMin && belowMax;
+    }
+
     private BigDecimal calcServiceQty(FeeTemplate ft, Apartment apt) {
         if (ft.getUnit() == FeeTemplate.FeeUnit.PER_M2 && apt.getArea() != null)
             return apt.getArea();
@@ -296,12 +312,12 @@ public class InvoiceManagementService {
     }
 
     /**
-     * Đếm số xe APPROVED + ACTIVE của căn hộ.
-     * Logic khớp loại xe với FeeTemplate:
-     *   FeeTemplate name chứa "xe máy" / "motorbike" → MOTORBIKE
-     *   FeeTemplate name chứa "ô tô" / "car"         → CAR
-     *   FeeTemplate name chứa "điện" / "electric"    → ELECTRIC_BIKE
-     *   Còn lại (PARKING chung)                       → tất cả xe
+     * Đếm xe APPROVED + ACTIVE, khớp loại xe với tên FeeTemplate:
+     *   "xe máy" / "motorbike"   → MOTORBIKE
+     *   "ô tô"  / "car"          → CAR
+     *   "điện"  / "electric"     → ELECTRIC_BIKE
+     *   "xe đạp" / "bicycle"     → BICYCLE
+     *   Còn lại                  → tất cả xe
      */
     private long countApprovedVehicles(String apartmentId, FeeTemplate ft) {
         List<Vehicle> vehicles = vehicleRepo.findByApartmentId(apartmentId)
@@ -310,24 +326,25 @@ public class InvoiceManagementService {
                         && v.getStatus() == Vehicle.VehicleStatus.ACTIVE)
                 .toList();
 
-        String nameLower = ft.getName().toLowerCase();
-        if (nameLower.contains("xe máy") || nameLower.contains("motorbike"))
+        String n = ft.getName().toLowerCase();
+        if (n.contains("xe máy") || n.contains("motorbike"))
             return vehicles.stream().filter(v -> v.getType() == Vehicle.VehicleType.MOTORBIKE).count();
-        if (nameLower.contains("ô tô") || nameLower.contains("car"))
+        if (n.contains("ô tô") || n.contains("car"))
             return vehicles.stream().filter(v -> v.getType() == Vehicle.VehicleType.CAR).count();
-        if (nameLower.contains("điện") || nameLower.contains("electric"))
+        if (n.contains("điện") || n.contains("electric"))
             return vehicles.stream().filter(v -> v.getType() == Vehicle.VehicleType.ELECTRIC_BIKE).count();
+        if (n.contains("xe đạp") || n.contains("bicycle"))
+            return vehicles.stream().filter(v -> v.getType() == Vehicle.VehicleType.BICYCLE).count();
 
-        // Parking chung → tất cả xe
         return vehicles.size();
     }
 
     private InvoiceFeeDetail buildDetail(FeeTemplate ft, BigDecimal qty, BigDecimal amount) {
         InvoiceFeeDetail d = new InvoiceFeeDetail();
         d.setFeeTemplate(ft);
-        d.setFeeName(ft.getName());        // snapshot
+        d.setFeeName(ft.getName());
         d.setFeeType(ft.getType());
-        d.setUnitAmount(ft.getAmount());   // snapshot
+        d.setUnitAmount(ft.getAmount());
         d.setQuantity(qty);
         d.setAmount(amount);
         return d;
@@ -353,10 +370,8 @@ public class InvoiceManagementService {
 
     private Map<String, Object> mapToDetailResponse(Invoice i) {
         Map<String, Object> m = mapToResponse(i);
-
-        // Chi tiết từng dòng phí
         List<InvoiceFeeDetail> details = detailRepo.findByInvoiceId(i.getId());
-        List<Map<String, Object>> feeLines = details.stream().map(d -> {
+        m.put("feeDetails", details.stream().map(d -> {
             Map<String, Object> line = new LinkedHashMap<>();
             line.put("id",         d.getId());
             line.put("feeName",    d.getFeeName());
@@ -365,16 +380,14 @@ public class InvoiceManagementService {
             line.put("quantity",   d.getQuantity());
             line.put("amount",     d.getAmount());
             return line;
-        }).toList();
-
-        m.put("feeDetails", feeLines);
+        }).toList());
         return m;
     }
 
     private Staff getCurrentStaff() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         return staffRepo.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin Staff đang đăng nhập."));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy Staff đang đăng nhập."));
     }
 
     private synchronized String generateInvoiceId() {
