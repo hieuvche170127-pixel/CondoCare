@@ -184,6 +184,147 @@ function generateLocalPassword(len = 12) {
     return p;
 }
 
+/* ─── Staff Sidebar — role-aware (dùng cho tất cả staff pages) ── */
+
+/**
+ * Định nghĩa menu sidebar theo từng role.
+ * Gọi renderStaffSidebar(activePage) trong inline script của mỗi trang staff.
+ *
+ * activePage: 'dashboard' | 'buildings' | 'apartments' | 'resident' |
+ *             'staff' | 'invoices' | 'service-requests'
+ *
+ * Role redirect mặc định (gọi khi trang không phù hợp):
+ *   TECHNICIAN  → /dashboard/service-requests
+ *   ACCOUNTANT  → /dashboard/invoices
+ *   RECEPTIONIST→ /dashboard/service-requests (hoặc resident)
+ */
+const _STAFF_MENU = [
+    {
+        key:   'dashboard',
+        href:  '/dashboard',
+        icon:  'fa-tachometer-alt',
+        label: 'Tổng quan',
+        // TECHNICIAN, ACCOUNTANT, RECEPTIONIST không thấy dashboard
+        roles: ['ADMIN', 'MANAGER'],
+    },
+    {
+        key:   'buildings',
+        href:  '/dashboard/buildings',
+        icon:  'fa-building',
+        label: 'Tòa nhà',
+        roles: ['ADMIN', 'MANAGER'],
+    },
+    {
+        key:   'apartments',
+        href:  '/dashboard/apartments',
+        icon:  'fa-home',
+        label: 'Căn hộ & Phí',
+        // ACCOUNTANT chỉ xem hóa đơn, không cần vào apartments
+        roles: ['ADMIN', 'MANAGER'],
+    },
+    {
+        key:   'resident',
+        href:  '/dashboard/resident',
+        icon:  'fa-users',
+        label: 'Quản lý cư dân',
+        // RECEPTIONIST không quản lý cư dân
+        roles: ['ADMIN', 'MANAGER'],
+    },
+    {
+        key:   'staff',
+        href:  '/dashboard/staff',
+        icon:  'fa-users-cog',
+        label: 'Quản lý nhân viên',
+        roles: ['ADMIN', 'MANAGER'],
+    },
+    {
+        key:   'invoices',
+        href:  '/dashboard/invoices',
+        icon:  'fa-receipt',
+        label: 'Hóa đơn',
+        // ACCOUNTANT chỉ thấy mục này
+        roles: ['ADMIN', 'MANAGER', 'ACCOUNTANT'],
+    },
+    {
+        key:   'service-requests',
+        href:  '/dashboard/service-requests',
+        icon:  'fa-tools',
+        label: 'Yêu cầu hỗ trợ',
+        // TECHNICIAN và RECEPTIONIST chỉ thấy mục này
+        roles: ['ADMIN', 'MANAGER', 'TECHNICIAN', 'RECEPTIONIST'],
+    },
+];
+
+/** Trang mặc định mỗi role được redirect về */
+const _ROLE_HOME = {
+    ADMIN:        '/dashboard',
+    MANAGER:      '/dashboard',
+    RECEPTIONIST: '/dashboard/service-requests',
+    ACCOUNTANT:   '/dashboard/invoices',
+    TECHNICIAN:   '/dashboard/service-requests',
+};
+
+/**
+ * Render sidebar staff theo role, và redirect nếu trang hiện tại
+ * không thuộc quyền của role đó.
+ *
+ * @param {string} activePage - key của trang hiện tại (xem _STAFF_MENU)
+ * @param {boolean} [redirectIfForbidden=true] - redirect nếu role không được phép xem trang này
+ */
+function renderStaffSidebar(activePage, redirectIfForbidden = true) {
+    const info = getUserInfo();
+    if (!info || info.userType !== 'staff') {
+        window.location.href = '/login';
+        return;
+    }
+
+    const role = (info.role || '').toUpperCase();
+
+    // ── Redirect nếu role không được phép vào trang này ──────────────────────
+    if (redirectIfForbidden) {
+        const pageItem = _STAFF_MENU.find(m => m.key === activePage);
+        if (pageItem && !pageItem.roles.includes(role)) {
+            const home = _ROLE_HOME[role] || '/dashboard';
+            window.location.href = home;
+            return;
+        }
+    }
+
+    // ── Cập nhật tên user trên sidebar ───────────────────────────────────────
+    const nameEl = document.getElementById('sidebarUser');
+    if (nameEl) nameEl.textContent = info.fullName || info.username || '';
+
+    // ── Render <ul> items theo role ──────────────────────────────────────────
+    const navEl = document.getElementById('sidebarNav');
+    if (!navEl) return;
+
+    const ul = navEl.querySelector('ul.nav.flex-column');
+    if (!ul) return;
+
+    const items = _STAFF_MENU
+        .filter(m => m.roles.includes(role))
+        .map(m => `
+            <li class="nav-item">
+                <a class="nav-link ${m.key === activePage ? 'active' : ''}"
+                   href="${m.href}" title="${m.label}">
+                    <i class="fas ${m.icon} me-2"></i>${m.label}
+                </a>
+            </li>`).join('');
+
+    ul.innerHTML = items + `
+        <li class="nav-item mt-4">
+            <a class="nav-link text-danger-emphasis" href="#" id="logoutBtn">
+                <i class="fas fa-sign-out-alt me-2"></i>Đăng xuất
+            </a>
+        </li>`;
+
+    // Re-bind logout (innerHTML xóa event listener cũ)
+    document.getElementById('logoutBtn')?.addEventListener('click', e => {
+        e.preventDefault();
+        if (confirm('Đăng xuất?')) logout();
+    });
+}
+
 /* ─── Debounce ───────────────────────────────────────────── */
 function debounce(func, wait) {
     let timeout;

@@ -1,28 +1,38 @@
-/* 
- * Main CSS cho Apartment Management System
- * Updated: Đồng bộ style giữa Staff và Resident Dashboard
+/*
+ * style.css — CondoCare Apartment Management System
+ * Unified layout: Staff (Bootstrap grid) + Resident (flexbox wrapper)
+ * Breakpoints:
+ *   Mobile  : < 768px    → sidebar ẩn, hamburger toggle
+ *   Tablet  : 768–1024px → sidebar icon-only (64px)
+ *   Desktop : > 1024px   → sidebar đầy đủ (260px), tỉ lệ ~3:7
  */
 
-/* ==================== GENERAL STYLES ==================== */
+/* ============================================================
+   1. CSS VARIABLES
+   ============================================================ */
 :root {
-    --primary-color: #1a237e;
-    --primary-gradient-start: #1a237e;
-    --primary-gradient-end: #3949ab;
-    --secondary-color: #858796;
-    --success-color: #1cc88a;
-    --danger-color: #e74a3b;
-    --warning-color: #f6c23e;
-    --info-color: #36b9cc;
-    --dark-color: #5a5c69;
-    --light-color: #f8f9fc;
-    --background-color: #f0f4f8;
+    --sidebar-width      : 260px;
+    --sidebar-width-icon : 64px;
+    --sidebar-width-lg   : 280px;
+
+    --primary-color          : #1a237e;
+    --primary-gradient-start : #1a237e;
+    --primary-gradient-end   : #3949ab;
+    --secondary-color        : #858796;
+    --success-color          : #1cc88a;
+    --danger-color           : #e74a3b;
+    --warning-color          : #f6c23e;
+    --info-color             : #36b9cc;
+    --dark-color             : #5a5c69;
+    --light-color            : #f8f9fc;
+    --background-color       : #f0f4f8;
+    --transition-speed       : .3s;
 }
 
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+/* ============================================================
+   2. RESET & BASE
+   ============================================================ */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
     font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -33,101 +43,143 @@ body {
     background-color: var(--background-color);
 }
 
-a {
-    color: var(--primary-color);
-    text-decoration: none;
-    transition: all 0.3s ease;
-}
+a { color: var(--primary-color); text-decoration: none; transition: color var(--transition-speed) ease; }
+a:hover { color: var(--primary-gradient-end); }
 
-a:hover {
-    color: var(--primary-gradient-end);
-    text-decoration: none;
-}
-
-/* ==================== SIDEBAR UNIFIED (Staff + Resident) ==================== */
+/* ============================================================
+   3. SIDEBAR — Unified base (Staff + Resident)
+   ============================================================ */
 .sidebar,
 .resident-sidebar {
-    min-height: 100vh;
-    background: linear-gradient(180deg, var(--primary-gradient-start) 0%, #283593 60%, var(--primary-gradient-end) 100%);
-    box-shadow: 0 2px 8px rgba(0,0,0,.15);
-    width: 260px;
     position: fixed;
     top: 0; left: 0; bottom: 0;
-    z-index: 100;
+    width: var(--sidebar-width);
+    min-height: 100vh;
+    background: linear-gradient(180deg,
+        var(--primary-gradient-start) 0%,
+        #283593 60%,
+        var(--primary-gradient-end) 100%);
+    box-shadow: 2px 0 12px rgba(0,0,0,.18);
+    z-index: 1040;
     overflow-y: auto;
-    transition: transform .3s ease;
+    overflow-x: hidden;
+    transition: transform var(--transition-speed) ease,
+                width    var(--transition-speed) ease;
 }
 
 .sidebar .nav-link,
 .resident-sidebar .nav-link {
-    color: rgba(255, 255, 255, 0.75);
-    padding: 0.75rem 1rem;
+    color: rgba(255,255,255,.75);
+    padding: .75rem 1rem;
     border-radius: 8px;
     margin-bottom: 2px;
-    font-size: 0.9rem;
-    transition: all 0.2s ease;
+    font-size: .9rem;
+    transition: background var(--transition-speed) ease,
+                color    var(--transition-speed) ease;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    white-space: nowrap;
+    overflow: hidden;
 }
 
 .sidebar .nav-link:hover,
 .sidebar .nav-link.active,
 .resident-sidebar .nav-link:hover,
 .resident-sidebar .nav-link.active {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255,255,255,.2);
     color: #fff;
     font-weight: 700;
 }
 
 .sidebar .nav-link i,
 .resident-sidebar .nav-link i {
-    margin-right: 0.5rem;
     width: 20px;
     text-align: center;
+    flex-shrink: 0;
 }
 
-/* Main content area */
-.resident-wrapper {
-    display: flex;
-    min-height: 100vh;
+/*
+ * Staff sidebar — override Bootstrap col behaviour.
+ * Bootstrap .col-md-3 / .col-lg-2 assigns percentage widths and
+ * flex properties that conflict with position: fixed.
+ * We lock the width and remove Bootstrap's flex sizing.
+ * Specificity of nav.sidebar (0,0,1,1) beats .col-md-3 (0,0,1,0).
+ */
+nav.sidebar {
+    width: var(--sidebar-width) !important;
+    min-width: var(--sidebar-width) !important;
+    max-width: var(--sidebar-width) !important;
+    flex: none !important;
 }
+
+/*
+ * Bootstrap .collapse:not(.show) { display: none }  specificity (0,0,2,0) = 20
+ * Our nav.sidebar.collapse        { display: block } specificity (0,0,2,1) = 21  → wins
+ * We use CSS transform to show/hide instead of display toggling.
+ */
+nav.sidebar.collapse,
+nav.sidebar.collapsing {
+    display: block !important;
+}
+
+/* position-sticky inside a fixed container becomes relative */
+.sidebar .position-sticky { position: relative !important; top: auto !important; }
+
+/* ============================================================
+   4. MAIN CONTENT AREAS
+   ============================================================ */
+
+/* ── Resident wrapper (flexbox approach) ── */
+.resident-wrapper { display: flex; min-height: 100vh; }
 
 .resident-main {
-    margin-left: 260px;
+    margin-left: var(--sidebar-width);
     flex: 1;
     padding: 24px;
     min-height: 100vh;
-    transition: margin-left .3s ease;
+    min-width: 0;          /* prevents flex blowout */
+    transition: margin-left var(--transition-speed) ease;
 }
 
-
-
-/* ==================== BUTTONS ==================== */
-.btn {
-    font-weight: 600;
-    border-radius: 0.35rem;
-    transition: all 0.3s ease;
+/*
+ * Staff container-fluid approach.
+ * nav.sidebar is position:fixed → removed from flex flow.
+ * The <main> sibling needs explicit margin-left to clear the sidebar.
+ * Bootstrap ms-sm-auto adds margin-left:auto which we override.
+ */
+.container-fluid > .row {
+    flex-wrap: nowrap;
+    min-height: 100vh;
 }
 
-.btn-primary {
-    background-color: var(--primary-color);
-    border-color: var(--primary-color);
+.container-fluid > .row > main {
+    margin-left: var(--sidebar-width) !important;
+    flex: 1 1 auto !important;
+    max-width: calc(100% - var(--sidebar-width)) !important;
+    width: auto !important;
+    min-height: 100vh;
+    min-width: 0;
+    padding: 24px;
 }
 
-.btn-primary:hover {
-    background-color: #283593;
-    border-color: #283593;
+/* Profile page: nav.sidebar + div.resident-main (no row wrapper) */
+nav.sidebar + .resident-main {
+    margin-left: var(--sidebar-width);
 }
 
-.btn-success {
-    background-color: var(--success-color);
-    border-color: var(--success-color);
-}
+/* ============================================================
+   5. BUTTONS
+   ============================================================ */
+.btn { font-weight: 600; border-radius: .35rem; transition: all .3s ease; }
+.btn-primary { background-color: var(--primary-color); border-color: var(--primary-color); }
+.btn-primary:hover { background-color: #283593; border-color: #283593; }
+.btn-success { background-color: var(--success-color); border-color: var(--success-color); }
+.btn-danger  { background-color: var(--danger-color);  border-color: var(--danger-color); }
 
-.btn-danger {
-    background-color: var(--danger-color);
-    border-color: var(--danger-color);
-}
-
-/* ==================== CARDS UNIFIED ==================== */
+/* ============================================================
+   6. CARDS
+   ============================================================ */
 .card,
 .content-card {
     background: #fff;
@@ -155,7 +207,9 @@ a:hover {
     margin-bottom: 16px;
 }
 
-/* ==================== PAGE HEADER ==================== */
+/* ============================================================
+   7. PAGE HEADER
+   ============================================================ */
 .page-header {
     background: #fff;
     border-radius: 12px;
@@ -165,20 +219,15 @@ a:hover {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
 }
+.page-header h4    { margin: 0; font-weight: 700; color: var(--primary-color); }
+.page-header .breadcrumb { margin: 0; font-size: .82rem; }
 
-.page-header h4 {
-    margin: 0;
-    font-weight: 700;
-    color: var(--primary-color);
-}
-
-.page-header .breadcrumb {
-    margin: 0;
-    font-size: .82rem;
-}
-
-/* ==================== STAT CARDS ==================== */
+/* ============================================================
+   8. STAT CARDS
+   ============================================================ */
 .stat-card {
     background: #fff;
     border-radius: 14px;
@@ -188,41 +237,17 @@ a:hover {
     gap: 16px;
     box-shadow: 0 2px 8px rgba(0,0,0,.07);
     transition: transform .2s;
-    border-left: 0.25rem solid;
+    border-left: .25rem solid var(--primary-color);
 }
-
-.stat-card:hover {
-    transform: translateY(-3px);
-}
-
-.stat-card.primary {
-    border-left-color: var(--primary-color);
-}
-
-.stat-card.success {
-    border-left-color: var(--success-color);
-}
-
-.stat-card.warning {
-    border-left-color: var(--warning-color);
-}
-
-.stat-card.danger {
-    border-left-color: var(--danger-color);
-}
+.stat-card:hover { transform: translateY(-3px); }
 
 .stat-icon {
-    width: 52px;
-    height: 52px;
+    width: 52px; height: 52px;
     border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: flex; align-items: center; justify-content: center;
     font-size: 1.4rem;
     flex-shrink: 0;
 }
-
-/* Icon colors */
 .icon-blue   { background: #e3f2fd; color: #1976d2; }
 .icon-green  { background: #e8f5e9; color: #388e3c; }
 .icon-orange { background: #fff3e0; color: #f57c00; }
@@ -230,65 +255,38 @@ a:hover {
 .icon-purple { background: #f3e5f5; color: #7b1fa2; }
 
 .stat-card .stat-value,
-.stat-number {
-    font-size: 1.6rem;
-    font-weight: 800;
-    line-height: 1;
-    color: var(--primary-color);
-}
+.stat-number { font-size: 1.6rem; font-weight: 800; line-height: 1; color: var(--primary-color); }
 
 .stat-card .stat-label,
-.stat-label {
-    font-size: .8rem;
-    color: #6c757d;
-    margin-top: 4px;
-}
+.stat-label { font-size: .8rem; color: #6c757d; margin-top: 4px; }
 
-/* ==================== FORMS ==================== */
+/* ============================================================
+   9. FORMS
+   ============================================================ */
 .form-control {
     border: 1px solid #d1d3e2;
-    border-radius: 0.35rem;
-    font-size: 0.9rem;
-    transition: border-color 0.3s ease;
+    border-radius: .35rem;
+    font-size: .9rem;
+    transition: border-color .3s ease;
 }
-
 .form-control:focus {
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 0.2rem rgba(26, 35, 126, 0.25);
+    box-shadow: 0 0 0 .2rem rgba(26,35,126,.25);
 }
+.form-label { font-weight: 600; color: var(--dark-color); margin-bottom: .5rem; }
+.invalid-feedback { font-size: .875rem; }
 
-.form-label {
-    font-weight: 600;
-    color: var(--dark-color);
-    margin-bottom: 0.5rem;
-}
+/* ============================================================
+   10. ALERTS
+   ============================================================ */
+.alert { border-radius: .35rem; border: none; }
+.alert-success { background-color: #d4edda; color: #155724; }
+.alert-danger  { background-color: #f8d7da; color: #721c24; }
+.alert-info    { background-color: #d1ecf1; color: #0c5460; }
 
-.invalid-feedback {
-    font-size: 0.875rem;
-}
-
-/* ==================== ALERTS ==================== */
-.alert {
-    border-radius: 0.35rem;
-    border: none;
-}
-
-.alert-success {
-    background-color: #d4edda;
-    color: #155724;
-}
-
-.alert-danger {
-    background-color: #f8d7da;
-    color: #721c24;
-}
-
-.alert-info {
-    background-color: #d1ecf1;
-    color: #0c5460;
-}
-
-/* ==================== NOTIFICATION ITEMS ==================== */
+/* ============================================================
+   11. NOTIFICATION ITEMS
+   ============================================================ */
 .notif-item {
     padding: 14px 16px;
     border-radius: 10px;
@@ -298,588 +296,426 @@ a:hover {
     transition: background .15s;
     position: relative;
 }
-
-.notif-item.unread {
-    background: #f5f7ff;
-    border-color: #c5cae9;
-}
-
+.notif-item.unread { background: #f5f7ff; border-color: #c5cae9; }
 .notif-item.unread::before {
-    content: '';
-    position: absolute;
-    left: 0; top: 0; bottom: 0;
-    width: 4px;
+    content: ''; position: absolute;
+    left: 0; top: 0; bottom: 0; width: 4px;
     background: var(--primary-gradient-end);
     border-radius: 10px 0 0 10px;
 }
+.notif-item:hover { background: #ede7f6; }
+.notif-item .notif-title   { font-weight: 700; font-size: .9rem; }
+.notif-item .notif-meta    { font-size: .78rem; color: #9e9e9e; margin-top: 4px; }
+.notif-item .notif-content { font-size: .85rem; color: #424242; margin-top: 6px; }
 
-.notif-item:hover {
-    background: #ede7f6;
-}
+/* ============================================================
+   12. TABLES
+   ============================================================ */
+.invoice-table th { background: #e8eaf6; color: var(--primary-color); font-weight: 700; }
+.invoice-table td { vertical-align: middle; }
+.invoice-total    { font-weight: 800; color: #c62828; }
 
-.notif-item .notif-title {
-    font-weight: 700;
-    font-size: .9rem;
-}
-
-.notif-item .notif-meta {
-    font-size: .78rem;
-    color: #9e9e9e;
-    margin-top: 4px;
-}
-
-.notif-item .notif-content {
-    font-size: .85rem;
-    color: #424242;
-    margin-top: 6px;
-}
-
-/* ==================== TABLES ==================== */
-.invoice-table th {
-    background: #e8eaf6;
-    color: var(--primary-color);
-    font-weight: 700;
-}
-
-.invoice-table td {
-    vertical-align: middle;
-}
-
-.invoice-total {
-    font-weight: 800;
-    color: #c62828;
-}
-
-/* ==================== REQUEST CARDS ==================== */
+/* ============================================================
+   13. REQUEST CARDS
+   ============================================================ */
 .request-card {
-    border: 1px solid #e8eaf6;
-    border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 12px;
+    border: 1px solid #e8eaf6; border-radius: 12px;
+    padding: 16px; margin-bottom: 12px;
     transition: box-shadow .2s;
 }
+.request-card:hover          { box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+.request-card .request-title { font-weight: 700; font-size: .95rem; }
+.request-card .request-meta  { font-size: .78rem; color: #9e9e9e; }
 
-.request-card:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,.1);
-}
-
-.request-card .request-title {
-    font-weight: 700;
-    font-size: .95rem;
-}
-
-.request-card .request-meta {
-    font-size: .78rem;
-    color: #9e9e9e;
-}
-
-/* ==================== APARTMENT INFO ==================== */
+/* ============================================================
+   14. APARTMENT INFO ROWS
+   ============================================================ */
 .apt-info-row {
-    display: flex;
-    justify-content: space-between;
+    display: flex; justify-content: space-between;
     padding: 10px 0;
     border-bottom: 1px dashed #e8eaf6;
     font-size: .9rem;
 }
+.apt-info-row:last-child { border-bottom: none; }
+.apt-info-row .label    { color: #6c757d; }
+.apt-info-row .value    { font-weight: 600; }
 
-.apt-info-row:last-child {
-    border-bottom: none;
-}
-
-.apt-info-row .label {
-    color: #6c757d;
-}
-
-.apt-info-row .value {
-    font-weight: 600;
-}
-
-/* ==================== AUTH PAGES ==================== */
+/* ============================================================
+   15. AUTH PAGES
+   ============================================================ */
 .auth-container {
     min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, var(--primary-gradient-start) 0%, var(--primary-gradient-end) 100%);
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg,
+        var(--primary-gradient-start) 0%,
+        var(--primary-gradient-end) 100%);
+    padding: 1rem;
 }
+.auth-card   { max-width: 500px; width: 100%; margin: 2rem auto; }
+.auth-header { text-align: center; margin-bottom: 2rem; }
+.auth-header h1 { font-size: 2rem; font-weight: 700; color: var(--dark-color); margin-bottom: .5rem; }
+.auth-header p  { color: var(--secondary-color); }
 
-.auth-card {
-    max-width: 500px;
-    width: 100%;
-    margin: 2rem;
-}
-
-.auth-header {
-    text-align: center;
-    margin-bottom: 2rem;
-}
-
-.auth-header h1 {
-    font-size: 2rem;
-    font-weight: 700;
-    color: var(--dark-color);
-    margin-bottom: 0.5rem;
-}
-
-.auth-header p {
-    color: var(--secondary-color);
-}
-
-/* ==================== HOME PAGE ==================== */
+/* ============================================================
+   16. LANDING / HOME PAGE
+   ============================================================ */
 .hero-section {
-    background: linear-gradient(135deg, var(--primary-gradient-start) 0%, var(--primary-gradient-end) 100%);
-    color: white;
-    padding: 6rem 0;
-    text-align: center;
+    background: linear-gradient(135deg,
+        var(--primary-gradient-start) 0%,
+        var(--primary-gradient-end) 100%);
+    color: #fff; padding: 6rem 0; text-align: center;
 }
-
-.hero-section h1 {
-    font-size: 3rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-}
-
-.hero-section p {
-    font-size: 1.25rem;
-    margin-bottom: 2rem;
-}
+.hero-section h1 { font-size: 3rem; font-weight: 700; margin-bottom: 1rem; }
+.hero-section p  { font-size: 1.25rem; margin-bottom: 2rem; }
 
 .feature-icon {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    background-color: var(--primary-color);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 1rem;
-    font-size: 2rem;
+    width: 80px; height: 80px; border-radius: 50%;
+    background-color: var(--primary-color); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1rem; font-size: 2rem;
 }
 
-/* ==================== LOADING SPINNER ==================== */
+/* ============================================================
+   17. LOADING SPINNER
+   ============================================================ */
 .loading {
     display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,.5);
     z-index: 9999;
-    justify-content: center;
-    align-items: center;
+    justify-content: center; align-items: center;
 }
-
-.loading.show {
-    display: flex;
-}
-
+.loading.show { display: flex; }
 .spinner {
-    border: 4px solid rgba(255, 255, 255, 0.3);
+    border: 4px solid rgba(255,255,255,.3);
     border-radius: 50%;
-    border-top: 4px solid white;
-    width: 50px;
-    height: 50px;
+    border-top: 4px solid #fff;
+    width: 50px; height: 50px;
     animation: spin 1s linear infinite;
 }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+/* ============================================================
+   18. EMPTY STATE
+   ============================================================ */
+.empty-state     { text-align: center; padding: 48px 24px; color: #9e9e9e; }
+.empty-state i   { font-size: 3rem; margin-bottom: 12px; opacity: .4; display: block; }
+.empty-state p   { font-size: .9rem; }
+
+/* ============================================================
+   19. BADGES
+   ============================================================ */
+.badge { font-size: .72rem; font-weight: 600; padding: .3em .6em; }
+
+/* ============================================================
+   20. UTILITIES
+   ============================================================ */
+.text-primary        { color: var(--primary-color) !important; }
+.bg-gradient-primary { background: linear-gradient(180deg,
+    var(--primary-gradient-start) 10%,
+    var(--primary-gradient-end) 100%); }
+.shadow { box-shadow: 0 .15rem 1.75rem 0 rgba(58,59,69,.15) !important; }
+
+/* ============================================================
+   21. HAMBURGER BUTTON (default: hidden — shown via @media)
+   ============================================================ */
+.mobile-toggle,
+.staff-mobile-toggle {
+    display: none;
+    position: fixed;
+    top: 12px; left: 12px;
+    z-index: 1100;
+    background: var(--primary-color);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    width: 40px; height: 40px;
+    align-items: center; justify-content: center;
+    font-size: 1.1rem;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,.3);
+    transition: background .2s;
+}
+.mobile-toggle:hover,
+.staff-mobile-toggle:hover { background: #283593; }
+
+/* ============================================================
+   22. DESKTOP  (> 1024px)
+       Full sidebar 260px · hamburger hidden
+   ============================================================ */
+@media (min-width: 1025px) {
+
+    .mobile-toggle,
+    .staff-mobile-toggle { display: none !important; }
+
+    nav.sidebar,
+    .resident-sidebar { transform: translateX(0) !important; }
+
+    .sidebar .nav-link,
+    .resident-sidebar .nav-link { font-size: .9rem; }
 }
 
-/* ==================== EMPTY STATE ==================== */
-.empty-state {
-    text-align: center;
-    padding: 48px 24px;
-    color: #9e9e9e;
-}
-
-.empty-state i {
-    font-size: 3rem;
-    margin-bottom: 12px;
-    opacity: .4;
-}
-
-.empty-state p {
-    font-size: .9rem;
-}
-
-/* ==================== BADGES ==================== */
-.badge {
-    font-size: .72rem;
-    font-weight: 600;
-    padding: .3em .6em;
-}
-
-/* ==================== RESPONSIVE ==================== */
-
-/*
- * Breakpoint system:
- *  ≤576px   → Phone nhỏ
- *  577–768px → Phone lớn / tablet đứng
- *  769–991px → Tablet nằm / laptop nhỏ  → sidebar icon-only
- *  992–1199px→ Laptop                   → sidebar đầy đủ 220px
- *  ≥1200px  → Desktop / màn rộng        → sidebar 260px (mặc định)
- */
-
-/* ── TABLET NGANG (769px–991px): sidebar thu nhỏ còn icon ── */
-@media (min-width: 769px) and (max-width: 991px) {
-
-    /* --- RESIDENT sidebar --- */
-    .resident-sidebar {
-        width: 68px;
-        overflow: hidden;
-    }
-
-    .resident-sidebar .nav-link span,
-    .resident-sidebar h5,
-    .resident-sidebar small {
-        display: none !important;
-    }
-
-    .resident-sidebar .nav-link {
-        justify-content: center;
-        padding: 0.75rem;
-        text-align: center;
-    }
-
-    .resident-sidebar .nav-link i {
-        margin-right: 0;
-        font-size: 1.1rem;
-    }
-
-    .resident-sidebar .position-sticky > div:first-child {
-        padding: 0.5rem 0 !important;
-    }
-
-    .resident-main {
-        margin-left: 68px;
-    }
-
-    /* --- STAFF sidebar (Bootstrap col) --- */
-    /* Bootstrap col-md-3 sẽ chiếm ~25% — thu xuống còn icon-only */
-    .staff-sidebar-col {
-        flex: 0 0 68px !important;
-        max-width: 68px !important;
-        min-width: 68px !important;
-        width: 68px !important;
-    }
-
-    .staff-main-col {
-        flex: 0 0 calc(100% - 68px) !important;
-        max-width: calc(100% - 68px) !important;
-    }
-
-    /* Thu gọn sidebar staff */
-    nav.sidebar .nav-link span,
-    nav.sidebar .text-center > h5,
-    nav.sidebar .text-center > small {
-        display: none !important;
-    }
-
-    nav.sidebar .nav-link {
-        justify-content: center;
-        padding: 0.75rem 0.5rem;
-        text-align: center;
-    }
-
-    nav.sidebar .nav-link i {
-        margin-right: 0 !important;
-        font-size: 1.1rem;
-    }
-
-    nav.sidebar .text-center {
-        padding: 0.5rem 0 !important;
-    }
-
-    /* Stat cards: 2 cột */
-    .col-6.col-md-3,
-    .col-6.col-xl-3 {
-        flex: 0 0 50% !important;
-        max-width: 50% !important;
-    }
-
-    /* Page padding nhỏ hơn */
-    .resident-main,
-    .col-md-9.ms-sm-auto {
-        padding: 16px !important;
-    }
-
-    /* Ẩn hamburger trên tablet */
-    .mobile-toggle {
-        display: none !important;
-    }
-
-    /* Tooltip hiện tên menu khi hover icon-only */
-    .resident-sidebar .nav-link,
-    nav.sidebar .nav-link {
-        position: relative;
-    }
-
-    .resident-sidebar .nav-link:hover::after,
-    nav.sidebar .nav-link:hover::after {
-        content: attr(title);
-        position: absolute;
-        left: 70px;
-        top: 50%;
-        transform: translateY(-50%);
-        background: rgba(26,35,126,.95);
-        color: #fff;
-        padding: 4px 10px;
-        border-radius: 6px;
-        font-size: .8rem;
-        white-space: nowrap;
-        z-index: 9999;
-        pointer-events: none;
-        box-shadow: 0 2px 8px rgba(0,0,0,.3);
-    }
-}
-
-/* ── LAPTOP (992px–1199px): sidebar 220px ── */
-@media (min-width: 992px) and (max-width: 1199px) {
-
-    .resident-sidebar {
-        width: 220px;
-    }
-
-    .resident-main {
-        margin-left: 220px;
-    }
-
-    .resident-sidebar .nav-link {
-        font-size: 0.85rem;
-        padding: 0.65rem 0.85rem;
-    }
-
-    /* Staff sidebar cũng hẹp hơn chút */
-    nav.sidebar .nav-link {
-        font-size: 0.85rem;
-        padding: 0.65rem 0.85rem;
-    }
-
-    /* Stat cards: 2–4 cột linh hoạt */
-    .col-6.col-xl-3 {
-        flex: 0 0 25% !important;
-        max-width: 25% !important;
-    }
-}
-
-/* ── DESKTOP RỘNG (≥1400px): tận dụng không gian ── */
+/* ── Wide desktop (≥ 1400px): sidebar 280px ── */
 @media (min-width: 1400px) {
 
-    .resident-sidebar,
-    nav.sidebar {
-        width: 280px;
+    nav.sidebar,
+    .resident-sidebar {
+        width: var(--sidebar-width-lg) !important;
+        min-width: var(--sidebar-width-lg) !important;
+        max-width: var(--sidebar-width-lg) !important;
     }
 
     .resident-main {
-        margin-left: 280px;
+        margin-left: var(--sidebar-width-lg);
         padding: 32px;
     }
 
-    .resident-sidebar .nav-link,
-    nav.sidebar .nav-link {
-        font-size: 0.95rem;
-        padding: 0.8rem 1.2rem;
-    }
-
-    /* Stat cards font lớn hơn */
-    .stat-card .stat-value,
-    .stat-number {
-        font-size: 1.9rem;
-    }
-
-    /* Khoảng cách content thoáng hơn */
-    .content-card,
-    .card {
-        padding: 28px;
-    }
-
-    /* Container rộng hơn cho staff (Bootstrap) */
-    .col-lg-10.ms-sm-auto {
+    .container-fluid > .row > main {
+        margin-left: var(--sidebar-width-lg) !important;
+        max-width: calc(100% - var(--sidebar-width-lg)) !important;
         padding: 32px !important;
     }
+
+    nav.sidebar + .resident-main { margin-left: var(--sidebar-width-lg); }
+
+    .sidebar .nav-link,
+    .resident-sidebar .nav-link { font-size: .95rem; padding: .8rem 1.2rem; }
+
+    .stat-card .stat-value, .stat-number { font-size: 1.9rem; }
+    .content-card, .card { padding: 28px; }
 }
 
-/* ── PHONE + TABLET ĐỨNG (≤768px): mobile ── */
-@media (max-width: 768px) {
+/* ============================================================
+   23. TABLET  (768px – 1024px)
+       Sidebar icon-only 64px · hamburger hidden · tooltip on hover
+   ============================================================ */
+@media (min-width: 768px) and (max-width: 1024px) {
 
-    /* Hero section */
-    .hero-section h1 { font-size: 2rem; }
-    .hero-section p  { font-size: 1rem; }
-
-    /* --- RESIDENT sidebar --- */
-    .resident-sidebar {
-        transform: translateX(-100%);
-        width: 260px; /* Giữ nguyên khi mở */
-    }
-
-    .resident-sidebar.open {
-        transform: translateX(0);
-    }
-
-    /* Overlay khi sidebar mở */
-    .resident-sidebar.open::after {
-        content: '';
-        position: fixed;
-        top: 0; left: 260px; right: 0; bottom: 0;
-        background: rgba(0,0,0,0.4);
-        z-index: -1;
-    }
-
-    .resident-main {
-        margin-left: 0;
-        padding: 16px;
-    }
-
-    /* --- STAFF sidebar (Bootstrap col) --- */
-    nav.sidebar {
-        transform: translateX(-100%);
-        position: fixed !important;
-        width: 260px !important;
-        z-index: 1000;
-    }
-
-    nav.sidebar.open {
-        transform: translateX(0);
-    }
-
-    /* Main content chiếm full width khi sidebar ẩn */
-    .col-md-9.ms-sm-auto,
-    .col-lg-10.ms-sm-auto {
-        width: 100% !important;
-        max-width: 100% !important;
-        margin-left: 0 !important;
-        padding: 16px !important;
-    }
-
-    /* --- Hamburger menu --- */
     .mobile-toggle,
-    .staff-mobile-toggle {
-        display: flex !important;
-        position: fixed;
-        top: 12px;
-        left: 12px;
-        z-index: 1100;
-        background: var(--primary-color);
-        color: #fff;
-        border: none;
-        border-radius: 8px;
-        width: 40px;
-        height: 40px;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.1rem;
-        cursor: pointer;
-        box-shadow: 0 2px 8px rgba(0,0,0,.3);
+    .staff-mobile-toggle { display: none !important; }
+
+    /* ── Sidebar: thu gọn còn 64px ── */
+    nav.sidebar,
+    .resident-sidebar {
+        width: var(--sidebar-width-icon) !important;
+        min-width: var(--sidebar-width-icon) !important;
+        max-width: var(--sidebar-width-icon) !important;
+        overflow: hidden;
+        transform: translateX(0) !important;
     }
 
-    /* Stat cards: 2 cột */
-    .col-6.col-md-3,
-    .col-6.col-xl-3,
-    .col-xl-3 {
+    /* Ẩn labels, logo, user info */
+    nav.sidebar .nav-link span,
+    nav.sidebar h5,
+    nav.sidebar .text-white-50,
+    .resident-sidebar .nav-link span,
+    .resident-sidebar h6,
+    .resident-sidebar small,
+    .resident-sidebar .resident-avatar,
+    .resident-sidebar hr { display: none !important; }
+
+    /* Thu gọn phần đầu sidebar */
+    nav.sidebar .text-center,
+    .resident-sidebar .text-center { padding: .4rem 0 !important; margin-bottom: 4px !important; }
+
+    /* Icon căn giữa */
+    nav.sidebar .nav-link,
+    .resident-sidebar .nav-link {
+        justify-content: center !important;
+        padding: .8rem !important;
+        text-align: center;
+    }
+    nav.sidebar .nav-link i,
+    .resident-sidebar .nav-link i {
+        margin-right: 0 !important;
+        font-size: 1.15rem;
+        width: auto !important;
+    }
+
+    /* ── Main content bù lại đúng ── */
+    .resident-main {
+        margin-left: var(--sidebar-width-icon);
+        padding: 18px;
+    }
+
+    .container-fluid > .row > main {
+        margin-left: var(--sidebar-width-icon) !important;
+        max-width: calc(100% - var(--sidebar-width-icon)) !important;
+        padding: 18px !important;
+    }
+
+    nav.sidebar + .resident-main { margin-left: var(--sidebar-width-icon); }
+
+    /* ── Tooltip khi hover icon ── */
+    nav.sidebar .nav-link,
+    .resident-sidebar .nav-link { position: relative; }
+
+    nav.sidebar .nav-link:hover::after,
+    .resident-sidebar .nav-link:hover::after {
+        content: attr(title);
+        position: absolute;
+        left: calc(var(--sidebar-width-icon) + 8px);
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(26,35,126,.96);
+        color: #fff;
+        padding: 5px 12px;
+        border-radius: 6px;
+        font-size: .82rem;
+        white-space: nowrap;
+        z-index: 9999;
+        pointer-events: none;
+        box-shadow: 0 2px 10px rgba(0,0,0,.3);
+    }
+
+    /* Stat cards: 2 cột trên tablet */
+    .col-6.col-md-3, .col-6.col-xl-3, .col-6.col-md-2 {
         flex: 0 0 50% !important;
         max-width: 50% !important;
     }
 
-    /* Font size nhỏ hơn */
-    .stat-card .stat-value,
-    .stat-number {
-        font-size: 1.3rem;
+    .page-header { padding: 16px; }
+
+    .d-flex.flex-wrap.gap-2 .form-control,
+    .d-flex.flex-wrap.gap-2 .form-select { font-size: .82rem; }
+}
+
+/* ============================================================
+   24. MOBILE  (< 768px)
+       Sidebar ẩn (slide-out) · hamburger visible · full-width content
+   ============================================================ */
+@media (max-width: 767px) {
+
+    /* ── Sidebars: trượt ra ngoài ── */
+    nav.sidebar,
+    .resident-sidebar {
+        transform: translateX(-100%);
+        width: var(--sidebar-width) !important;
+        min-width: var(--sidebar-width) !important;
+        max-width: var(--sidebar-width) !important;
+        z-index: 1050;
+        overflow-y: auto;
+        overflow-x: hidden;
     }
 
-    .stat-label { font-size: .75rem; }
+    nav.sidebar.open,
+    .resident-sidebar.open { transform: translateX(0); }
 
-    /* Page header dọc */
+    /* Overlay mờ sau sidebar */
+    nav.sidebar.open::after,
+    .resident-sidebar.open::after {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: var(--sidebar-width);
+        right: 0; bottom: 0;
+        background: rgba(0,0,0,.45);
+        z-index: -1;
+    }
+
+    /* Khôi phục text trong sidebar khi mở trên mobile */
+    nav.sidebar .nav-link span,
+    nav.sidebar h5,
+    nav.sidebar .text-white-50,
+    .resident-sidebar .nav-link span,
+    .resident-sidebar h6,
+    .resident-sidebar small,
+    .resident-sidebar .resident-avatar,
+    .resident-sidebar hr { display: revert !important; }
+
+    nav.sidebar .text-center,
+    .resident-sidebar .text-center {
+        padding: revert !important;
+        margin-bottom: revert !important;
+    }
+
+    nav.sidebar .nav-link,
+    .resident-sidebar .nav-link {
+        justify-content: flex-start !important;
+        padding: .75rem 1rem !important;
+        text-align: left !important;
+    }
+    nav.sidebar .nav-link i,
+    .resident-sidebar .nav-link i {
+        margin-right: .5rem !important;
+        font-size: 1rem;
+        width: 20px !important;
+    }
+
+    /* ── Main: full width + padding-top cho hamburger ── */
+    .resident-main {
+        margin-left: 0 !important;
+        padding: 16px;
+        padding-top: 64px;
+    }
+
+    .container-fluid > .row > main {
+        margin-left: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        padding: 16px !important;
+        padding-top: 64px !important;
+    }
+
+    nav.sidebar + .resident-main {
+        margin-left: 0 !important;
+        padding-top: 64px;
+    }
+
+    /* ── Hamburger: hiện ── */
+    .mobile-toggle,
+    .staff-mobile-toggle { display: flex !important; }
+
+    /* ── Page header: dọc + chừa chỗ hamburger ── */
     .page-header {
         flex-direction: column;
         align-items: flex-start !important;
-        gap: 12px;
+        gap: 10px;
         padding: 16px;
-        padding-top: 60px; /* chừa chỗ cho hamburger */
+        padding-top: 64px;
     }
 
-    /* Table: scroll ngang */
-    .table-responsive {
-        -webkit-overflow-scrolling: touch;
+    /* ── Stat cards: 2 cột ── */
+    .col-6.col-md-3, .col-6.col-xl-3, .col-6.col-md-2 {
+        flex: 0 0 50% !important;
+        max-width: 50% !important;
     }
+    .stat-card      { padding: 14px 16px; gap: 12px; }
+    .stat-card .stat-value, .stat-number { font-size: 1.35rem; }
+    .stat-label     { font-size: .75rem; }
 
-    /* Card padding nhỏ hơn */
-    .content-card,
-    .card {
-        padding: 16px;
-        border-radius: 10px;
-    }
+    /* ── Tables ── */
+    .table-responsive { -webkit-overflow-scrolling: touch; }
 
-    /* Ẩn breadcrumb trên phone */
+    /* ── Cards ── */
+    .content-card, .card { padding: 16px; border-radius: 10px; }
+
+    /* ── Breadcrumb ẩn ── */
     .breadcrumb { display: none !important; }
 
-    /* Modal full screen trên phone */
-    .modal-dialog {
-        margin: 0.5rem;
-    }
-
+    /* ── Modal full-screen ── */
+    .modal-dialog { margin: .5rem; }
     .modal-dialog.modal-lg,
-    .modal-dialog.modal-xl {
-        max-width: calc(100vw - 1rem) !important;
-    }
+    .modal-dialog.modal-xl { max-width: calc(100vw - 1rem) !important; }
 
-    /* Form layout dọc */
+    /* ── Filter bar: wrap xuống 1 cột ── */
     .row.g-2 > .col-md-3,
     .row.g-2 > .col-md-2,
-    .row.g-2 > .col-auto {
-        width: 100% !important;
-        max-width: 100% !important;
-    }
+    .row.g-2 > .col-auto { width: 100% !important; max-width: 100% !important; }
+
+    /* Landing page */
+    .hero-section h1 { font-size: 2rem; }
+    .hero-section p  { font-size: 1rem; }
+
+    /* Auth card */
+    .auth-card { margin: 1rem; }
 }
 
-/* ── PHONE NHỎ (≤400px) ── */
+/* ── Phone nhỏ (≤ 400px) ── */
 @media (max-width: 400px) {
-
-    .stat-card {
-        padding: 14px;
-        gap: 10px;
-    }
-
-    .stat-icon {
-        width: 40px;
-        height: 40px;
-        font-size: 1.1rem;
-    }
-
-    .stat-card .stat-value,
-    .stat-number {
-        font-size: 1.2rem;
-    }
-
-    .btn {
-        font-size: 0.85rem;
-        padding: 0.4rem 0.75rem;
-    }
-
-    h4 { font-size: 1.1rem; }
-}
-
-/* ── Ẩn hamburger trên desktop ── */
-@media (min-width: 769px) {
-    .mobile-toggle,
-    .staff-mobile-toggle {
-        display: none !important;
-    }
-}
-
-
-/* ==================== UTILITIES ==================== */
-.text-primary {
-    color: var(--primary-color) !important;
-}
-
-.bg-gradient-primary {
-    background: linear-gradient(180deg, var(--primary-gradient-start) 10%, var(--primary-gradient-end) 100%);
-}
-
-.shadow {
-    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15) !important;
+    .stat-card  { padding: 12px; gap: 10px; }
+    .stat-icon  { width: 40px; height: 40px; font-size: 1.1rem; }
+    .stat-card .stat-value, .stat-number { font-size: 1.2rem; }
+    .btn        { font-size: .85rem; padding: .4rem .75rem; }
+    h4          { font-size: 1.1rem; }
 }

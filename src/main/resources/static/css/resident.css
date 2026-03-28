@@ -1,194 +1,228 @@
-/* =========================================================
-   resident.css  —  Style cho Resident Dashboard
-   ========================================================= */
+/*
+ * resident.css — CondoCare · Resident Dashboard
+ * ─────────────────────────────────────────────
+ * Load SAU style.css.
+ * File này CHỈ chứa style riêng cho trang cư dân.
+ * Tất cả base layout, sidebar, stat-card, card, table,
+ * notif-item, empty-state, responsive breakpoint…
+ * đã được xử lý đầy đủ trong style.css — KHÔNG lặp lại ở đây.
+ */
 
-/* ── Layout chung ─────────────────────────────────────── */
-body { background: #f0f4f8; font-family: 'Nunito', sans-serif; }
+/* ============================================================
+   1. RESIDENT SIDEBAR — fine-tune trên nền style.css
+   ============================================================ */
 
-.resident-wrapper {
-    display: flex;
-    min-height: 100vh;
-}
-
-/* ── Sidebar ──────────────────────────────────────────── */
-.resident-sidebar {
-    width: 260px;
-    min-height: 100vh;
-    background: linear-gradient(180deg, #1a237e 0%, #283593 60%, #3949ab 100%);
-    flex-shrink: 0;
-    position: fixed;
-    top: 0; left: 0; bottom: 0;
-    z-index: 100;
-    overflow-y: auto;
-    transition: transform .3s ease;
-}
-
-/* Nav links */
-.resident-sidebar .nav-link {
-    color: rgba(255,255,255,.75);
-    padding: .6rem 1rem;
-    border-radius: 8px;
-    margin-bottom: 2px;
-    font-size: .9rem;
-    transition: background .2s, color .2s;
-}
-.resident-sidebar .nav-link:hover {
-    background: rgba(255,255,255,.12);
-    color: #fff;
-}
-.resident-sidebar .nav-link.active {
-    background: rgba(255,255,255,.2);
-    color: #fff;
-    font-weight: 700;
-}
-.resident-sidebar .nav-link i { width: 20px; text-align: center; }
-
-/* ── Main content ─────────────────────────────────────── */
-.resident-main {
-    margin-left: 260px;
-    flex: 1;
-    padding: 24px;
-    min-height: 100vh;
-}
-
-/* ── Page header ──────────────────────────────────────── */
-.page-header {
-    background: #fff;
-    border-radius: 12px;
-    padding: 20px 24px;
-    margin-bottom: 24px;
-    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+/* Avatar tròn ở đầu sidebar */
+.resident-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .15);
     display: flex;
     align-items: center;
-    justify-content: space-between;
-}
-.page-header h4 { margin: 0; font-weight: 700; color: #1a237e; }
-.page-header .breadcrumb { margin: 0; font-size: .82rem; }
-
-/* ── Stat cards (trang chủ) ───────────────────────────── */
-.stat-card {
-    background: #fff;
-    border-radius: 14px;
-    padding: 20px 22px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    box-shadow: 0 2px 8px rgba(0,0,0,.07);
-    transition: transform .2s;
-}
-.stat-card:hover { transform: translateY(-3px); }
-.stat-icon {
-    width: 52px; height: 52px;
-    border-radius: 12px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.4rem;
+    justify-content: center;
+    margin: 0 auto .5rem;
+    /* Đặt font-size gốc để fa-3x không blow up:
+       fa-3x = 3em, 3 × 0.6rem = 1.8rem ≈ 29px — vừa trong container 52px */
+    font-size: 0.6rem;
+    overflow: hidden;
     flex-shrink: 0;
 }
-.stat-card .stat-value { font-size: 1.6rem; font-weight: 800; line-height: 1; color: #1a237e; }
-.stat-card .stat-label { font-size: .8rem; color: #6c757d; margin-top: 4px; }
 
-/* Màu icon */
-.icon-blue   { background: #e3f2fd; color: #1976d2; }
-.icon-green  { background: #e8f5e9; color: #388e3c; }
-.icon-orange { background: #fff3e0; color: #f57c00; }
-.icon-red    { background: #fce4ec; color: #c62828; }
-.icon-purple { background: #f3e5f5; color: #7b1fa2; }
-
-/* ── Card tổng quát ───────────────────────────────────── */
-.content-card {
-    background: #fff;
-    border-radius: 14px;
-    padding: 22px;
-    box-shadow: 0 2px 8px rgba(0,0,0,.07);
-    margin-bottom: 24px;
+/* Override trực tiếp icon bên trong — an toàn hơn */
+.resident-avatar i {
+    font-size: 1.75rem !important;
+    color: rgba(255, 255, 255, .75);
+    line-height: 1;
 }
-.content-card .card-title {
-    font-size: 1rem;
-    font-weight: 700;
+
+/* Separator dưới cùng sidebar */
+.resident-sidebar hr.border-secondary {
+    border-color: rgba(255, 255, 255, .2) !important;
+}
+
+/* Badge unread trên link "Thông báo" */
+.resident-sidebar .nav-link .badge {
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+/* ============================================================
+   2. HOME PAGE — APT INFO & SHORTCUT
+   ============================================================ */
+
+/* Row thông tin căn hộ — đã có .apt-info-row trong style.css;
+   thêm hover effect riêng cho resident */
+.apt-info-row:hover { background: #f5f7ff; border-radius: 6px; }
+
+/* ============================================================
+   3. INVOICE — RESIDENT VIEW
+   ============================================================ */
+
+/* Trạng thái hóa đơn — màu text */
+.inv-status-unpaid  { color: #c62828; font-weight: 700; }
+.inv-status-paid    { color: #388e3c; font-weight: 700; }
+.inv-status-overdue { color: #e65100; font-weight: 700; }
+
+/* Payment method badges */
+.pay-method {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: .75rem;
+    font-weight: 600;
+    padding: .25em .6em;
+    border-radius: 20px;
+    background: #e8eaf6;
     color: #1a237e;
-    border-bottom: 2px solid #e8eaf6;
-    padding-bottom: 10px;
-    margin-bottom: 16px;
 }
+.pay-method.momo    { background: #fce4ec; color: #c2185b; }
+.pay-method.banking { background: #e8f5e9; color: #2e7d32; }
+.pay-method.cash    { background: #fff3e0; color: #e65100; }
 
-/* ── Notification item ────────────────────────────────── */
-.notif-item {
-    padding: 14px 16px;
-    border-radius: 10px;
-    border: 1px solid #e8eaf6;
-    margin-bottom: 10px;
-    cursor: pointer;
-    transition: background .15s;
-    position: relative;
-}
-.notif-item.unread { background: #f5f7ff; border-color: #c5cae9; }
-.notif-item.unread::before {
-    content: '';
-    position: absolute;
-    left: 0; top: 0; bottom: 0;
-    width: 4px; background: #3949ab; border-radius: 10px 0 0 10px;
-}
-.notif-item:hover { background: #ede7f6; }
-.notif-item .notif-title { font-weight: 700; font-size: .9rem; }
-.notif-item .notif-meta  { font-size: .78rem; color: #9e9e9e; margin-top: 4px; }
-.notif-item .notif-content { font-size: .85rem; color: #424242; margin-top: 6px; }
-
-/* ── Invoice table ────────────────────────────────────── */
-.invoice-table th { background: #e8eaf6; color: #1a237e; font-weight: 700; }
-.invoice-table td { vertical-align: middle; }
-.invoice-total { font-weight: 800; color: #c62828; }
-
-/* ── Service Request card ─────────────────────────────── */
-.request-card {
-    border: 1px solid #e8eaf6;
+/* MoMo payment box */
+.momo-box {
+    border: 2px solid #fce4ec;
     border-radius: 12px;
     padding: 16px;
-    margin-bottom: 12px;
+    background: #fff9fb;
+}
+
+/* ============================================================
+   4. SERVICE REQUEST — RESIDENT VIEW
+   ============================================================ */
+
+/* Priority border trên request-card */
+.request-card.priority-HIGH   { border-left: 4px solid #e74a3b !important; }
+.request-card.priority-MEDIUM { border-left: 4px solid #f6c23e !important; }
+.request-card.priority-LOW    { border-left: 4px solid #1cc88a !important; }
+
+/* Completion image đính kèm */
+.completion-img {
+    max-width: 100%;
+    max-height: 240px;
+    border-radius: 8px;
+    object-fit: cover;
+    border: 1px solid #e8eaf6;
+    cursor: zoom-in;
+}
+
+/* Status timeline dot */
+.status-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+.status-dot.pending     { background: #f6c23e; }
+.status-dot.in-progress { background: #36b9cc; }
+.status-dot.done        { background: #1cc88a; }
+.status-dot.rejected    { background: #e74a3b; }
+
+/* ============================================================
+   5. NOTIFICATIONS — RESIDENT VIEW
+   ============================================================ */
+
+/* Filter buttons nhỏ gọn */
+.notif-filter-bar .btn { border-radius: 20px; font-size: .8rem; padding: .3rem .9rem; }
+
+/* Modal header màu theo type */
+.modal-header.notif-info        { background: #36b9cc; color: #fff; }
+.modal-header.notif-warning     { background: #f6c23e; color: #1a237e; }
+.modal-header.notif-urgent      { background: #e74a3b; color: #fff; }
+.modal-header.notif-maintenance { background: #858796; color: #fff; }
+.modal-header.notif-payment     { background: #1a237e; color: #fff; }
+
+/* ============================================================
+   6. APARTMENT DETAIL — RESIDENT VIEW
+   ============================================================ */
+
+/* Vehicle card */
+.vehicle-card {
+    border: 1px solid #e8eaf6;
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 10px;
     transition: box-shadow .2s;
 }
-.request-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.1); }
-.request-card .request-title { font-weight: 700; font-size: .95rem; }
-.request-card .request-meta  { font-size: .78rem; color: #9e9e9e; }
+.vehicle-card:hover { box-shadow: 0 3px 10px rgba(0,0,0,.09); }
 
-/* ── Apartment info ───────────────────────────────────── */
-.apt-info-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 10px 0;
-    border-bottom: 1px dashed #e8eaf6;
+.vehicle-icon {
+    width: 44px; height: 44px;
+    border-radius: 10px;
+    background: #e8eaf6;
+    color: #1a237e;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem;
+    flex-shrink: 0;
+}
+
+/* Access card badge */
+.access-card-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, #e8eaf6, #f5f7ff);
+    border: 1px solid #c5cae9;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-family: 'Courier New', monospace;
     font-size: .9rem;
+    color: #1a237e;
+    font-weight: 700;
 }
-.apt-info-row:last-child { border-bottom: none; }
-.apt-info-row .label { color: #6c757d; }
-.apt-info-row .value { font-weight: 600; }
 
-/* ── Responsive sidebar ───────────────────────────────── */
-@media (max-width: 768px) {
-    .resident-sidebar { transform: translateX(-100%); }
-    .resident-sidebar.open { transform: translateX(0); }
-    .resident-main { margin-left: 0; }
-    .mobile-toggle {
-        display: flex !important;
-        position: fixed; top: 12px; left: 12px; z-index: 200;
-        background: #1a237e; color: #fff;
-        border: none; border-radius: 8px;
-        width: 40px; height: 40px;
-        align-items: center; justify-content: center;
-        font-size: 1.1rem;
+/* ============================================================
+   7. RESIDENT-SPECIFIC RESPONSIVE OVERRIDES
+   ============================================================ */
+
+/*
+ * style.css đã xử lý toàn bộ breakpoint cho .resident-sidebar,
+ * .resident-main, .mobile-toggle.
+ * Phần dưới CHỈ override những thứ resident-specific.
+ */
+
+/* ── Tablet (768–1024px) ── */
+@media (min-width: 768px) and (max-width: 1024px) {
+
+    /* Ẩn badge unread (không đủ chỗ trong icon-only mode) */
+    .resident-sidebar .nav-link .badge { display: none !important; }
+
+    /* Avatar: ẩn trong icon mode (style.css đã ẩn .resident-avatar) */
+
+    /* Page header: compact hơn một chút */
+    .page-header { padding: 14px 18px; }
+}
+
+/* ── Mobile (< 768px) ── */
+@media (max-width: 767px) {
+
+    /* Badge unread: hiện lại khi sidebar mở */
+    .resident-sidebar.open .nav-link .badge { display: inline-flex !important; }
+
+    /* Avatar: hiện lại khi sidebar mở */
+    .resident-sidebar.open .resident-avatar { display: flex !important; }
+
+    /* Stat cards: giảm padding trên phone */
+    .stat-card { padding: 12px 14px; gap: 12px; }
+
+    /* MoMo box: full width */
+    .momo-box { padding: 12px; }
+
+    /* Vehicle card: dọc */
+    .vehicle-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
     }
-}
-@media (min-width: 769px) {
-    .mobile-toggle { display: none !important; }
-}
 
-/* ── Empty state ──────────────────────────────────────── */
-.empty-state {
-    text-align: center;
-    padding: 48px 24px;
-    color: #9e9e9e;
-}
-.empty-state i { font-size: 3rem; margin-bottom: 12px; opacity: .4; }
-.empty-state p { font-size: .9rem; }
+    /* Completion image: full width */
+    .completion-img { max-height: 180px; width: 100%; }
 
-/* ── Badge màu type ──────────────────────────────────── */
-.badge { font-size: .72rem; font-weight: 600; padding: .3em .6em; }
+    /* Filter bar wrap xuống */
+    .notif-filter-bar { gap: 6px; }
+    .notif-filter-bar .btn { font-size: .75rem; padding: .25rem .7rem; }
+}
