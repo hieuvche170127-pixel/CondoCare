@@ -14,13 +14,13 @@ import java.util.Map;
  * REST Controller quản lý thông báo phía Staff.
  * Base: /api/staff/notifications
  *
- * Chức năng:
- *   - Xem tất cả thông báo đã gửi (có filter)
- *   - Gửi broadcast toàn tòa
- *   - Gửi theo căn hộ
- *   - Gửi cá nhân cho 1 cư dân
- *   - Xóa thông báo
- *   - Thống kê
+ * Phân quyền (đồng bộ với SecurityConfig):
+ *   GET / POST send → ADMIN, MANAGER, RECEPTIONIST
+ *   DELETE          → ADMIN, MANAGER
+ *
+ * FIXED: thay thế @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')") —
+ * role 'STAFF' không tồn tại trong DB, dẫn đến RECEPTIONIST bị chặn
+ * mặc dù SecurityConfig đã cho phép /api/staff/notifications/** với RECEPTIONIST.
  */
 @RestController
 @RequestMapping("/api/staff/notifications")
@@ -32,9 +32,12 @@ public class StaffNotificationController {
 
     // ── THỐNG KÊ ──────────────────────────────────────────────────────────────
 
-    /** GET /api/staff/notifications/stats */
+    /**
+     * GET /api/staff/notifications/stats
+     * Trả về: { total, broadcast, personal, unread }
+     */
     @GetMapping("/stats")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','RECEPTIONIST','ACCOUNTANT','TECHNICIAN')")
     public ResponseEntity<?> getStats() {
         try { return ResponseEntity.ok(service.getStats()); }
         catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
@@ -44,13 +47,13 @@ public class StaffNotificationController {
 
     /**
      * GET /api/staff/notifications
-     * Params (tùy chọn):
-     *   type        = INFO | WARNING | URGENT | MAINTENANCE | PAYMENT | ALL
-     *   buildingId  = lọc theo tòa nhà
-     *   residentId  = lọc theo cư dân cụ thể
+     * Query params (tùy chọn):
+     *   type       = INFO | WARNING | URGENT | MAINTENANCE | PAYMENT | ALL
+     *   buildingId = lọc theo tòa nhà
+     *   residentId = lọc theo cư dân cụ thể
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','RECEPTIONIST','ACCOUNTANT','TECHNICIAN')")
     public ResponseEntity<?> getAllNotifications(
             @RequestParam(required = false) String type,
             @RequestParam(required = false) String buildingId,
@@ -71,7 +74,7 @@ public class StaffNotificationController {
      * Body: { "title": "...", "content": "...", "type": "INFO|URGENT|...", "buildingId": "BLD001" }
      */
     @PostMapping("/broadcast")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','RECEPTIONIST')")
     public ResponseEntity<?> sendBroadcast(@RequestBody Map<String, String> body) {
         try {
             logger.info("Staff sending broadcast to building: {}", body.get("buildingId"));
@@ -88,7 +91,7 @@ public class StaffNotificationController {
      * Body: { "title": "...", "content": "...", "type": "INFO", "apartmentId": "APT001" }
      */
     @PostMapping("/apartment")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','RECEPTIONIST')")
     public ResponseEntity<?> sendToApartment(@RequestBody Map<String, String> body) {
         try {
             logger.info("Staff sending notification to apartment: {}", body.get("apartmentId"));
@@ -105,7 +108,7 @@ public class StaffNotificationController {
      * Body: { "title": "...", "content": "...", "type": "INFO", "residentId": "RES001" }
      */
     @PostMapping("/resident")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','RECEPTIONIST')")
     public ResponseEntity<?> sendToResident(@RequestBody Map<String, String> body) {
         try {
             logger.info("Staff sending personal notification to resident: {}", body.get("residentId"));

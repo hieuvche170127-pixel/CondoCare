@@ -20,11 +20,27 @@ public class VehicleService {
     private static final Logger logger = LoggerFactory.getLogger(VehicleService.class);
     private static final AtomicInteger idCounter = new AtomicInteger(0);
 
-    @Autowired private VehicleRepository    vehicleRepo;
-    @Autowired private ResidentsRepository  residentRepo;
-    @Autowired private ApartmentRepository  apartmentRepo;
-    @Autowired private StaffRepository      staffRepo;
+    @Autowired private VehicleRepository      vehicleRepo;
+    @Autowired private ResidentsRepository    residentRepo;
+    @Autowired private ApartmentRepository    apartmentRepo;
+    @Autowired private StaffRepository        staffRepo;
     @Autowired private NotificationRepository notifRepo;
+
+    // ─── STAFF: Thống kê ──────────────────────────────────────────────────────
+
+    /**
+     * Trả về thống kê tổng quan cho trang Quản lý xe phía Staff.
+     * Frontend (Vehicles.html) gọi GET /api/staff/vehicles/stats.
+     * Response: { pending, approved, rejected, total }
+     */
+    public Map<String, Object> getStats() {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("total",    vehicleRepo.count());
+        m.put("pending",  vehicleRepo.findByPendingStatus(Vehicle.PendingStatus.PENDING).size());
+        m.put("approved", vehicleRepo.findByPendingStatus(Vehicle.PendingStatus.APPROVED).size());
+        m.put("rejected", vehicleRepo.findByPendingStatus(Vehicle.PendingStatus.REJECTED).size());
+        return m;
+    }
 
     // ─── RESIDENT: Đăng ký xe mới ─────────────────────────────────────────────
 
@@ -91,18 +107,34 @@ public class VehicleService {
 
     // ─── STAFF: Danh sách tất cả xe (có filter) ───────────────────────────────
 
-    public List<Map<String, Object>> getAllVehicles(String pendingStatus, String status,
-                                                    String apartmentId) {
+    /**
+     * Lấy danh sách xe với các bộ lọc tuỳ chọn.
+     *
+     * @param type          Loại xe: MOTORBIKE | CAR | BICYCLE | ELECTRIC_BIKE | OTHER
+     * @param pendingStatus Trạng thái duyệt: PENDING | APPROVED | REJECTED
+     * @param status        Trạng thái xe: ACTIVE | INACTIVE | REVOKED | LOST
+     * @param apartmentId   Lọc theo căn hộ
+     */
+    public List<Map<String, Object>> getAllVehicles(String type, String pendingStatus,
+                                                    String status, String apartmentId) {
         Specification<Vehicle> spec = (root, query, cb) -> {
             List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+
+            if (type != null && !type.isBlank())
+                predicates.add(cb.equal(root.get("type"),
+                        Vehicle.VehicleType.valueOf(type)));
+
             if (pendingStatus != null && !pendingStatus.isBlank())
                 predicates.add(cb.equal(root.get("pendingStatus"),
                         Vehicle.PendingStatus.valueOf(pendingStatus)));
+
             if (status != null && !status.isBlank())
                 predicates.add(cb.equal(root.get("status"),
                         Vehicle.VehicleStatus.valueOf(status)));
+
             if (apartmentId != null && !apartmentId.isBlank())
                 predicates.add(cb.equal(root.get("apartment").get("id"), apartmentId));
+
             return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
         };
         return vehicleRepo.findAll(spec).stream().map(this::mapToResponse).toList();
@@ -199,7 +231,7 @@ public class VehicleService {
     private void sendVehicleNotification(Vehicle v, boolean approved,
                                          String reason, Staff staff) {
         Notification notif = new Notification();
-        notif.setId("NTF" + System.currentTimeMillis());
+        notif.setId("NTF" + String.format("%012d", System.currentTimeMillis() % 1_000_000_000_000L));
         notif.setResident(v.getResident());
         notif.setCreatedBy(staff);
         notif.setIsRead(false);
@@ -226,11 +258,11 @@ public class VehicleService {
 
     private String getTypeLabel(Vehicle.VehicleType type) {
         return switch (type) {
-            case MOTORBIKE    -> "xe máy";
-            case CAR          -> "ô tô";
-            case BICYCLE      -> "xe đạp";
+            case MOTORBIKE     -> "xe máy";
+            case CAR           -> "ô tô";
+            case BICYCLE       -> "xe đạp";
             case ELECTRIC_BIKE -> "xe đạp điện";
-            default           -> "phương tiện";
+            default            -> "phương tiện";
         };
     }
 

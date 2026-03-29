@@ -187,60 +187,14 @@
 <div class="container-fluid">
     <div class="row">
 
-        <!-- ── SIDEBAR ──────────────────────────────────────── -->
+        <!-- ── SIDEBAR — render động theo role ────────────── -->
         <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse" id="sidebarNav">
             <div class="position-sticky pt-3">
                 <div class="text-center mb-4">
                     <h5 class="text-white fw-bold"><i class="fas fa-building me-1"></i> CondoCare</h5>
                     <small class="text-white-50" id="userFullName"></small>
                 </div>
-                <ul class="nav flex-column">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="/dashboard" title="Tổng quan">
-                            <i class="fas fa-tachometer-alt me-2"></i><span>Tổng quan</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/dashboard/buildings" title="Tòa nhà">
-                            <i class="fas fa-building me-2"></i><span>Tòa nhà</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/dashboard/apartments" title="Căn hộ">
-                            <i class="fas fa-home me-2"></i><span>Căn hộ & Phí</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/dashboard/resident" title="Quản lý cư dân">
-                            <i class="fas fa-users me-2"></i><span>Quản lý cư dân</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/dashboard/staff" title="Quản lý nhân viên">
-                            <i class="fas fa-users-cog me-2"></i><span>Quản lý nhân viên</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/dashboard/invoices" title="Hóa đơn">
-                            <i class="fas fa-receipt me-2"></i><span>Hóa đơn</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/dashboard/service-requests" title="Yêu cầu hỗ trợ">
-                            <i class="fas fa-tools me-2"></i><span>Yêu cầu hỗ trợ</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/dashboard/settings" title="Cài đặt">
-                            <i class="fas fa-cog me-2"></i><span>Cài đặt</span>
-                        </a>
-                    </li>
-                    <li class="nav-item mt-4">
-                        <a class="nav-link text-danger-emphasis" href="#" id="logoutBtn" title="Đăng xuất">
-                            <i class="fas fa-sign-out-alt me-2"></i><span>Đăng xuất</span>
-                        </a>
-                    </li>
-                </ul>
+                <ul class="nav flex-column"></ul>
             </div>
         </nav>
 
@@ -467,57 +421,21 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="/js/common.js"></script>
 <script>
-    /* ── Auth check ─────────────────────────────────────────────── */
+    /* ── Auth check + Sidebar ────────────────────────────────────── */
     (function() {
-        if (!isLoggedIn()) { window.location.href = '/login'; return; }
+        // renderStaffSidebar kiểm tra login, redirect nếu không phải staff,
+        // và redirect nếu role không được phép vào /dashboard
+        renderStaffSidebar('dashboard');
+
         const info = getUserInfo();
-        if (!info || info.userType !== 'staff') {
-            alert('Bạn không có quyền truy cập trang này');
-            window.location.href = '/login';
-        }
-        if (info) {
-            document.getElementById('userFullName').textContent = info.fullName || info.username || '';
-            const now = new Date();
-            const h = now.getHours();
-            const greet = h < 12 ? 'Chào buổi sáng' : h < 18 ? 'Chào buổi chiều' : 'Chào buổi tối';
-            document.getElementById('dashGreeting').textContent =
-                `${greet}, ${info.fullName || 'Quản trị viên'}! — ${now.toLocaleDateString('vi-VN', {weekday:'long', day:'2-digit', month:'2-digit', year:'numeric'})}`;
-
-            // ── Ẩn menu/nút theo role ─────────────────────────────
-            const role = info.role; // "ADMIN" | "MANAGER" | "STAFF"
-
-            if (role === 'STAFF') {
-                // STAFF không thấy menu Quản lý nhân viên (sẽ bị 403 khi gọi API)
-                document.querySelectorAll('a[href="/dashboard/staff"]').forEach(el =>
-                    el.closest('li, a.quick-link')?.remove()
-                );
-            }
-
-            if (role === 'STAFF') {
-                // STAFF chỉ được xem cư dân, không được tạo mới
-                // → ẩn quick link "Thêm cư dân mới"
-                document.querySelectorAll('a.quick-link').forEach(el => {
-                    if (el.textContent.includes('Thêm cư dân')) el.remove();
-                });
-            }
-
-            // Hiển thị badge role trên sidebar để nhận biết rõ
-            const roleLabel = { ADMIN: '👑 Admin', MANAGER: '🏢 Manager', STAFF: '🔧 Staff' };
-            const roleEl = document.getElementById('userFullName');
-            if (roleEl && roleLabel[role]) {
-                const badge = document.createElement('div');
-                badge.className = 'text-white-50 small mt-1';
-                badge.textContent = roleLabel[role];
-                roleEl.after(badge);
-            }
-        }
+        if (!info) return;
+        document.getElementById('userFullName').textContent = info.fullName || info.username || '';
+        const now = new Date();
+        const h = now.getHours();
+        const greet = h < 12 ? 'Chào buổi sáng' : h < 18 ? 'Chào buổi chiều' : 'Chào buổi tối';
+        document.getElementById('dashGreeting').textContent =
+            `${greet}, ${info.fullName || 'Quản trị viên'}! — ${now.toLocaleDateString('vi-VN', {weekday:'long', day:'2-digit', month:'2-digit', year:'numeric'})}`;
     })();
-
-    /* ── Logout ─────────────────────────────────────────────────── */
-    document.getElementById('logoutBtn').addEventListener('click', e => {
-        e.preventDefault();
-        if (confirm('Bạn có chắc muốn đăng xuất?')) logout();
-    });
 
     /* ── Animated counter ───────────────────────────────────────── */
     function animateCounter(el, target) {

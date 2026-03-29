@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý thông báo - CondoCare</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .stat-card-dash {
+            background: #fff; border-radius: 16px; padding: 22px;
+            box-shadow: 0 2px 12px rgba(0,0,0,.07);
+            display: flex; align-items: center; gap: 18px;
+            transition: transform .2s, box-shadow .2s;
+            border-left: 4px solid; height: 100%;
+        }
+        .stat-card-dash:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+        .stat-card-dash.blue   { border-left-color: #1976d2; }
+        .stat-card-dash.green  { border-left-color: #388e3c; }
+        .stat-card-dash.orange { border-left-color: #f57c00; }
+        .stat-card-dash.purple { border-left-color: #7b1fa2; }
+        .stat-icon-dash { width:56px;height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0; }
+        .stat-icon-dash.blue   { background:#e3f2fd;color:#1976d2; }
+        .stat-icon-dash.green  { background:#e8f5e9;color:#388e3c; }
+        .stat-icon-dash.orange { background:#fff3e0;color:#f57c00; }
+        .stat-icon-dash.purple { background:#f3e5f5;color:#7b1fa2; }
+        .stat-num { font-size:1.8rem;font-weight:800;line-height:1;color:#1a237e; }
+        .stat-lbl { font-size:.8rem;color:#6c757d;margin-top:4px; }
+
+        .notif-card { border-radius:12px; border:1px solid #e8eaf6; margin-bottom:12px;
+                      padding:16px; transition: box-shadow .2s; }
+        .notif-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.1); }
+        .notif-card.unread { border-left: 4px solid #1976d2; background:#f8f9ff; }
+
+        .notif-type-dot { width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:6px; }
+        .dot-INFO        { background:#1976d2; }
+        .dot-WARNING     { background:#f57c00; }
+        .dot-URGENT      { background:#c62828; }
+        .dot-MAINTENANCE { background:#616161; }
+        .dot-PAYMENT     { background:#7b1fa2; }
+
+        .send-type-chip {
+            display:inline-flex;align-items:center;gap:4px;
+            padding:2px 10px;border-radius:20px;font-size:.75rem;font-weight:600;
+        }
+        .chip-BROADCAST { background:#e3f2fd;color:#1565c0; }
+        .chip-APARTMENT { background:#e8f5e9;color:#2e7d32; }
+        .chip-PERSONAL  { background:#f3e5f5;color:#6a1b9a; }
+    </style>
+</head>
+<body>
+<div id="loading" class="loading"><div class="spinner"></div></div>
+
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse" id="sidebarNav">
+            <div class="position-sticky pt-3">
+                <div class="text-center mb-4">
+                    <h5 class="text-white fw-bold"><i class="fas fa-building me-1"></i> CondoCare</h5>
+                    <small class="text-white-50" id="sidebarUser"></small>
+                </div>
+                <ul class="nav flex-column"></ul>
+            </div>
+        </nav>
+
+        <!-- Main -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+            <div class="page-header mb-4 d-flex justify-content-between align-items-start">
+                <div>
+                    <h4><i class="fas fa-bell text-primary"></i> Quản lý thông báo</h4>
+                    <nav aria-label="breadcrumb"><ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
+                        <li class="breadcrumb-item active">Thông báo</li>
+                    </ol></nav>
+                </div>
+                <!-- Nút gửi thông báo — chỉ hiện với ADMIN/MANAGER/RECEPTIONIST -->
+                <button class="btn btn-primary" id="btnOpenSend" data-bs-toggle="modal" data-bs-target="#sendModal">
+                    <i class="fas fa-paper-plane me-1"></i>Gửi thông báo
+                </button>
+            </div>
+
+            <div id="alertContainer" class="mb-3"></div>
+
+            <!-- Stats -->
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-xl-3">
+                    <div class="stat-card-dash blue">
+                        <div class="stat-icon-dash blue"><i class="fas fa-bell"></i></div>
+                        <div><div class="stat-num" id="statTotal">—</div><div class="stat-lbl">Tổng thông báo</div></div>
+                    </div>
+                </div>
+                <div class="col-6 col-xl-3">
+                    <div class="stat-card-dash orange">
+                        <div class="stat-icon-dash orange"><i class="fas fa-broadcast-tower"></i></div>
+                        <div><div class="stat-num" id="statBroadcast">—</div><div class="stat-lbl">Broadcast</div></div>
+                    </div>
+                </div>
+                <div class="col-6 col-xl-3">
+                    <div class="stat-card-dash purple">
+                        <div class="stat-icon-dash purple"><i class="fas fa-user-tag"></i></div>
+                        <div><div class="stat-num" id="statPersonal">—</div><div class="stat-lbl">Cá nhân</div></div>
+                    </div>
+                </div>
+                <div class="col-6 col-xl-3">
+                    <div class="stat-card-dash green">
+                        <div class="stat-icon-dash green"><i class="fas fa-envelope-open"></i></div>
+                        <div><div class="stat-num" id="statUnread">—</div><div class="stat-lbl">Chưa đọc</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-body py-2">
+                    <div class="d-flex flex-wrap gap-2 align-items-end">
+                        <div>
+                            <label class="form-label small mb-1 fw-semibold">Loại thông báo</label>
+                            <select id="filterType" class="form-select form-select-sm" style="width:160px">
+                                <option value="ALL">Tất cả loại</option>
+                                <option value="INFO">ℹ️ Thông tin</option>
+                                <option value="WARNING">⚠️ Cảnh báo</option>
+                                <option value="URGENT">🚨 Khẩn cấp</option>
+                                <option value="MAINTENANCE">🔧 Bảo trì</option>
+                                <option value="PAYMENT">💳 Thanh toán</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label small mb-1 fw-semibold">Tòa nhà</label>
+                            <select id="filterBuilding" class="form-select form-select-sm" style="width:180px">
+                                <option value="">Tất cả tòa nhà</option>
+                            </select>
+                        </div>
+                        <div class="d-flex gap-2 mt-3">
+                            <button class="btn btn-primary btn-sm" onclick="loadList()">
+                                <i class="fas fa-filter me-1"></i>Lọc
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="resetFilter()">
+                                <i class="fas fa-redo me-1"></i>Đặt lại
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- List -->
+            <div id="notifList">
+                <div class="text-center py-5 text-muted">
+                    <i class="fas fa-spinner fa-spin fa-2x mb-3 d-block"></i>Đang tải...
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- ═══════════════ MODAL GỬI THÔNG BÁO ═══════════════ -->
+<div class="modal fade" id="sendModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-paper-plane me-2"></i>Gửi thông báo mới</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="sendAlert" class="mb-3"></div>
+
+                <!-- Chọn loại gửi -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Phạm vi gửi <span class="text-danger">*</span></label>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="sendScope" id="scopeBroadcast"
+                                   value="broadcast" checked onchange="onScopeChange()">
+                            <label class="form-check-label" for="scopeBroadcast">
+                                <i class="fas fa-broadcast-tower me-1 text-warning"></i>Toàn tòa nhà
+                            </label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="sendScope" id="scopeApartment"
+                                   value="apartment" onchange="onScopeChange()">
+                            <label class="form-check-label" for="scopeApartment">
+                                <i class="fas fa-home me-1 text-success"></i>Theo căn hộ
+                            </label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="sendScope" id="scopePersonal"
+                                   value="resident" onchange="onScopeChange()">
+                            <label class="form-check-label" for="scopePersonal">
+                                <i class="fas fa-user-tag me-1 text-purple"></i>Cư dân cụ thể
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Target: chọn tòa nhà (broadcast) -->
+                <div id="targetBuilding" class="mb-3">
+                    <label class="form-label fw-semibold">Tòa nhà <span class="text-danger">*</span></label>
+                    <select id="sendBuilding" class="form-select">
+                        <option value="">-- Chọn tòa nhà --</option>
+                    </select>
+                </div>
+
+                <!-- Target: chọn căn hộ -->
+                <div id="targetApartment" class="mb-3 d-none">
+                    <label class="form-label fw-semibold">Mã căn hộ <span class="text-danger">*</span></label>
+                    <input type="text" id="sendApartmentId" class="form-control"
+                           placeholder="VD: APT001">
+                    <div class="form-text">Nhập ID căn hộ (xem trong mục Quản lý căn hộ)</div>
+                </div>
+
+                <!-- Target: chọn cư dân -->
+                <div id="targetResident" class="mb-3 d-none">
+                    <label class="form-label fw-semibold">Mã cư dân <span class="text-danger">*</span></label>
+                    <input type="text" id="sendResidentId" class="form-control"
+                           placeholder="VD: RES001">
+                    <div class="form-text">Nhập ID cư dân (xem trong mục Quản lý cư dân)</div>
+                </div>
+
+                <!-- Loại thông báo -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Loại thông báo <span class="text-danger">*</span></label>
+                    <select id="sendType" class="form-select">
+                        <option value="INFO">ℹ️ Thông tin</option>
+                        <option value="WARNING">⚠️ Cảnh báo</option>
+                        <option value="URGENT">🚨 Khẩn cấp</option>
+                        <option value="MAINTENANCE">🔧 Bảo trì</option>
+                        <option value="PAYMENT">💳 Thanh toán</option>
+                    </select>
+                </div>
+
+                <!-- Tiêu đề -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Tiêu đề <span class="text-danger">*</span></label>
+                    <input type="text" id="sendTitle" class="form-control"
+                           placeholder="VD: Lịch bảo trì thang máy tháng 7/2025">
+                    <div class="form-text" id="titleCounter">0/255 ký tự</div>
+                </div>
+
+                <!-- Nội dung -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Nội dung <span class="text-danger">*</span></label>
+                    <textarea id="sendContent" class="form-control" rows="4"
+                              placeholder="Nội dung chi tiết thông báo..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Huỷ</button>
+                <button class="btn btn-primary" id="btnConfirmSend">
+                    <i class="fas fa-paper-plane me-1"></i>Gửi thông báo
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/common.js"></script>
+<script>
+    const API_N = `${API_BASE_URL}/staff/notifications`;
+    const API_B = `${API_BASE_URL}/buildings`;
+
+    const TYPE_CONFIG = {
+        INFO:        { cls:'bg-info',    dot:'dot-INFO',        label:'Thông tin', icon:'fa-info-circle' },
+        WARNING:     { cls:'bg-warning text-dark', dot:'dot-WARNING', label:'Cảnh báo', icon:'fa-exclamation-triangle' },
+        URGENT:      { cls:'bg-danger',  dot:'dot-URGENT',      label:'Khẩn cấp', icon:'fa-bell' },
+        MAINTENANCE: { cls:'bg-secondary',dot:'dot-MAINTENANCE',label:'Bảo trì',  icon:'fa-wrench' },
+        PAYMENT:     { cls:'bg-primary', dot:'dot-PAYMENT',     label:'Thanh toán',icon:'fa-money-bill' },
+    };
+
+    let canSend   = false; // ADMIN, MANAGER, RECEPTIONIST
+    let canDelete = false; // ADMIN, MANAGER
+    let sendModal = null;
+    let buildings = [];
+
+    // ── Init ─────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', async () => {
+        renderStaffSidebar('notifications');
+
+        const info = getUserInfo();
+        const role = (info?.role || '').toUpperCase();
+        canSend   = ['ADMIN', 'MANAGER', 'RECEPTIONIST'].includes(role);
+        canDelete = ['ADMIN', 'MANAGER'].includes(role);
+
+        // Ẩn nút gửi nếu không có quyền (dù SecurityConfig đã bảo vệ phía BE)
+        if (!canSend) document.getElementById('btnOpenSend').style.display = 'none';
+
+        sendModal = new bootstrap.Modal(document.getElementById('sendModal'));
+
+        // Load buildings cho dropdown
+        try {
+            const res = await apiRequest(API_B);
+            buildings = await res.json();
+            ['filterBuilding','sendBuilding'].forEach(id => {
+                const sel = document.getElementById(id);
+                if (!sel) return;
+                const isFilter = id === 'filterBuilding';
+                buildings.forEach(b => {
+                    sel.innerHTML += `<option value="${b.id}">${escHtml(b.name)}</option>`;
+                });
+            });
+        } catch(e) { console.error('Load buildings', e); }
+
+        // Counter tiêu đề
+        document.getElementById('sendTitle').addEventListener('input', function() {
+            document.getElementById('titleCounter').textContent = `${this.value.length}/255 ký tự`;
+        });
+
+        // Nút gửi
+        document.getElementById('btnConfirmSend').addEventListener('click', doSend);
+
+        // Reset modal khi đóng
+        document.getElementById('sendModal').addEventListener('hidden.bs.modal', () => {
+            document.getElementById('sendTitle').value   = '';
+            document.getElementById('sendContent').value = '';
+            document.getElementById('sendAlert').innerHTML = '';
+            document.getElementById('titleCounter').textContent = '0/255 ký tự';
+            document.getElementById('scopeBroadcast').checked = true;
+            onScopeChange();
+        });
+
+        loadStats();
+        loadList();
+    });
+
+    // ── Scope toggle ──────────────────────────────────────────────────
+    function onScopeChange() {
+        const scope = document.querySelector('input[name="sendScope"]:checked')?.value;
+        document.getElementById('targetBuilding').classList.toggle('d-none',  scope !== 'broadcast');
+        document.getElementById('targetApartment').classList.toggle('d-none', scope !== 'apartment');
+        document.getElementById('targetResident').classList.toggle('d-none',  scope !== 'resident');
+    }
+
+    // ── Stats ─────────────────────────────────────────────────────────
+    async function loadStats() {
+        try {
+            const res  = await apiRequest(`${API_N}/stats`);
+            const data = await res.json();
+            document.getElementById('statTotal').textContent     = data.total     ?? '—';
+            document.getElementById('statBroadcast').textContent = data.broadcast ?? '—';
+            document.getElementById('statPersonal').textContent  = data.personal  ?? '—';
+            document.getElementById('statUnread').textContent    = data.unread    ?? '—';
+        } catch(e) { console.error('Stats error', e); }
+    }
+
+    // ── List ──────────────────────────────────────────────────────────
+    async function loadList() {
+        showLoading();
+        document.getElementById('notifList').innerHTML =
+            `<div class="text-center py-5 text-muted"><i class="fas fa-spinner fa-spin fa-2x mb-3 d-block"></i>Đang tải...</div>`;
+        try {
+            const params = new URLSearchParams();
+            const type     = document.getElementById('filterType')?.value;
+            const building = document.getElementById('filterBuilding')?.value;
+            if (type     && type     !== 'ALL') params.set('type', type);
+            if (building && building !== '')    params.set('buildingId', building);
+
+            const res  = await apiRequest(`${API_N}?${params}`);
+            const data = await res.json();
+            renderList(Array.isArray(data) ? data : []);
+        } catch(e) {
+            showAlert('Không thể tải danh sách thông báo.', 'danger');
+            document.getElementById('notifList').innerHTML = '';
+        } finally { hideLoading(); }
+    }
+
+    function resetFilter() {
+        document.getElementById('filterType').value     = 'ALL';
+        document.getElementById('filterBuilding').value = '';
+        loadList();
+    }
+
+    function renderList(list) {
+        const container = document.getElementById('notifList');
+        if (!list.length) {
+            container.innerHTML = `<div class="text-center py-5 text-muted">
+                <i class="fas fa-bell-slash fa-2x mb-2 d-block opacity-25"></i>Không có thông báo nào</div>`;
+            return;
+        }
+        container.innerHTML = list.map(n => {
+            const cfg = TYPE_CONFIG[n.type] || TYPE_CONFIG.INFO;
+            const chipCls = `chip-${n.sendType || 'BROADCAST'}`;
+            const chipLabel = { BROADCAST:'Toàn tòa', APARTMENT:'Căn hộ', PERSONAL:'Cá nhân' }[n.sendType] || 'Broadcast';
+            const chipIcon  = { BROADCAST:'fa-broadcast-tower', APARTMENT:'fa-home', PERSONAL:'fa-user-tag' }[n.sendType] || 'fa-broadcast-tower';
+            const targetStr = n.sendType === 'PERSONAL'
+                ? `— ${escHtml(n.residentName || '')}`
+                : n.sendType === 'APARTMENT'
+                ? `— Căn ${escHtml(n.apartmentNumber || '')}`
+                : n.buildingName ? `— ${escHtml(n.buildingName)}` : '';
+
+            return `<div class="notif-card ${n.isRead ? '' : 'unread'}">
+                <div class="d-flex gap-3">
+                    <div class="notif-type-dot ${cfg.dot}"></div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
+                            <div>
+                                <span class="badge ${cfg.cls} me-1"><i class="fas ${cfg.icon} me-1"></i>${cfg.label}</span>
+                                <span class="send-type-chip ${chipCls}">
+                                    <i class="fas ${chipIcon}"></i>${chipLabel} ${targetStr}
+                                </span>
+                            </div>
+                            <div class="d-flex gap-1 flex-shrink-0">
+                                ${canDelete ? `<button class="btn btn-sm btn-outline-danger" title="Xoá thông báo"
+                                    onclick="doDelete('${n.id}')">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>` : ''}
+                            </div>
+                        </div>
+                        <h6 class="fw-bold mb-1">${escHtml(n.title)}</h6>
+                        <p class="text-muted small mb-1">${escHtml(n.content)}</p>
+                        <small class="text-muted">
+                            <i class="fas fa-user me-1"></i>${escHtml(n.createdBy || 'Hệ thống')} ·
+                            <i class="fas fa-clock ms-1 me-1"></i>${fmtDate(n.createdAt)}
+                            ${!n.isRead ? '<span class="badge bg-primary ms-2" style="font-size:.65rem;">Chưa đọc</span>' : ''}
+                        </small>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    // ── Send ──────────────────────────────────────────────────────────
+    async function doSend() {
+        const scope   = document.querySelector('input[name="sendScope"]:checked')?.value || 'broadcast';
+        const title   = document.getElementById('sendTitle').value.trim();
+        const content = document.getElementById('sendContent').value.trim();
+        const type    = document.getElementById('sendType').value;
+
+        if (!title || !content) {
+            document.getElementById('sendAlert').innerHTML =
+                `<div class="alert alert-warning py-2">Vui lòng điền đầy đủ tiêu đề và nội dung.</div>`;
+            return;
+        }
+
+        let endpoint, body = { title, content, type };
+
+        if (scope === 'broadcast') {
+            const buildingId = document.getElementById('sendBuilding').value;
+            if (!buildingId) {
+                document.getElementById('sendAlert').innerHTML =
+                    `<div class="alert alert-warning py-2">Vui lòng chọn tòa nhà.</div>`;
+                return;
+            }
+            endpoint = `${API_N}/broadcast`;
+            body.buildingId = buildingId;
+        } else if (scope === 'apartment') {
+            const apartmentId = document.getElementById('sendApartmentId').value.trim();
+            if (!apartmentId) {
+                document.getElementById('sendAlert').innerHTML =
+                    `<div class="alert alert-warning py-2">Vui lòng nhập mã căn hộ.</div>`;
+                return;
+            }
+            endpoint = `${API_N}/apartment`;
+            body.apartmentId = apartmentId;
+        } else {
+            const residentId = document.getElementById('sendResidentId').value.trim();
+            if (!residentId) {
+                document.getElementById('sendAlert').innerHTML =
+                    `<div class="alert alert-warning py-2">Vui lòng nhập mã cư dân.</div>`;
+                return;
+            }
+            endpoint = `${API_N}/resident`;
+            body.residentId = residentId;
+        }
+
+        const btn = document.getElementById('btnConfirmSend');
+        btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang gửi...';
+        showLoading();
+        try {
+            const res = await apiRequest(endpoint, { method: 'POST', body: JSON.stringify(body) });
+            if (res.ok) {
+                sendModal.hide();
+                showAlert('Đã gửi thông báo thành công!', 'success');
+                loadStats(); loadList();
+            } else {
+                document.getElementById('sendAlert').innerHTML =
+                    `<div class="alert alert-danger py-2">${escHtml(await res.text())}</div>`;
+            }
+        } catch(e) {
+            document.getElementById('sendAlert').innerHTML =
+                `<div class="alert alert-danger py-2">Lỗi: ${escHtml(e.message)}</div>`;
+        } finally {
+            hideLoading(); btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane me-1"></i>Gửi thông báo';
+        }
+    }
+
+    // ── Delete ────────────────────────────────────────────────────────
+    async function doDelete(id) {
+        if (!confirm('Xoá thông báo này?')) return;
+        showLoading();
+        try {
+            const res = await apiRequest(`${API_N}/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                showAlert('Đã xoá thông báo.', 'success');
+                loadStats(); loadList();
+            } else {
+                showAlert(await res.text(), 'danger');
+            }
+        } catch(e) {
+            showAlert('Lỗi: ' + e.message, 'danger');
+        } finally { hideLoading(); }
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────
+    function showAlert(msg, type = 'danger') {
+        const c = document.getElementById('alertContainer');
+        c.innerHTML = `<div class="alert alert-${type} alert-dismissible fade show">
+            ${escHtml(msg)}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
+        if (type === 'success') setTimeout(() => c.innerHTML = '', 4000);
+    }
+
+    function fmtDate(s) {
+        if (!s) return '—';
+        return new Date(s).toLocaleString('vi-VN');
+    }
+</script>
+</body>
+</html>
