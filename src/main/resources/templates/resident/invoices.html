@@ -369,9 +369,26 @@
             const isOverdue = inv.status === 'OVERDUE';
             const isUnpaid  = inv.status === 'UNPAID';
             // serviceAmount: tổng các khoản SERVICE, parkingAmount: tổng PARKING
-            const svcAmt  = inv.serviceAmount  ?? inv.serviceAmt  ?? 0;
-            const pkgAmt  = inv.parkingAmount  ?? inv.parkingAmt  ?? 0;
-            const total   = inv.totalAmount    ?? inv.totalAmt    ?? 0;
+            // Backend có thể trả về field riêng (serviceAmount/serviceAmt)
+            // hoặc chỉ embed feeDetails array — tính tổng từ mảng nếu cần.
+            const feeDetails = inv.feeDetails || inv.details || [];
+            const svcFromDetails = feeDetails
+                .filter(d => (d.feeType || d.type) === 'SERVICE')
+                .reduce((sum, d) => sum + (d.amount || 0), 0);
+            const pkgFromDetails = feeDetails
+                .filter(d => (d.feeType || d.type) === 'PARKING')
+                .reduce((sum, d) => sum + (d.amount || 0), 0);
+
+            // Ưu tiên: field riêng → tính từ feeDetails → null (hiện —)
+            const svcAmt = inv.serviceAmount != null ? inv.serviceAmount
+                         : inv.serviceAmt    != null ? inv.serviceAmt
+                         : svcFromDetails    > 0     ? svcFromDetails
+                         : null;
+            const pkgAmt = inv.parkingAmount != null ? inv.parkingAmount
+                         : inv.parkingAmt    != null ? inv.parkingAmt
+                         : pkgFromDetails    > 0     ? pkgFromDetails
+                         : null;
+            const total  = inv.totalAmount   ?? inv.totalAmt ?? 0;
             return `
             <tr class="${isOverdue?'table-danger':''}">
                 <td class="ps-3">
@@ -432,12 +449,25 @@
         if (!inv) return;
         const statusCls   = { UNPAID:'bg-warning text-dark', PAID:'bg-success', OVERDUE:'bg-danger' };
         const statusLabel = { UNPAID:'Chưa thanh toán', PAID:'Đã thanh toán', OVERDUE:'Quá hạn' };
-        const svcAmt = inv.serviceAmount ?? inv.serviceAmt ?? 0;
-        const pkgAmt = inv.parkingAmount ?? inv.parkingAmt ?? 0;
-        const total  = inv.totalAmount   ?? inv.totalAmt   ?? 0;
-
-        // Render fee details nếu backend trả về
         const feeDetails = inv.feeDetails || inv.details || [];
+        const svcFromDetails = feeDetails
+            .filter(d => (d.feeType || d.type) === 'SERVICE')
+            .reduce((sum, d) => sum + (d.amount || 0), 0);
+        const pkgFromDetails = feeDetails
+            .filter(d => (d.feeType || d.type) === 'PARKING')
+            .reduce((sum, d) => sum + (d.amount || 0), 0);
+
+        const svcAmt = inv.serviceAmount != null ? inv.serviceAmount
+                     : inv.serviceAmt    != null ? inv.serviceAmt
+                     : svcFromDetails    > 0     ? svcFromDetails
+                     : null;
+        const pkgAmt = inv.parkingAmount != null ? inv.parkingAmount
+                     : inv.parkingAmt    != null ? inv.parkingAmt
+                     : pkgFromDetails    > 0     ? pkgFromDetails
+                     : null;
+        const total  = inv.totalAmount   ?? inv.totalAmt ?? 0;
+
+        // Render fee details nếu backend trả về (feeDetails đã khai báo trên)
         const detailRows = feeDetails.length ? `
             <div class="col-12">
                 <div class="fw-semibold small mb-2 text-muted">
@@ -555,7 +585,9 @@
 
     // ── Helpers ───────────────────────────────────────────────
     function fmtVND(amount) {
-        if (!amount || amount === 0) return '<span class="text-muted">—</span>';
+        // null / undefined → dấu — (backend không trả về field này)
+        if (amount == null) return '<span class="text-muted">—</span>';
+        // 0 thật sự → hiện 0 ₫ (không phải ẩn)
         return new Intl.NumberFormat('vi-VN', { style:'currency', currency:'VND' }).format(amount);
     }
 

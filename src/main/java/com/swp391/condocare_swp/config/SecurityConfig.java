@@ -131,7 +131,7 @@ public class SecurityConfig {
 
                         // ── 12. Tòa nhà / Căn hộ ─────────────────────────────────────
                         .requestMatchers("/api/buildings/**", "/api/apartments/**")
-                        .hasAnyRole(ALL_STAFF)
+                        .hasAnyRole("ADMIN", "MANAGER")
 
                         // ── 13. Dashboard ─────────────────────────────────────────────
                         .requestMatchers("/api/dashboard/**")

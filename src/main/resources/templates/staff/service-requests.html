@@ -62,65 +62,14 @@
 
 <div class="container-fluid">
     <div class="row">
-        <!-- Sidebar -->
+        <!-- Sidebar — render động theo role qua renderStaffSidebar() trong common.js -->
         <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse" id="sidebarNav">
             <div class="position-sticky pt-3">
                 <div class="text-center mb-4">
                     <h5 class="text-white fw-bold"><i class="fas fa-building me-1"></i> CondoCare</h5>
                     <small class="text-white-50" id="sidebarUser"></small>
                 </div>
-                <ul class="nav flex-column">
-                    <li class="nav-item">
-                        <a class="nav-link" href="/dashboard">
-                            <i class="fas fa-tachometer-alt me-2"></i>Tổng quan
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/dashboard/buildings">
-                            <i class="fas fa-building me-2"></i>Tòa nhà
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/dashboard/apartments">
-                            <i class="fas fa-home me-2"></i>Căn hộ & Phí
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/dashboard/resident">
-                            <i class="fas fa-users me-2"></i>Quản lý cư dân
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/dashboard/staff">
-                            <i class="fas fa-users-cog me-2"></i>Quản lý nhân viên
-                        </a>
-                    </li>
-                    <!--                    <li class="nav-item">-->
-                    <!--                        <a class="nav-link" href="/dashboard/fees">-->
-                    <!--                            <i class="fas fa-file-invoice-dollar me-2"></i>Phí dịch vụ-->
-                    <!--                        </a>-->
-                    <!--                    </li>-->
-                    <li class="nav-item">
-                        <a class="nav-link" href="/dashboard/invoices">
-                            <i class="fas fa-receipt me-2"></i>Hóa đơn
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="/dashboard/service-requests">
-                            <i class="fas fa-tools me-2"></i>Yêu cầu hỗ trợ
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/dashboard/settings">
-                            <i class="fas fa-cog me-2"></i>Cài đặt
-                        </a>
-                    </li>
-                    <li class="nav-item mt-4">
-                        <a class="nav-link text-danger-emphasis" href="#" id="logoutBtn">
-                            <i class="fas fa-sign-out-alt me-2"></i>Đăng xuất
-                        </a>
-                    </li>
-                </ul>
+                <ul class="nav flex-column"></ul>
             </div>
         </nav>
 
@@ -361,7 +310,8 @@
                             <button class="btn btn-primary" onclick="doAssign()">
                                 <i class="fas fa-user-check me-1"></i>Phân công & bắt đầu xử lý
                             </button>
-                            <button class="btn btn-outline-danger" onclick="doReject()">
+                            <!-- Chỉ ADMIN/MANAGER mới được từ chối -->
+                            <button class="btn btn-outline-danger btn-reject-action" onclick="doReject()">
                                 <i class="fas fa-times me-1"></i>Từ chối yêu cầu
                             </button>
                         </div>
@@ -403,7 +353,8 @@
                             <button class="btn btn-success" onclick="doMarkDone()">
                                 <i class="fas fa-check me-1"></i>Xác nhận hoàn thành
                             </button>
-                            <button class="btn btn-outline-danger" onclick="doReject2()">
+                            <!-- Chỉ ADMIN/MANAGER mới được từ chối -->
+                            <button class="btn btn-outline-danger btn-reject-action" onclick="doReject2()">
                                 <i class="fas fa-times me-1"></i>Từ chối yêu cầu
                             </button>
                         </div>
@@ -500,28 +451,36 @@ Ví dụ: Vấn đề này thuộc trách nhiệm cư dân tự xử lý theo n�
     let uploadedImageBase64 = null;
     let detailModal = null;
     let rejectModal = null;
-    let rejectTargetId = null;   // ID của yêu cầu đang bị từ chối từ nút ngoài bảng
+    let rejectTargetId = null;
+
+    // ── Phân quyền theo role ──────────────────────────────────────────
+    // canAssign  : ADMIN, MANAGER, RECEPTIONIST
+    // canReject  : ADMIN, MANAGER
+    // canMarkDone: ADMIN, MANAGER, TECHNICIAN
+    let canAssign   = false;
+    let canReject   = false;
+    let canMarkDone = false;
 
     // ── Init ─────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
-        redirectIfNotLoggedIn();
+        // renderStaffSidebar kiểm tra login và redirect nếu role không được vào trang này
+        renderStaffSidebar('service-requests');
+
         const info = getUserInfo();
-        if (info) document.getElementById('sidebarUser').textContent = info.fullName || '';
+        const userRole = (info?.role || '').toUpperCase();
+
+        // Thiết lập quyền theo role
+        canAssign   = ['ADMIN', 'MANAGER', 'RECEPTIONIST'].includes(userRole);
+        canReject   = ['ADMIN', 'MANAGER'].includes(userRole);
+        canMarkDone = ['ADMIN', 'MANAGER', 'TECHNICIAN'].includes(userRole);
+
+        // Ẩn/hiện các nút reject ngay từ đầu
+        document.querySelectorAll('.btn-reject-action').forEach(btn => {
+            btn.style.display = canReject ? '' : 'none';
+        });
+
         detailModal = new bootstrap.Modal(document.getElementById('detailModal'));
         rejectModal = new bootstrap.Modal(document.getElementById('rejectModal'));
-
-        // ── Xử lý quyền theo role ──────────
-        const userRole = (info && info.role) ? info.role.toUpperCase() : '';
-
-        if (userRole === 'STAFF' || userRole === 'TECHNICIAN') {
-            window._srReadOnly = true;           // ẩn nút phân công / từ chối
-            window._isTechnician = (userRole === 'TECHNICIAN');
-
-            // Ẩn panel phân công và nút từ chối trong detail modal
-            document.getElementById('panelAssign')?.classList.add('d-none');
-            // Nếu muốn TECHNICIAN vẫn thấy nút "Từ chối" thì comment dòng dưới
-            document.querySelectorAll('.btn-outline-danger').forEach(btn => btn.style.display = 'none');
-        }
 
         // Nút xác nhận từ chối trong modal
         document.getElementById('btnConfirmReject').addEventListener('click', async () => {
@@ -552,11 +511,12 @@ Ví dụ: Vấn đề này thuộc trách nhiệm cư dân tự xử lý theo n�
                     // Nếu detail modal đang mở cùng yêu cầu → reload nội dung
                     if (currentRequestId === rejectTargetId) {
                         setTimeout(async () => {
-                            const [detailRes, staffRes] = await Promise.all([
-                                apiRequest(`${API_SR}/${rejectTargetId}`),
-                                apiRequest(`${API_SR}/assignable-staff`)
-                            ]);
-                            populateDetail(await detailRes.json(), await staffRes.json());
+                            const detailRes = await apiRequest(`${API_SR}/${rejectTargetId}`);
+                            // assignable-staff chỉ fetch nếu có quyền
+                            const staffList = canAssign
+                                ? await (await apiRequest(`${API_SR}/assignable-staff`)).json()
+                                : [];
+                            populateDetail(await detailRes.json(), staffList);
                         }, 300);
                     }
                 } else {
@@ -582,11 +542,6 @@ Ví dụ: Vấn đề này thuộc trách nhiệm cư dân tự xử lý theo n�
 
         loadStats();
         loadList(0);
-
-        // Logout
-        document.getElementById('logoutBtn')?.addEventListener('click', e => {
-            e.preventDefault(); logout();
-        });
     });
 
     // ── Stats ─────────────────────────────────────────────────────────
@@ -675,7 +630,7 @@ Ví dụ: Vấn đề này thuộc trách nhiệm cư dân tự xử lý theo n�
                             title="Xem chi tiết">
                         <i class="fas fa-eye"></i>
                     </button>
-                    ${(!window._srReadOnly && (sr.status === 'PENDING' || sr.status === 'IN_PROGRESS')) ? `
+                    ${(canReject && (sr.status === 'PENDING' || sr.status === 'IN_PROGRESS')) ? `
                     <button class="btn btn-sm btn-outline-danger"
                             onclick="event.stopPropagation(); openRejectModal('${sr.id}', '${escHtml(sr.title)}')"
                             title="Từ chối yêu cầu">
@@ -706,15 +661,17 @@ Ví dụ: Vấn đề này thuộc trách nhiệm cư dân tự xử lý theo n�
 
         showLoading();
         try {
-            // Load assignable staff for dropdown
-            const [detailRes, staffRes] = await Promise.all([
-                apiRequest(`${API_SR}/${id}`),
-                apiRequest(`${API_SR}/assignable-staff`)
-            ]);
-            const sr    = await detailRes.json();
-            const staff = await staffRes.json();
+            const detailRes = await apiRequest(`${API_SR}/${id}`);
+            const sr = await detailRes.json();
 
-            populateDetail(sr, staff);
+            // Chỉ fetch assignable-staff nếu role được phép phân công
+            let staffList = [];
+            if (canAssign) {
+                const staffRes = await apiRequest(`${API_SR}/assignable-staff`);
+                staffList = await staffRes.json();
+            }
+
+            populateDetail(sr, staffList);
             document.getElementById('detailAlert').innerHTML = '';
             detailModal.show();
         } catch(e) {
@@ -732,11 +689,6 @@ Ví dụ: Vấn đề này thuộc trách nhiệm cư dân tự xử lý theo n�
         document.getElementById('dtResident').textContent    = `${sr.residentName||'—'} (${sr.residentPhone||'—'})`;
         document.getElementById('dtApartment').textContent   = sr.apartmentNumber ? `${sr.buildingName} / ${sr.apartmentNumber}` : '—';
         document.getElementById('dtCreatedAt').textContent   = fmtDate(sr.createdAt);
-
-        // Trong populateDetail(sr, staffList)
-        if (sr.status === 'IN_PROGRESS' && window._isTechnician) {
-        document.getElementById('panelInProgress').classList.remove('d-none');
-        }
 
         // Note
         const noteSection = document.getElementById('currentNoteSection');
@@ -765,27 +717,36 @@ Ví dụ: Vấn đề này thuộc trách nhiệm cư dân tự xử lý theo n�
             } else { confirmBadge.classList.add('d-none'); }
         } else { imgSection.classList.add('d-none'); }
 
-        // Action panels
+        // Ẩn tất cả action panels trước
         ['panelAssign','panelInProgress','panelDone','panelRejected'].forEach(id =>
             document.getElementById(id).classList.add('d-none'));
 
-        if (sr.status === 'PENDING') {
+        if (sr.status === 'PENDING' && canAssign) {
+            // panelAssign: chỉ ADMIN, MANAGER, RECEPTIONIST
             document.getElementById('panelAssign').classList.remove('d-none');
-            // Populate assignee dropdown
+            // Populate dropdown nhân viên
             const sel = document.getElementById('assigneeSelect');
             sel.innerHTML = '<option value="">-- Chọn nhân viên --</option>' +
                 staffList.map(s =>
                     `<option value="${s.id}">${escHtml(s.fullName)} (${escHtml(s.roleName)}${s.department?' – '+escHtml(s.department):''})</option>`
                 ).join('');
             document.getElementById('assignNote').value = '';
-        } else if (sr.status === 'IN_PROGRESS') {
+            // Ẩn nút "Từ chối" nếu RECEPTIONIST không có quyền reject
+            document.querySelectorAll('#panelAssign .btn-reject-action').forEach(btn => {
+                btn.style.display = canReject ? '' : 'none';
+            });
+        } else if (sr.status === 'IN_PROGRESS' && canMarkDone) {
+            // panelInProgress: ADMIN, MANAGER, TECHNICIAN
             document.getElementById('panelInProgress').classList.remove('d-none');
             document.getElementById('doneNote').value = '';
-            // Reset upload zone
             uploadedImageBase64 = null;
             document.getElementById('uploadPreview').classList.add('d-none');
             document.getElementById('uploadPlaceholder').classList.remove('d-none');
             document.getElementById('uploadZone').style.borderColor = '';
+            // Ẩn nút "Từ chối" nếu TECHNICIAN không có quyền reject
+            document.querySelectorAll('#panelInProgress .btn-reject-action').forEach(btn => {
+                btn.style.display = canReject ? '' : 'none';
+            });
         } else if (sr.status === 'DONE') {
             document.getElementById('panelDone').classList.remove('d-none');
         } else if (sr.status === 'REJECTED') {
@@ -851,13 +812,13 @@ Ví dụ: Vấn đề này thuộc trách nhiệm cư dân tự xử lý theo n�
                 showDetailAlert(successMsg, 'success');
                 loadStats();
                 loadList(currentPage);
-                // Reload detail
+                // Reload detail sau action
                 setTimeout(async () => {
-                    const [detailRes, staffRes] = await Promise.all([
-                        apiRequest(`${API_SR}/${currentRequestId}`),
-                        apiRequest(`${API_SR}/assignable-staff`)
-                    ]);
-                    populateDetail(await detailRes.json(), await staffRes.json());
+                    const detailRes = await apiRequest(`${API_SR}/${currentRequestId}`);
+                    const staffList = canAssign
+                        ? await (await apiRequest(`${API_SR}/assignable-staff`)).json()
+                        : [];
+                    populateDetail(await detailRes.json(), staffList);
                 }, 300);
             } else {
                 const err = await res.text();

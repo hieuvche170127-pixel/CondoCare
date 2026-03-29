@@ -342,23 +342,22 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="/js/common.js"></script>
 <script>
-    // ─── Auth check ────────────────────────────────────────────────────────────
+    // ─── Auth check + sidebar ──────────────────────────────────────────────────
     (function() {
         if (!isLoggedIn()) { window.location.href = '/login'; return; }
         const info = getUserInfo();
         if (!info || info.userType !== 'staff') { window.location.href = '/login'; return; }
-        const nameEl = document.getElementById('sidebarUser');
-        if (nameEl) nameEl.textContent = info.fullName || info.username || '';
 
-        // Ẩn nút tạo và nút xóa nếu không phải ADMIN/MANAGER
-        if (!['ADMIN','MANAGER'].includes(info.role)) {
+        // renderStaffSidebar tự redirect nếu role không được phép vào trang staff
+        renderStaffSidebar('staff');
+
+        const role = (info.role || '').toUpperCase();
+
+        // Chỉ ADMIN mới được thêm nhân viên
+        if (role !== 'ADMIN') {
             document.getElementById('btnAddStaff')?.remove();
         }
     })();
-
-    document.getElementById('logoutBtn').addEventListener('click', e => {
-        e.preventDefault(); if (confirm('Đăng xuất?')) logout();
-    });
 
     const API = '/api/staff-management';
     let _currentEditId = null;
@@ -439,7 +438,13 @@
     function renderTable(list) {
         const tbody = document.getElementById('staffTableBody');
         const info  = getUserInfo();
-        const canEdit = ['ADMIN','MANAGER'].includes(info?.role);
+        const role  = (info?.role || '').toUpperCase();
+        const currentUsername = info?.username || '';
+
+        // Chỉ ADMIN mới có quyền deactivate và reset-password
+        const isAdmin   = role === 'ADMIN';
+        // ADMIN + MANAGER đều có quyền edit
+        const canEdit   = ['ADMIN', 'MANAGER'].includes(role);
 
         if (!list.length) {
             tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">
@@ -458,10 +463,49 @@
             TECHNICIAN:'bg-warning text-dark', RECEPTIONIST:'bg-secondary'
         };
 
-        tbody.innerHTML = list.map(s => `
-            <tr>
+        tbody.innerHTML = list.map(s => {
+            const isSelf = s.username === currentUsername;
+
+            // Nút chỉnh sửa: ADMIN + MANAGER
+            const editBtn = canEdit
+                ? `<button class="btn btn-sm btn-outline-primary" title="Chỉnh sửa"
+                           onclick="openEdit('${s.id}')">
+                       <i class="fas fa-edit"></i>
+                   </button>`
+                : '';
+
+            // Nút reset mật khẩu: chỉ ADMIN
+            const resetBtn = isAdmin
+                ? `<button class="btn btn-sm btn-outline-warning" title="Reset mật khẩu nhanh"
+                           onclick="quickResetPwd('${s.id}','${escHtml(s.fullName)}','${escHtml(s.email||'')}')">
+                       <i class="fas fa-key"></i>
+                   </button>`
+                : '';
+
+            // Nút vô hiệu hóa: chỉ ADMIN, không được tự vô hiệu hóa chính mình
+            let deactivateBtn = '';
+            if (isAdmin) {
+                if (isSelf) {
+                    deactivateBtn = `<button class="btn btn-sm btn-outline-secondary" disabled
+                                             title="Không thể tự vô hiệu hóa tài khoản của mình">
+                                         <i class="fas fa-lock"></i>
+                                     </button>`;
+                } else {
+                    deactivateBtn = `<button class="btn btn-sm btn-outline-danger" title="Vô hiệu hóa"
+                                             onclick="confirmDeactivate('${s.id}','${escHtml(s.fullName)}')">
+                                         <i class="fas fa-ban"></i>
+                                     </button>`;
+                }
+            }
+
+            const hasActions = editBtn || resetBtn || deactivateBtn;
+
+            return `
+            <tr ${isSelf ? 'class="table-active"' : ''}>
                 <td>
-                    <div class="fw-semibold">${escHtml(s.fullName)}</div>
+                    <div class="fw-semibold">${escHtml(s.fullName)}
+                        ${isSelf ? '<span class="badge bg-info text-dark ms-1 small">Bạn</span>' : ''}
+                    </div>
                     <small class="text-muted">@${escHtml(s.username)}</small>
                 </td>
                 <td>
@@ -477,22 +521,13 @@
                 <td><small class="text-muted">${s.lastLogin ? new Date(s.lastLogin).toLocaleString('vi-VN') : '—'}</small></td>
                 <td>
                     <div class="d-flex gap-1">
-                        ${canEdit ? `
-                        <button class="btn btn-sm btn-outline-primary" title="Chỉnh sửa"
-                                onclick="openEdit('${s.id}')">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-warning" title="Reset mật khẩu nhanh"
-                                onclick="quickResetPwd('${s.id}','${escHtml(s.fullName)}','${escHtml(s.email||'')}')">
-                            <i class="fas fa-key"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-danger" title="Vô hiệu hóa"
-                                onclick="confirmDeactivate('${s.id}','${escHtml(s.fullName)}')">
-                            <i class="fas fa-ban"></i>
-                        </button>` : `<span class="text-muted small">Chỉ xem</span>`}
+                        ${hasActions
+                            ? (editBtn + resetBtn + deactivateBtn)
+                            : '<span class="text-muted small">Chỉ xem</span>'}
                     </div>
                 </td>
-            </tr>`).join('');
+            </tr>`;
+        }).join('');
     }
 
     // ─── Open edit modal ────────────────────────────────────────────────────────
