@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý xe - CondoCare</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .stat-card-dash {
+            background: #fff; border-radius: 16px; padding: 22px;
+            box-shadow: 0 2px 12px rgba(0,0,0,.07);
+            display: flex; align-items: center; gap: 18px;
+            transition: transform .2s, box-shadow .2s;
+            border-left: 4px solid; height: 100%;
+        }
+        .stat-card-dash:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+        .stat-card-dash.yellow { border-left-color: #f59e0b; }
+        .stat-card-dash.green  { border-left-color: #388e3c; }
+        .stat-card-dash.red    { border-left-color: #c62828; }
+        .stat-card-dash.blue   { border-left-color: #1976d2; }
+        .stat-icon-dash { width:56px;height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0; }
+        .stat-icon-dash.yellow { background:#fef3c7;color:#d97706; }
+        .stat-icon-dash.green  { background:#e8f5e9;color:#388e3c; }
+        .stat-icon-dash.red    { background:#fce4ec;color:#c62828; }
+        .stat-icon-dash.blue   { background:#e3f2fd;color:#1976d2; }
+        .stat-num { font-size:1.8rem;font-weight:800;line-height:1;color:#1a237e; }
+        .stat-lbl { font-size:.8rem;color:#6c757d;margin-top:4px; }
+
+        .vehicle-type-icon { font-size:1.3rem; }
+        .pending-badge { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.6; } }
+
+        .tab-counter {
+            background: #dc3545; color:#fff; border-radius:10px;
+            padding: 1px 7px; font-size:.72rem; font-weight:700;
+            margin-left:6px; display:inline-block;
+        }
+        .tab-counter.d-none { display:none !important; }
+    </style>
+</head>
+<body>
+<div id="loading" class="loading"><div class="spinner"></div></div>
+
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse" id="sidebarNav">
+            <div class="position-sticky pt-3">
+                <div class="text-center mb-4">
+                    <h5 class="text-white fw-bold"><i class="fas fa-building me-1"></i> CondoCare</h5>
+                    <small class="text-white-50" id="sidebarUser"></small>
+                </div>
+                <ul class="nav flex-column"></ul>
+            </div>
+        </nav>
+
+        <!-- Main -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+            <div class="page-header mb-4">
+                <div>
+                    <h4><i class="fas fa-car text-primary"></i> Quản lý phương tiện</h4>
+                    <nav aria-label="breadcrumb"><ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
+                        <li class="breadcrumb-item active">Quản lý xe</li>
+                    </ol></nav>
+                </div>
+            </div>
+
+            <div id="alertContainer" class="mb-3"></div>
+
+            <!-- Stats -->
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-xl-3">
+                    <div class="stat-card-dash yellow">
+                        <div class="stat-icon-dash yellow"><i class="fas fa-clock"></i></div>
+                        <div><div class="stat-num" id="statPending">—</div><div class="stat-lbl">Chờ duyệt</div></div>
+                    </div>
+                </div>
+                <div class="col-6 col-xl-3">
+                    <div class="stat-card-dash green">
+                        <div class="stat-icon-dash green"><i class="fas fa-check-circle"></i></div>
+                        <div><div class="stat-num" id="statApproved">—</div><div class="stat-lbl">Đã duyệt</div></div>
+                    </div>
+                </div>
+                <div class="col-6 col-xl-3">
+                    <div class="stat-card-dash red">
+                        <div class="stat-icon-dash red"><i class="fas fa-times-circle"></i></div>
+                        <div><div class="stat-num" id="statRejected">—</div><div class="stat-lbl">Đã từ chối</div></div>
+                    </div>
+                </div>
+                <div class="col-6 col-xl-3">
+                    <div class="stat-card-dash blue">
+                        <div class="stat-icon-dash blue"><i class="fas fa-car"></i></div>
+                        <div><div class="stat-num" id="statTotal">—</div><div class="stat-lbl">Tổng phương tiện</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <ul class="nav nav-tabs mb-3" id="vehicleTabs">
+                <li class="nav-item">
+                    <a class="nav-link active" href="#" id="tabPending" onclick="switchTab('PENDING');return false">
+                        <i class="fas fa-clock me-1"></i>Chờ duyệt
+                        <span class="tab-counter d-none" id="pendingCounter">0</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" id="tabAll" onclick="switchTab('ALL');return false">
+                        <i class="fas fa-list me-1"></i>Tất cả xe
+                    </a>
+                </li>
+            </ul>
+
+            <!-- Filter -->
+            <div class="card border-0 shadow-sm mb-3" id="filterCard">
+                <div class="card-body py-2">
+                    <div class="d-flex flex-wrap gap-2 align-items-end">
+                        <div>
+                            <label class="form-label small mb-1 fw-semibold">Loại xe</label>
+                            <select id="filterType" class="form-select form-select-sm" style="width:140px">
+                                <option value="ALL">Tất cả</option>
+                                <option value="MOTORBIKE">🏍️ Xe máy</option>
+                                <option value="CAR">🚗 Ô tô</option>
+                                <option value="BICYCLE">🚲 Xe đạp</option>
+                                <option value="ELECTRIC_BIKE">⚡ Xe điện</option>
+                                <option value="OTHER">Khác</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label small mb-1 fw-semibold">Trạng thái</label>
+                            <select id="filterPending" class="form-select form-select-sm" style="width:140px">
+                                <option value="ALL">Tất cả</option>
+                                <option value="PENDING">⏳ Chờ duyệt</option>
+                                <option value="APPROVED">✅ Đã duyệt</option>
+                                <option value="REJECTED">❌ Từ chối</option>
+                            </select>
+                        </div>
+                        <div class="d-flex gap-2 mt-3">
+                            <button class="btn btn-primary btn-sm" onclick="loadList()">
+                                <i class="fas fa-filter me-1"></i>Lọc
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="resetFilter()">
+                                <i class="fas fa-redo me-1"></i>Đặt lại
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                            <tr>
+                                <th>Phương tiện</th>
+                                <th>Chủ xe / Căn hộ</th>
+                                <th>Loại thời hạn</th>
+                                <th>Hạn đăng ký</th>
+                                <th>Trạng thái</th>
+                                <th class="text-end">Thao tác</th>
+                            </tr>
+                            </thead>
+                            <tbody id="vehicleTableBody">
+                            <tr><td colspan="6" class="text-center py-4 text-muted">
+                                <i class="fas fa-spinner fa-spin me-2"></i>Đang tải...
+                            </td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- ═══════════════ MODAL DUYỆT XE ═══════════════ -->
+<div class="modal fade" id="approveModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="fas fa-check-circle me-2"></i>Duyệt đăng ký xe</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="approveVehicleInfo" class="alert alert-light mb-3"></div>
+                <div id="approveAlert" class="mb-2"></div>
+                <label class="form-label fw-semibold">Ghi chú (tuỳ chọn)</label>
+                <textarea id="approveNote" class="form-control" rows="2"
+                          placeholder="VD: Đã kiểm tra thông tin xe hợp lệ, cho phép gửi xe tầng B1..."></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Huỷ</button>
+                <button class="btn btn-success" id="btnConfirmApprove">
+                    <i class="fas fa-check me-1"></i>Xác nhận duyệt
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════ MODAL TỪ CHỐI XE ═══════════════ -->
+<div class="modal fade" id="rejectVehicleModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="fas fa-times-circle me-2"></i>Từ chối đăng ký xe</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="rejectVehicleInfo" class="alert alert-light mb-3"></div>
+                <div id="rejectVehicleAlert" class="mb-2"></div>
+                <label class="form-label fw-semibold">Lý do từ chối <span class="text-danger">*</span></label>
+                <textarea id="rejectVehicleReason" class="form-control" rows="3"
+                          placeholder="VD: Biển số không hợp lệ / Không đủ chỗ để xe / Thông tin không khớp hồ sơ..."></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Huỷ</button>
+                <button class="btn btn-danger" id="btnConfirmReject">
+                    <i class="fas fa-times me-1"></i>Xác nhận từ chối
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════ MODAL THU HỒI XE ═══════════════ -->
+<div class="modal fade" id="revokeModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title"><i class="fas fa-ban me-2"></i>Thu hồi đăng ký xe</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="revokeVehicleInfo" class="alert alert-light mb-3"></div>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Hành động này sẽ thu hồi quyền gửi xe. Cư dân cần đăng ký lại nếu muốn tiếp tục.
+                </div>
+                <div id="revokeAlert" class="mb-2"></div>
+                <label class="form-label fw-semibold">Lý do thu hồi <span class="text-danger">*</span></label>
+                <textarea id="revokeReason" class="form-control" rows="2"
+                          placeholder="VD: Hết hạn đăng ký / Vi phạm nội quy bãi xe..."></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Huỷ</button>
+                <button class="btn btn-dark" id="btnConfirmRevoke">
+                    <i class="fas fa-ban me-1"></i>Xác nhận thu hồi
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/common.js"></script>
+<script>
+    const API_V = `${API_BASE_URL}/staff/vehicles`;
+
+    const TYPE_ICON  = { MOTORBIKE:'🏍️', CAR:'🚗', BICYCLE:'🚲', ELECTRIC_BIKE:'⚡', OTHER:'🚌' };
+    const TYPE_LABEL = { MOTORBIKE:'Xe máy', CAR:'Ô tô', BICYCLE:'Xe đạp', ELECTRIC_BIKE:'Xe điện', OTHER:'Khác' };
+    const DUR_LABEL  = { MONTHLY:'Theo tháng', QUARTERLY:'Theo quý', YEARLY:'Theo năm' };
+
+    const PENDING_BADGE = {
+        PENDING:  'bg-warning text-dark',
+        APPROVED: 'bg-success',
+        REJECTED: 'bg-danger',
+    };
+    const PENDING_LABEL = { PENDING:'⏳ Chờ duyệt', APPROVED:'✅ Đã duyệt', REJECTED:'❌ Từ chối' };
+
+    let currentTab = 'PENDING';
+    let currentVehicleId = null;
+    let canApproveReject = false; // ADMIN, MANAGER, RECEPTIONIST
+    let canRevoke = false;        // ADMIN, MANAGER only
+
+    let approveModal, rejectModal, revokeModal;
+
+    // ── Init ─────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+        renderStaffSidebar('vehicles');
+
+        const info = getUserInfo();
+        const role = (info?.role || '').toUpperCase();
+        canApproveReject = ['ADMIN', 'MANAGER', 'RECEPTIONIST'].includes(role);
+        canRevoke        = ['ADMIN', 'MANAGER'].includes(role);
+
+        approveModal = new bootstrap.Modal(document.getElementById('approveModal'));
+        rejectModal  = new bootstrap.Modal(document.getElementById('rejectVehicleModal'));
+        revokeModal  = new bootstrap.Modal(document.getElementById('revokeModal'));
+
+        // ── Nút xác nhận duyệt ──────────────────────────────────
+        document.getElementById('btnConfirmApprove').addEventListener('click', async () => {
+            if (!currentVehicleId) return;
+            const btn = document.getElementById('btnConfirmApprove');
+            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>';
+            showLoading();
+            try {
+                const note = document.getElementById('approveNote').value.trim();
+                const res = await apiRequest(`${API_V}/${currentVehicleId}/approve`, {
+                    method: 'POST', body: JSON.stringify({ note })
+                });
+                if (res.ok) {
+                    approveModal.hide();
+                    showAlert('Đã duyệt đăng ký xe thành công!', 'success');
+                    loadStats(); loadList();
+                } else {
+                    document.getElementById('approveAlert').innerHTML =
+                        `<div class="alert alert-danger py-1">${escHtml(await res.text())}</div>`;
+                }
+            } catch(e) {
+                document.getElementById('approveAlert').innerHTML =
+                    `<div class="alert alert-danger py-1">Lỗi: ${escHtml(e.message)}</div>`;
+            } finally {
+                hideLoading(); btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check me-1"></i>Xác nhận duyệt';
+            }
+        });
+
+        // ── Nút xác nhận từ chối ─────────────────────────────────
+        document.getElementById('btnConfirmReject').addEventListener('click', async () => {
+            const reason = document.getElementById('rejectVehicleReason').value.trim();
+            if (!reason) {
+                document.getElementById('rejectVehicleAlert').innerHTML =
+                    `<div class="alert alert-warning py-1">Vui lòng nhập lý do từ chối.</div>`;
+                return;
+            }
+            const btn = document.getElementById('btnConfirmReject');
+            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>';
+            showLoading();
+            try {
+                const res = await apiRequest(`${API_V}/${currentVehicleId}/reject`, {
+                    method: 'POST', body: JSON.stringify({ reason })
+                });
+                if (res.ok) {
+                    rejectModal.hide();
+                    showAlert('Đã từ chối đăng ký xe.', 'success');
+                    loadStats(); loadList();
+                } else {
+                    document.getElementById('rejectVehicleAlert').innerHTML =
+                        `<div class="alert alert-danger py-1">${escHtml(await res.text())}</div>`;
+                }
+            } catch(e) {
+                document.getElementById('rejectVehicleAlert').innerHTML =
+                    `<div class="alert alert-danger py-1">Lỗi: ${escHtml(e.message)}</div>`;
+            } finally {
+                hideLoading(); btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-times me-1"></i>Xác nhận từ chối';
+            }
+        });
+
+        // ── Nút xác nhận thu hồi ─────────────────────────────────
+        document.getElementById('btnConfirmRevoke').addEventListener('click', async () => {
+            const reason = document.getElementById('revokeReason').value.trim();
+            if (!reason) {
+                document.getElementById('revokeAlert').innerHTML =
+                    `<div class="alert alert-warning py-1">Vui lòng nhập lý do thu hồi.</div>`;
+                return;
+            }
+            const btn = document.getElementById('btnConfirmRevoke');
+            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>';
+            showLoading();
+            try {
+                const res = await apiRequest(`${API_V}/${currentVehicleId}/revoke`, {
+                    method: 'POST', body: JSON.stringify({ reason })
+                });
+                if (res.ok) {
+                    revokeModal.hide();
+                    showAlert('Đã thu hồi đăng ký xe.', 'success');
+                    loadStats(); loadList();
+                } else {
+                    document.getElementById('revokeAlert').innerHTML =
+                        `<div class="alert alert-danger py-1">${escHtml(await res.text())}</div>`;
+                }
+            } catch(e) {
+                document.getElementById('revokeAlert').innerHTML =
+                    `<div class="alert alert-danger py-1">Lỗi: ${escHtml(e.message)}</div>`;
+            } finally {
+                hideLoading(); btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-ban me-1"></i>Xác nhận thu hồi';
+            }
+        });
+
+        // Reset modals khi đóng
+        ['approveModal','rejectVehicleModal','revokeModal'].forEach(id => {
+            document.getElementById(id).addEventListener('hidden.bs.modal', () => {
+                document.querySelectorAll(`#${id} textarea`).forEach(el => el.value = '');
+                document.querySelectorAll(`#${id} .alert:not(.alert-light):not(.alert-warning)`)
+                    .forEach(el => el.remove());
+            });
+        });
+
+        loadStats();
+        loadList();
+    });
+
+    // ── Tabs ──────────────────────────────────────────────────────────
+    function switchTab(tab) {
+        currentTab = tab;
+        document.getElementById('tabPending').classList.toggle('active', tab === 'PENDING');
+        document.getElementById('tabAll').classList.toggle('active', tab === 'ALL');
+        document.getElementById('filterCard').style.display = tab === 'ALL' ? '' : 'none';
+        loadList();
+    }
+
+    // ── Stats ─────────────────────────────────────────────────────────
+    async function loadStats() {
+        try {
+            const res  = await apiRequest(`${API_V}/stats`);
+            const data = await res.json();
+            document.getElementById('statPending').textContent  = data.pending  ?? '—';
+            document.getElementById('statApproved').textContent = data.approved ?? '—';
+            document.getElementById('statRejected').textContent = data.rejected ?? '—';
+            document.getElementById('statTotal').textContent    = data.total    ?? '—';
+            // Badge đếm số xe chờ duyệt trên tab
+            const n = data.pending || 0;
+            const counter = document.getElementById('pendingCounter');
+            if (n > 0) { counter.textContent = n; counter.classList.remove('d-none'); }
+            else        { counter.classList.add('d-none'); }
+        } catch(e) { console.error('Stats error', e); }
+    }
+
+    // ── List ──────────────────────────────────────────────────────────
+    async function loadList() {
+        showLoading();
+        try {
+            let url;
+            if (currentTab === 'PENDING') {
+                url = `${API_V}/pending`;
+            } else {
+                const params = new URLSearchParams();
+                const type    = document.getElementById('filterType')?.value;
+                const pending = document.getElementById('filterPending')?.value;
+                if (type    && type    !== 'ALL') params.set('type', type);
+                if (pending && pending !== 'ALL') params.set('pendingStatus', pending);
+                url = `${API_V}?${params}`;
+            }
+            const res  = await apiRequest(url);
+            const data = await res.json();
+            renderTable(Array.isArray(data) ? data : data.content || []);
+        } catch(e) {
+            showAlert('Không thể tải danh sách phương tiện.', 'danger');
+        } finally { hideLoading(); }
+    }
+
+    function resetFilter() {
+        document.getElementById('filterType').value    = 'ALL';
+        document.getElementById('filterPending').value = 'ALL';
+        loadList();
+    }
+
+    // ── Render table ──────────────────────────────────────────────────
+    function renderTable(list) {
+        const tbody = document.getElementById('vehicleTableBody');
+        if (!list.length) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center py-5 text-muted">
+                <i class="fas fa-car fa-2x mb-2 d-block opacity-25"></i>Không có phương tiện nào</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = list.map(v => {
+            const icon    = TYPE_ICON[v.type]  || '🚌';
+            const typeL   = TYPE_LABEL[v.type] || v.type;
+            const durL    = DUR_LABEL[v.durationType] || v.durationType;
+            const pCls    = PENDING_BADGE[v.pendingStatus] || 'bg-secondary';
+            const pLabel  = PENDING_LABEL[v.pendingStatus] || v.pendingStatus;
+            const isPending  = v.pendingStatus === 'PENDING';
+            const isApproved = v.pendingStatus === 'APPROVED';
+            const expiredStr = v.expiredAt
+                ? `<small class="${new Date(v.expiredAt) < new Date() ? 'text-danger fw-semibold' : 'text-muted'}">${fmtDate(v.expiredAt)}</small>`
+                : '<em class="text-muted">—</em>';
+
+            const actionBtns = [];
+            if (canApproveReject && isPending) {
+                actionBtns.push(`<button class="btn btn-sm btn-success" title="Duyệt"
+                    onclick="openApprove('${v.id}','${escHtml(typeL)}','${escHtml(v.licensePlate||'')}','${escHtml(v.residentName||'')}')">
+                    <i class="fas fa-check"></i></button>`);
+                actionBtns.push(`<button class="btn btn-sm btn-danger" title="Từ chối"
+                    onclick="openReject('${v.id}','${escHtml(typeL)}','${escHtml(v.licensePlate||'')}','${escHtml(v.residentName||'')}')">
+                    <i class="fas fa-times"></i></button>`);
+            }
+            if (canRevoke && isApproved) {
+                actionBtns.push(`<button class="btn btn-sm btn-outline-dark" title="Thu hồi"
+                    onclick="openRevoke('${v.id}','${escHtml(typeL)}','${escHtml(v.licensePlate||'')}','${escHtml(v.residentName||'')}')">
+                    <i class="fas fa-ban"></i></button>`);
+            }
+
+            return `<tr>
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <span style="font-size:1.5rem">${icon}</span>
+                        <div>
+                            <div class="fw-semibold">${escHtml(typeL)}</div>
+                            <small class="text-muted">${escHtml(v.brand||'')} ${escHtml(v.model||'')} · ${escHtml(v.color||'')}</small>
+                            ${v.licensePlate ? `<div><span class="badge bg-light text-dark border">${escHtml(v.licensePlate)}</span></div>` : ''}
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div class="fw-semibold small">${escHtml(v.residentName || '—')}</div>
+                    <small class="text-muted">${escHtml(v.apartmentNumber || '—')}</small>
+                </td>
+                <td><small>${escHtml(durL)}</small></td>
+                <td>${expiredStr}</td>
+                <td><span class="badge ${pCls}">${pLabel}</span>
+                    ${v.rejectReason ? `<div><small class="text-danger">Lý do: ${escHtml(v.rejectReason)}</small></div>` : ''}</td>
+                <td class="text-end">
+                    <div class="d-flex gap-1 justify-content-end">${actionBtns.join('')}</div>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    // ── Modal openers ─────────────────────────────────────────────────
+    function openApprove(id, type, plate, name) {
+        currentVehicleId = id;
+        document.getElementById('approveVehicleInfo').innerHTML =
+            `<i class="fas fa-car me-2 text-success"></i><strong>${escHtml(type)}</strong>` +
+            (plate ? ` — BKS: <strong>${escHtml(plate)}</strong>` : '') +
+            ` — Cư dân: <strong>${escHtml(name)}</strong>`;
+        document.getElementById('approveNote').value = '';
+        document.getElementById('approveAlert').innerHTML = '';
+        approveModal.show();
+    }
+
+    function openReject(id, type, plate, name) {
+        currentVehicleId = id;
+        document.getElementById('rejectVehicleInfo').innerHTML =
+            `<i class="fas fa-car me-2 text-danger"></i><strong>${escHtml(type)}</strong>` +
+            (plate ? ` — BKS: <strong>${escHtml(plate)}</strong>` : '') +
+            ` — Cư dân: <strong>${escHtml(name)}</strong>`;
+        document.getElementById('rejectVehicleReason').value = '';
+        document.getElementById('rejectVehicleAlert').innerHTML = '';
+        rejectModal.show();
+    }
+
+    function openRevoke(id, type, plate, name) {
+        currentVehicleId = id;
+        document.getElementById('revokeVehicleInfo').innerHTML =
+            `<i class="fas fa-car me-2 text-dark"></i><strong>${escHtml(type)}</strong>` +
+            (plate ? ` — BKS: <strong>${escHtml(plate)}</strong>` : '') +
+            ` — Cư dân: <strong>${escHtml(name)}</strong>`;
+        document.getElementById('revokeReason').value = '';
+        document.getElementById('revokeAlert').innerHTML = '';
+        revokeModal.show();
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────
+    function showAlert(msg, type = 'danger') {
+        const c = document.getElementById('alertContainer');
+        c.innerHTML = `<div class="alert alert-${type} alert-dismissible fade show">
+            ${escHtml(msg)}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
+        if (type === 'success') setTimeout(() => c.innerHTML = '', 4000);
+    }
+
+    function fmtDate(s) {
+        if (!s) return '—';
+        return new Date(s).toLocaleDateString('vi-VN');
+    }
+</script>
+</body>
+</html>

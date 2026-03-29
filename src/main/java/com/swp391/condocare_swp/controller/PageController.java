@@ -116,4 +116,11 @@ public class PageController {
     @GetMapping("/dashboard/service-requests")
     public String staffServiceRequests()  { return "staff/service-requests"; }
 
+    /** GET /dashboard/vehicles → Quản lý xe */
+    @GetMapping("/dashboard/vehicles")
+    public String vehicleManagement() { return "staff/vehicles"; }
+
+    /** GET /dashboard/notifications → Quản lý thông báo */
+    @GetMapping("/dashboard/notifications")
+    public String notificationManagement() { return "staff/notifications"; }
 }

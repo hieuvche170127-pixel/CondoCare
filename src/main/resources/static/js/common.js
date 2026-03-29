@@ -204,8 +204,7 @@ const _STAFF_MENU = [
         href:  '/dashboard',
         icon:  'fa-tachometer-alt',
         label: 'Tổng quan',
-        // TECHNICIAN, ACCOUNTANT, RECEPTIONIST không thấy dashboard
-        roles: ['ADMIN', 'MANAGER'],
+        roles: ['ADMIN', 'MANAGER', 'RECEPTIONIST', 'ACCOUNTANT'],
     },
     {
         key:   'buildings',
@@ -219,16 +218,14 @@ const _STAFF_MENU = [
         href:  '/dashboard/apartments',
         icon:  'fa-home',
         label: 'Căn hộ & Phí',
-        // ACCOUNTANT chỉ xem hóa đơn, không cần vào apartments
-        roles: ['ADMIN', 'MANAGER'],
+        roles: ['ADMIN', 'MANAGER', 'ACCOUNTANT'],
     },
     {
         key:   'resident',
         href:  '/dashboard/resident',
         icon:  'fa-users',
         label: 'Quản lý cư dân',
-        // RECEPTIONIST không quản lý cư dân
-        roles: ['ADMIN', 'MANAGER'],
+        roles: ['ADMIN', 'MANAGER', 'RECEPTIONIST'],
     },
     {
         key:   'staff',
@@ -246,6 +243,22 @@ const _STAFF_MENU = [
         roles: ['ADMIN', 'MANAGER', 'ACCOUNTANT'],
     },
     {
+        key:   'vehicles',
+        href:  '/dashboard/vehicles',
+        icon:  'fa-car',
+        label: 'Quản lý xe',
+        // RECEPTIONIST duyệt đăng ký xe từ resident
+        roles: ['ADMIN', 'MANAGER', 'RECEPTIONIST'],
+    },
+    {
+        key:   'notifications',
+        href:  '/dashboard/notifications',
+        icon:  'fa-bell',
+        label: 'Thông báo',
+        // RECEPTIONIST gửi thông báo đến cư dân
+        roles: ['ADMIN', 'MANAGER', 'RECEPTIONIST'],
+    },
+    {
         key:   'service-requests',
         href:  '/dashboard/service-requests',
         icon:  'fa-tools',
@@ -259,7 +272,7 @@ const _STAFF_MENU = [
 const _ROLE_HOME = {
     ADMIN:        '/dashboard',
     MANAGER:      '/dashboard',
-    RECEPTIONIST: '/dashboard/service-requests',
+    RECEPTIONIST: '/dashboard/vehicles',
     ACCOUNTANT:   '/dashboard/invoices',
     TECHNICIAN:   '/dashboard/service-requests',
 };
