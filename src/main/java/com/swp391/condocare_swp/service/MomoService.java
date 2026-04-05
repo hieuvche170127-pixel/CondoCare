@@ -241,7 +241,7 @@ public class MomoService {
             payment.setInvoiceId(invoiceId);
             payment.setAmount(invoice.getTotalAmount());
             payment.setPaidAt(LocalDateTime.now());
-            payment.setMethod("MOMO");
+            payment.setMethod(Payments.PaymentMethod.MOMO);
             payment.setMomoTransId(String.valueOf(ipn.getTransId()));
             payment.setMomoOrderId(ipn.getOrderId());
             payment.setNote("MoMo - " + (ipn.getPayType() != null ? ipn.getPayType() : "online"));

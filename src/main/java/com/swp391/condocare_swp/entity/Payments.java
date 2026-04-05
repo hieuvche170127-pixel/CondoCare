@@ -30,22 +30,39 @@ public class Payments {
     @Column(name = "paid_at", nullable = false)
     private LocalDateTime paidAt;
 
-    /** CASH | BANKING | MOMO | ZALOPAY */
-    @Column(name = "method", nullable = false, length = 20)
-    private String method;
+    /**
+     * Phương thức thanh toán — khớp ENUM DB: CASH | BANKING | MOMO | ZALOPAY
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "method", nullable = false,
+            columnDefinition = "ENUM('CASH','BANKING','MOMO','ZALOPAY')")
+    private PaymentMethod method;
 
-    /** MoMo transId từ IPN callback */
-    @Column(name = "momo_trans_id", length = 30)
+    /**
+     * MoMo transId từ IPN callback.
+     * MoMo có thể trả transId tối đa 50 ký tự — khớp varchar(50) trong DB.
+     */
+    @Column(name = "momo_trans_id", length = 50)
     private String momoTransId;
 
     /** orderId gửi lên MoMo (= invoiceId + "_" + timestamp) */
     @Column(name = "momo_order_id", length = 50)
     private String momoOrderId;
 
-    @Column(name = "note", length = 100)
+    /** Ghi chú thanh toán — khớp varchar(255) trong DB */
+    @Column(name = "note", length = 255)
     private String note;
 
     /** FK → Residents.ID */
     @Column(name = "paid_by", length = 10, nullable = false)
     private String paidBy;
+
+    // ── Enum phương thức thanh toán ──────────────────────────────────────────
+
+    public enum PaymentMethod {
+        CASH,       // Tiền mặt
+        BANKING,    // Chuyển khoản ngân hàng
+        MOMO,       // Ví MoMo
+        ZALOPAY     // Ví ZaloPay
+    }
 }
