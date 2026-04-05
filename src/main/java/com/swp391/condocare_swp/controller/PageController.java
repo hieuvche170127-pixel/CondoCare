@@ -133,7 +133,6 @@ public class PageController {
 
     /**
      * GET /dashboard/vehicles → Quản lý phương tiện
-     * [FIX] Template đổi tên file từ Vehicles.html → vehicles.html (lowercase)
      *       để tránh lỗi case-sensitive trên Linux server.
      */
     @GetMapping("/dashboard/vehicles")
@@ -143,7 +142,6 @@ public class PageController {
 
     /**
      * GET /dashboard/notifications → Quản lý thông báo
-     * [FIX] Template đổi tên file từ Notifications.html → notifications.html (lowercase)
      *       để tránh lỗi case-sensitive trên Linux server.
      */
     @GetMapping("/dashboard/notifications")

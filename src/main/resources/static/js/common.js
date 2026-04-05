@@ -208,7 +208,7 @@ const _STAFF_MENU = [
     },
     {
         key:   'buildings',
-        href:  '/dashboard/buildings',
+        href:  '/dashboard/apartments',
         icon:  'fa-building',
         label: 'Tòa nhà',
         roles: ['ADMIN', 'MANAGER'],

@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phương tiện của tôi - Cư dân</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/resident.css">
+    <style>
+        .vehicle-card {
+            border-radius: 14px;
+            border: 1px solid #e5e7eb;
+            padding: 1.1rem 1.25rem;
+            background: #fff;
+            transition: box-shadow .2s;
+            margin-bottom: .75rem;
+        }
+        .vehicle-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.09); }
+        .vehicle-icon { font-size: 2rem; line-height: 1; }
+        .badge-pending  { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+        .badge-approved { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+        .badge-rejected { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+        .empty-state { text-align: center; padding: 3rem 1rem; color: #9ca3af; }
+        .empty-state i { font-size: 3rem; margin-bottom: 1rem; display: block; }
+    </style>
+</head>
+<body>
+<div id="loading" class="loading"><div class="spinner"></div></div>
+
+<!-- Resident sidebar (rendered by resident-common.js) -->
+<nav class="resident-sidebar" id="residentSidebar"></nav>
+
+<div class="resident-main">
+    <div class="resident-content">
+
+        <!-- Page header -->
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div>
+                <h4><i class="fas fa-motorcycle text-primary me-2"></i>Phương tiện của tôi</h4>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="/resident">Trang chủ</a></li>
+                        <li class="breadcrumb-item active">Phương tiện</li>
+                    </ol>
+                </nav>
+            </div>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#registerModal">
+                <i class="fas fa-plus me-1"></i>Đăng ký xe mới
+            </button>
+        </div>
+
+        <div id="alertContainer" class="mb-3"></div>
+
+        <!-- Info banner -->
+        <div class="alert alert-info d-flex gap-2 mb-4" style="border-radius:12px;">
+            <i class="fas fa-info-circle mt-1 flex-shrink-0"></i>
+            <div class="small">
+                Sau khi đăng ký, Ban quản lý sẽ xem xét và duyệt trong vòng 1–3 ngày làm việc.
+                Phương tiện chỉ được vào bãi sau khi được <strong>Duyệt</strong>.
+            </div>
+        </div>
+
+        <!-- Vehicle list -->
+        <div id="vehicleList">
+            <div class="empty-state">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Đang tải...</p>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ═══════ MODAL ĐĂNG KÝ XE MỚI ═══════ -->
+<div class="modal fade" id="registerModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus-circle me-2"></i>Đăng ký phương tiện mới
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="registerAlert" class="mb-3"></div>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Loại phương tiện <span class="text-danger">*</span></label>
+                        <select id="regType" class="form-select" required>
+                            <option value="">-- Chọn loại xe --</option>
+                            <option value="MOTORBIKE">🏍️ Xe máy</option>
+                            <option value="CAR">🚗 Ô tô</option>
+                            <option value="ELECTRIC_BIKE">⚡ Xe điện</option>
+                            <option value="BICYCLE">🚲 Xe đạp</option>
+                            <option value="OTHER">🚌 Khác</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Biển số xe</label>
+                        <input type="text" id="regPlate" class="form-control"
+                               placeholder="VD: 29B1-12345" style="text-transform:uppercase">
+                        <div class="form-text">Để trống nếu chưa có biển số</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Màu xe</label>
+                        <input type="text" id="regColor" class="form-control" placeholder="VD: Đen, Trắng, Đỏ">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Hãng xe</label>
+                        <input type="text" id="regBrand" class="form-control" placeholder="VD: Honda, Toyota">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Dòng xe</label>
+                        <input type="text" id="regModel" class="form-control" placeholder="VD: Wave Alpha, Vios">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Thời hạn đăng ký <span class="text-danger">*</span></label>
+                        <div class="row g-2">
+                            <div class="col-4">
+                                <div class="form-check form-check-card p-0">
+                                    <input class="form-check-input d-none" type="radio"
+                                           name="durationType" id="durMonthly" value="MONTHLY" checked>
+                                    <label class="form-check-label d-block text-center p-3 border rounded-3 cursor-pointer"
+                                           for="durMonthly" style="cursor:pointer">
+                                        <div class="fw-semibold">Theo tháng</div>
+                                        <small class="text-muted">Linh hoạt</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="form-check form-check-card p-0">
+                                    <input class="form-check-input d-none" type="radio"
+                                           name="durationType" id="durQuarterly" value="QUARTERLY">
+                                    <label class="form-check-label d-block text-center p-3 border rounded-3"
+                                           for="durQuarterly" style="cursor:pointer">
+                                        <div class="fw-semibold">Theo quý</div>
+                                        <small class="text-muted">3 tháng</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="form-check form-check-card p-0">
+                                    <input class="form-check-input d-none" type="radio"
+                                           name="durationType" id="durYearly" value="YEARLY">
+                                    <label class="form-check-label d-block text-center p-3 border rounded-3"
+                                           for="durYearly" style="cursor:pointer">
+                                        <div class="fw-semibold">Theo năm</div>
+                                        <small class="text-muted">12 tháng</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" id="btnRegisterSubmit">
+                    <i class="fas fa-paper-plane me-1"></i>Gửi đăng ký
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/common.js"></script>
+<script src="/js/resident-common.js"></script>
+<script>
+    // Kiểm tra đăng nhập & render sidebar
+    if (!requireResidentLogin()) throw new Error('Not authenticated');
+    renderResidentSidebar('vehicles');
+
+    const TYPE_ICON  = { MOTORBIKE:'🏍️', CAR:'🚗', BICYCLE:'🚲', ELECTRIC_BIKE:'⚡', OTHER:'🚌' };
+    const TYPE_LABEL = { MOTORBIKE:'Xe máy', CAR:'Ô tô', BICYCLE:'Xe đạp', ELECTRIC_BIKE:'Xe điện', OTHER:'Khác' };
+    const DUR_LABEL  = { MONTHLY:'Tháng', QUARTERLY:'Quý', YEARLY:'Năm' };
+
+    const registerModal = new bootstrap.Modal(document.getElementById('registerModal'));
+
+    // ── Highlight duration radio labels ─────────────────────────────
+    document.querySelectorAll('input[name="durationType"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            document.querySelectorAll('label[for^="dur"]').forEach(l =>
+                l.classList.remove('border-primary', 'bg-primary', 'text-white'));
+            const lbl = document.querySelector(`label[for="${radio.id}"]`);
+            if (lbl) lbl.classList.add('border-primary', 'bg-primary', 'text-white');
+        });
+    });
+    // Default highlight
+    document.querySelector('label[for="durMonthly"]')
+        ?.classList.add('border-primary', 'bg-primary', 'text-white');
+
+    // ── Load vehicle list ────────────────────────────────────────────
+    async function loadVehicles() {
+        showLoading();
+        try {
+            // Xe của cư dân được trả về trong endpoint apartment info
+            const res  = await apiRequest(`${API_BASE_URL}/resident/apartment`);
+            const data = await res.json();
+            renderVehicles(data.vehicles || []);
+        } catch(e) {
+            document.getElementById('vehicleList').innerHTML =
+                `<div class="alert alert-danger">Không thể tải danh sách xe: ${e.message}</div>`;
+        } finally { hideLoading(); }
+    }
+
+    function renderVehicles(list) {
+        const container = document.getElementById('vehicleList');
+        if (!list.length) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-car-side text-muted"></i>
+                    <h6 class="text-muted">Chưa có phương tiện nào</h6>
+                    <p class="small text-muted">Nhấn "Đăng ký xe mới" để bắt đầu đăng ký gửi xe.</p>
+                </div>`;
+            return;
+        }
+
+        container.innerHTML = list.map(v => {
+            const icon   = TYPE_ICON[v.type]  || '🚌';
+            const typeL  = TYPE_LABEL[v.type] || v.type;
+            const durL   = DUR_LABEL[v.durationType] || v.durationType || '';
+            const pStatus = (v.pendingStatus || '').toUpperCase();
+
+            let badgeHtml = '';
+            if (pStatus === 'PENDING') {
+                badgeHtml = `<span class="badge badge-pending">⏳ Chờ duyệt</span>`;
+            } else if (pStatus === 'APPROVED') {
+                badgeHtml = `<span class="badge badge-approved">✅ Đã duyệt</span>`;
+            } else if (pStatus === 'REJECTED') {
+                badgeHtml = `<span class="badge badge-rejected">❌ Từ chối</span>`;
+            }
+
+            const expiredStr = v.expiredAt
+                ? `<small class="text-muted">Hết hạn: ${new Date(v.expiredAt).toLocaleDateString('vi-VN')}</small>`
+                : '';
+
+            const rejectNote = (pStatus === 'REJECTED' && v.rejectReason)
+                ? `<div class="mt-2 small text-danger">
+                       <i class="fas fa-exclamation-circle me-1"></i>Lý do: ${escHtml(v.rejectReason)}
+                   </div>`
+                : '';
+
+            return `
+            <div class="vehicle-card">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="vehicle-icon">${icon}</div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                            <span class="fw-semibold">${escHtml(typeL)}</span>
+                            ${v.brand ? `<span class="text-muted small">${escHtml(v.brand)}${v.model ? ' ' + escHtml(v.model) : ''}</span>` : ''}
+                            ${badgeHtml}
+                        </div>
+                        <div class="d-flex gap-3 flex-wrap">
+                            ${v.licensePlate
+                                ? `<span class="badge bg-light text-dark border font-monospace">${escHtml(v.licensePlate)}</span>`
+                                : `<span class="text-muted small">Chưa có biển số</span>`}
+                            ${v.color ? `<small class="text-muted"><i class="fas fa-palette me-1"></i>${escHtml(v.color)}</small>` : ''}
+                            ${durL ? `<small class="text-muted"><i class="fas fa-calendar-alt me-1"></i>${escHtml(durL)}</small>` : ''}
+                            ${expiredStr}
+                        </div>
+                        ${rejectNote}
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    // ── Submit đăng ký xe ────────────────────────────────────────────
+    document.getElementById('btnRegisterSubmit').addEventListener('click', async () => {
+        const type = document.getElementById('regType').value;
+        if (!type) {
+            document.getElementById('registerAlert').innerHTML =
+                `<div class="alert alert-warning py-2">Vui lòng chọn loại phương tiện.</div>`;
+            return;
+        }
+
+        const durationType = document.querySelector('input[name="durationType"]:checked')?.value || 'MONTHLY';
+
+        const body = {
+            type,
+            durationType,
+            licensePlate : document.getElementById('regPlate').value.trim().toUpperCase(),
+            brand        : document.getElementById('regBrand').value.trim(),
+            model        : document.getElementById('regModel').value.trim(),
+            color        : document.getElementById('regColor').value.trim(),
+        };
+
+        const btn = document.getElementById('btnRegisterSubmit');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang gửi...';
+        showLoading();
+
+        try {
+            const res = await apiRequest(`${API_BASE_URL}/resident/vehicles`, {
+                method: 'POST',
+                body: JSON.stringify(body)
+            });
+
+            if (res.ok) {
+                registerModal.hide();
+                // Reset form
+                document.getElementById('regType').value  = '';
+                document.getElementById('regPlate').value = '';
+                document.getElementById('regBrand').value = '';
+                document.getElementById('regModel').value = '';
+                document.getElementById('regColor').value = '';
+                document.getElementById('registerAlert').innerHTML = '';
+
+                const alertDiv = document.getElementById('alertContainer');
+                alertDiv.innerHTML = `<div class="alert alert-success alert-dismissible fade show">
+                    <i class="fas fa-check-circle me-2"></i>
+                    Đã gửi đăng ký xe thành công! Ban quản lý sẽ xem xét và phản hồi sớm.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>`;
+                setTimeout(() => alertDiv.innerHTML = '', 5000);
+
+                await loadVehicles();
+            } else {
+                const errText = await res.text();
+                document.getElementById('registerAlert').innerHTML =
+                    `<div class="alert alert-danger py-2">${escHtml(errText)}</div>`;
+            }
+        } catch(e) {
+            document.getElementById('registerAlert').innerHTML =
+                `<div class="alert alert-danger py-2">Lỗi kết nối: ${escHtml(e.message)}</div>`;
+        } finally {
+            hideLoading();
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane me-1"></i>Gửi đăng ký';
+        }
+    });
+
+    // Reset alert khi đóng modal
+    document.getElementById('registerModal').addEventListener('hidden.bs.modal', () => {
+        document.getElementById('registerAlert').innerHTML = '';
+    });
+
+    // Khởi động
+    loadVehicles();
+</script>
+</body>
+</html>

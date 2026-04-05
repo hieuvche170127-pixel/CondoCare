@@ -30,7 +30,7 @@ public class VehicleService {
 
     /**
      * Trả về thống kê tổng quan cho trang Quản lý xe phía Staff.
-     * Frontend (Vehicles.html) gọi GET /api/staff/vehicles/stats.
+     * Frontend (vehicles.html) gọi GET /api/staff/vehicles/stats.
      * Response: { pending, approved, rejected, total }
      */
     public Map<String, Object> getStats() {
