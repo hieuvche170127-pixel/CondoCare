@@ -24,6 +24,10 @@ import java.util.Map;
  *   DELETE (xóa hóa đơn)                              → ADMIN, MANAGER
  *
  * ACCOUNTANT chỉ có quyền XEM — không tạo/sửa/xóa.
+ *
+ * FIX BUG 1:
+ *   - Thêm GET /apartment-list để frontend populate dropdown chọn căn hộ.
+ *   - Preview + Create vẫn gọi service.resolveApartment() — chấp nhận cả ID lẫn số căn.
  */
 @RestController
 @RequestMapping("/api/invoice-management")
@@ -79,7 +83,11 @@ public class InvoiceManagementController {
     }
 
     /**
-     * GET /api/invoice-management/preview
+     * GET /api/invoice-management/preview?apartmentId=APT001&month=6&year=2025
+     *
+     * FIX BUG 1: apartmentId giờ chấp nhận cả apartment ID ("APT001") lẫn
+     *            apartment number ("A101") — service.previewInvoice sẽ tự resolve.
+     *
      * ACCOUNTANT xem được preview — chỉ để kiểm tra, không tạo được hóa đơn.
      */
     @GetMapping("/preview")
@@ -90,7 +98,25 @@ public class InvoiceManagementController {
             @RequestParam Integer year) {
         try { return ResponseEntity.ok(service.previewInvoice(apartmentId, month, year)); }
         catch (Exception e) {
-            logger.error("Error previewing invoice", e);
+            logger.error("Error previewing invoice for apartment='{}' {}/{}",
+                    apartmentId, month, year, e);
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    /**
+     * GET /api/invoice-management/apartment-list
+     *
+     * FIX BUG 1 (NEW): Trả về danh sách tất cả căn hộ dạng gọn để frontend
+     *                   populate dropdown chọn căn hộ trong form tạo hóa đơn.
+     *                   Trả về: [{id, number, buildingName, area, status}, ...]
+     */
+    @GetMapping("/apartment-list")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
+    public ResponseEntity<?> getApartmentList() {
+        try { return ResponseEntity.ok(service.getApartmentList()); }
+        catch (Exception e) {
+            logger.error("Error fetching apartment list", e);
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
@@ -109,17 +135,21 @@ public class InvoiceManagementController {
 
     /**
      * POST /api/invoice-management
-     * Tạo hóa đơn — ACCOUNTANT KHÔNG được tạo.
+     *
+     * FIX BUG 1: apartmentId trong request body giờ cũng chấp nhận cả ID lẫn
+     *            number nhờ service.resolveApartment() — nhưng nếu dùng dropdown
+     *            đúng thì luôn gửi ID chính xác.
      */
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<?> createInvoice(@Valid @RequestBody InvoiceCreateRequest request) {
         try {
-            logger.info("POST /api/invoice-management — apt: {}, {}/{}",
+            logger.info("POST /api/invoice-management — apt: '{}', {}/{}",
                     request.getApartmentId(), request.getMonth(), request.getYear());
             return ResponseEntity.ok(service.createInvoice(request));
         } catch (Exception e) {
-            logger.error("Error creating invoice", e);
+            logger.error("Error creating invoice for apt='{}' {}/{}",
+                    request.getApartmentId(), request.getMonth(), request.getYear(), e);
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }

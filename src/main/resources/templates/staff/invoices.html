@@ -8,6 +8,32 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
+    <style>
+        /* ── Apartment search dropdown ── */
+        .apt-search-wrapper { position: relative; }
+        .apt-search-wrapper .apt-dropdown {
+            position: absolute; top: 100%; left: 0; right: 0; z-index: 1055;
+            background: #fff; border: 1px solid #dee2e6; border-top: none;
+            border-radius: 0 0 8px 8px; max-height: 220px; overflow-y: auto;
+            box-shadow: 0 4px 12px rgba(0,0,0,.12);
+        }
+        .apt-search-wrapper .apt-dropdown .apt-item {
+            padding: 8px 12px; cursor: pointer; font-size: .875rem;
+            border-bottom: 1px solid #f1f1f1; display: flex; justify-content: space-between;
+        }
+        .apt-search-wrapper .apt-dropdown .apt-item:hover { background: #e8f0fe; }
+        .apt-search-wrapper .apt-dropdown .apt-item.selected { background: #d1e7ff; font-weight: 600; }
+        .apt-search-wrapper .apt-dropdown .apt-empty {
+            padding: 10px 12px; color: #6c757d; font-size: .85rem; text-align: center;
+        }
+        #cApartmentSearch.is-valid { border-color: #198754; }
+        #cApartmentSearch.is-invalid { border-color: #dc3545; }
+        .apt-selected-badge {
+            display: none; background: #e8f5e9; border: 1px solid #a5d6a7;
+            border-radius: 6px; padding: 4px 10px; font-size: .8rem; color: #2e7d32;
+        }
+        .apt-selected-badge.show { display: inline-flex; align-items: center; gap: 6px; }
+    </style>
 </head>
 <body>
 <div id="loading" class="loading"><div class="spinner"></div></div>
@@ -88,7 +114,7 @@
     </div>
 </div>
 
-<!-- MODAL TẠO HÓA ĐƠN -->
+<!-- ═══════════════════ MODAL TẠO HÓA ĐƠN ═══════════════════ -->
 <div class="modal fade" id="createModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -99,10 +125,43 @@
             <div class="modal-body">
                 <div id="createAlert"></div>
                 <div class="row g-3">
+
+                    <!-- FIX BUG 1: Thay input text bằng searchable dropdown căn hộ -->
                     <div class="col-md-4">
-                        <label class="form-label fw-semibold">Căn hộ <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="cApartmentId" placeholder="VD: A101">
+                        <label class="form-label fw-semibold">
+                            Căn hộ <span class="text-danger">*</span>
+                        </label>
+
+                        <!-- Search box + dropdown -->
+                        <div class="apt-search-wrapper">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                <input type="text"
+                                       class="form-control"
+                                       id="cApartmentSearch"
+                                       placeholder="Nhập số căn hoặc tên tòa..."
+                                       autocomplete="off"
+                                       oninput="InvoiceMgmt.filterApartments(this.value)"
+                                       onfocus="InvoiceMgmt.showDropdown()"
+                                       onblur="InvoiceMgmt.hideDropdown()">
+                            </div>
+                            <div class="apt-dropdown d-none" id="aptDropdown"></div>
+                        </div>
+
+                        <!-- Badge hiển thị căn đã chọn -->
+                        <div class="apt-selected-badge mt-2" id="aptSelectedBadge">
+                            <i class="fas fa-check-circle text-success"></i>
+                            <span id="aptSelectedLabel"></span>
+                            <button type="button"
+                                    class="btn-close btn-close-sm"
+                                    style="font-size:.6rem"
+                                    onclick="InvoiceMgmt.clearApartment()"></button>
+                        </div>
+
+                        <!-- Hidden field lưu apartment ID thực -->
+                        <input type="hidden" id="cApartmentId">
                     </div>
+
                     <div class="col-md-4">
                         <label class="form-label fw-semibold">Tháng <span class="text-danger">*</span></label>
                         <select class="form-select" id="cMonth"></select>
@@ -125,21 +184,28 @@
                     <!-- PREVIEW TABLE -->
                     <div class="col-12" id="previewSection" style="display:none">
                         <div class="card">
-                            <div class="card-header fw-semibold">Phí sẽ áp dụng</div>
+                            <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+                                <span>Phí sẽ áp dụng</span>
+                                <small class="text-muted" id="previewAptInfo"></small>
+                            </div>
                             <div class="card-body p-0">
                                 <table class="table table-sm mb-0" id="previewTable">
-                                    <thead><tr><th>Loại phí</th><th>Số lượng</th><th>Thành tiền</th></tr></thead>
+                                    <thead><tr><th>Loại phí</th><th>Số lượng</th><th class="text-end">Thành tiền</th></tr></thead>
                                     <tbody></tbody>
                                 </table>
                             </div>
                             <div class="card-footer text-end fw-bold" id="previewTotal">Tổng: 0 đ</div>
                         </div>
                     </div>
+
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                <button type="button" class="btn btn-primary" id="btnCreate" onclick="InvoiceMgmt.submitCreate()" disabled>Tạo hóa đơn</button>
+                <button type="button" class="btn btn-primary" id="btnCreate"
+                        onclick="InvoiceMgmt.submitCreate()" disabled>
+                    <i class="fas fa-file-invoice me-1"></i>Tạo hóa đơn
+                </button>
             </div>
         </div>
     </div>
@@ -167,16 +233,15 @@
     const InvoiceMgmt = (() => {
         let currentPage = 0;
         let currentPreviewData = null;
+        let allApartments = [];      // cache danh sách căn hộ
+        let dropdownVisible = false;
 
+        // ── Init ──────────────────────────────────────────────────────────────
         function init() {
-            // renderStaffSidebar xử lý: kiểm tra login, redirect nếu chưa đăng nhập,
-            // redirect nếu role không được vào trang này (ACCOUNTANT được phép xem invoices),
-            // và render menu đúng theo role
             renderStaffSidebar('invoices');
 
             try {
                 const info = getUserInfo() || {};
-                // ACCOUNTANT chỉ được xem — ẩn nút tạo hóa đơn
                 if (info.role === 'ACCOUNTANT') {
                     document.querySelector('[onclick="InvoiceMgmt.openCreate()"]')?.remove();
                     window._invoiceReadOnly = true;
@@ -197,12 +262,23 @@
                 fMonth.appendChild(o);
             }
 
-            document.getElementById('filterSearch').addEventListener('input', debounce(() => loadList(0), 400));
+            document.getElementById('filterSearch')
+                .addEventListener('input', debounce(() => loadList(0), 400));
+
+            // Đóng dropdown khi click ra ngoài
+            document.addEventListener('mousedown', e => {
+                const wrapper = document.querySelector('.apt-search-wrapper');
+                if (wrapper && !wrapper.contains(e.target)) {
+                    document.getElementById('aptDropdown').classList.add('d-none');
+                    dropdownVisible = false;
+                }
+            });
 
             loadStats();
             loadList(0);
         }
 
+        // ── Stats ─────────────────────────────────────────────────────────────
         async function loadStats() {
             try {
                 const res = await apiRequest(`${API_INV}/stats`);
@@ -214,14 +290,15 @@
             } catch(e) {}
         }
 
+        // ── List ──────────────────────────────────────────────────────────────
         async function loadList(page = 0) {
             currentPage = page;
             const params = new URLSearchParams({
                 page, size: 10,
                 search: document.getElementById('filterSearch').value.trim(),
                 status: document.getElementById('filterStatus').value,
-                month: document.getElementById('filterMonth').value,
-                year: document.getElementById('filterYear').value
+                month:  document.getElementById('filterMonth').value,
+                year:   document.getElementById('filterYear').value
             });
 
             const tbody = document.getElementById('invoiceTableBody');
@@ -254,98 +331,235 @@
                     <td>Tháng ${i.month}/${i.year}</td>
                     <td class="text-end fw-bold">${fmtVND(i.totalAmount)}</td>
                     <td><span class="badge ${statusCls[i.status] || 'bg-secondary'}">${statusLabel[i.status] || i.status}</span></td>
-                    <td><small>${i.dueDate || '—'}</small></td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-info" onclick="InvoiceMgmt.openDetail('${i.id}')"><i class="fas fa-eye"></i></button>
-                        ${(!window._invoiceReadOnly && i.status !== 'PAID') ? `
-                        <button class="btn btn-sm btn-outline-success" onclick="InvoiceMgmt.markPaid('${i.id}')"><i class="fas fa-check"></i></button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="InvoiceMgmt.confirmDelete('${i.id}')"><i class="fas fa-trash"></i></button>` : ''}
+                    <td>${i.dueDate || '—'}</td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary" onclick="InvoiceMgmt.openDetail('${i.id}')">
+                            <i class="fas fa-eye"></i>
+                        </button>
                     </td>
                 </tr>`).join('');
         }
 
         function renderInfo(data) {
-            const from = data.number * data.size + 1;
-            const to = Math.min(from + data.size - 1, data.totalElements);
-            document.getElementById('tableInfo').textContent = `Hiển thị ${from}–${to} / ${data.totalElements} hóa đơn`;
+            const total = data.totalElements ?? 0;
+            const page  = data.currentPage ?? 0;
+            const size  = data.size ?? 10;
+            document.getElementById('tableInfo').textContent =
+                `Hiển thị ${Math.min(page * size + 1, total)}–${Math.min((page + 1) * size, total)} trong ${total} hóa đơn`;
         }
 
         function renderPagination(data) {
-            const bar = document.getElementById('paginationBar');
-            if (data.totalPages <= 1) { bar.innerHTML = ''; return; }
-            let html = '<nav><ul class="pagination pagination-sm mb-0">';
-            html += `<li class="page-item ${data.first?'disabled':''}"><a class="page-link" href="#" onclick="InvoiceMgmt.loadList(${data.number-1});return false">‹</a></li>`;
-            for (let p = 0; p < data.totalPages; p++) {
-                html += `<li class="page-item ${p===data.number?'active':''}"><a class="page-link" href="#" onclick="InvoiceMgmt.loadList(${p});return false">${p+1}</a></li>`;
+            const totalPages = data.totalPages ?? 1;
+            const curPage    = data.currentPage ?? 0;
+            const bar        = document.getElementById('paginationBar');
+            if (totalPages <= 1) { bar.innerHTML = ''; return; }
+
+            let html = '';
+            for (let p = 0; p < totalPages; p++) {
+                html += `<button class="btn btn-sm ${p === curPage ? 'btn-primary' : 'btn-outline-secondary'}"
+                    onclick="InvoiceMgmt.loadList(${p})">${p + 1}</button>`;
             }
-            html += `<li class="page-item ${data.last?'disabled':''}"><a class="page-link" href="#" onclick="InvoiceMgmt.loadList(${data.number+1});return false">›</a></li>`;
-            html += '</ul></nav>';
             bar.innerHTML = html;
         }
 
         function resetFilter() {
-            document.getElementById('filterSearch').value = '';
-            document.getElementById('filterStatus').value = '';
-            document.getElementById('filterMonth').value = '';
-            document.getElementById('filterYear').value = '';
+            document.getElementById('filterSearch').value  = '';
+            document.getElementById('filterStatus').value  = '';
+            document.getElementById('filterMonth').value   = '';
+            document.getElementById('filterYear').value    = '';
             loadList(0);
         }
 
-        function openCreate() {
-            document.getElementById('cApartmentId').value = '';
-            document.getElementById('cMonth').value = (new Date().getMonth() + 1).toString();
-            document.getElementById('cYear').value = new Date().getFullYear().toString();
+        // ── FIX BUG 1: Apartment dropdown ─────────────────────────────────────
+
+        /**
+         * Tải danh sách căn hộ từ API khi mở modal.
+         * Cache vào allApartments để không phải gọi lại mỗi lần filter.
+         */
+        async function loadApartmentList() {
+            if (allApartments.length > 0) return; // Đã cache
+            try {
+                const res = await apiRequest(`${API_INV}/apartment-list`);
+                if (res && res.ok) {
+                    allApartments = await res.json();
+                }
+            } catch(e) {
+                console.error('Không tải được danh sách căn hộ:', e);
+            }
+        }
+
+        /**
+         * Lọc và hiển thị dropdown khi người dùng gõ vào ô tìm kiếm.
+         * Tìm kiếm theo số căn (A101) hoặc tên tòa (Sun City).
+         */
+        function filterApartments(keyword) {
+            const kw = keyword.trim().toLowerCase();
+            const dropdown = document.getElementById('aptDropdown');
+
+            const filtered = kw
+                ? allApartments.filter(a =>
+                    a.number.toLowerCase().includes(kw) ||
+                    (a.buildingName || '').toLowerCase().includes(kw))
+                : allApartments.slice(0, 30); // Hiển thị 30 căn đầu nếu chưa nhập gì
+
+            if (!filtered.length) {
+                dropdown.innerHTML = '<div class="apt-empty"><i class="fas fa-search me-1"></i>Không tìm thấy căn hộ</div>';
+            } else {
+                const selectedId = document.getElementById('cApartmentId').value;
+                dropdown.innerHTML = filtered.map(a => `
+                    <div class="apt-item ${a.id === selectedId ? 'selected' : ''}"
+                         onmousedown="InvoiceMgmt.selectApartment('${a.id}', '${a.number}', '${a.buildingName}', event)">
+                        <span><strong>${a.number}</strong> — ${a.buildingName}</span>
+                        <small class="text-muted">${a.area} m²</small>
+                    </div>`).join('');
+            }
+
+            dropdown.classList.remove('d-none');
+            dropdownVisible = true;
+        }
+
+        function showDropdown() {
+            filterApartments(document.getElementById('cApartmentSearch').value);
+        }
+
+        function hideDropdown() {
+            // Delay nhỏ để mousedown trên item kịp xử lý trước khi ẩn
+            setTimeout(() => {
+                document.getElementById('aptDropdown').classList.add('d-none');
+                dropdownVisible = false;
+            }, 200);
+        }
+
+        /**
+         * Chọn một căn hộ từ dropdown.
+         * Lưu ID thực vào hidden field, hiện badge xác nhận.
+         */
+        function selectApartment(id, number, buildingName, event) {
+            if (event) event.preventDefault();
+
+            document.getElementById('cApartmentId').value       = id;
+            document.getElementById('cApartmentSearch').value   = number + ' — ' + buildingName;
+            document.getElementById('cApartmentSearch').classList.remove('is-invalid');
+            document.getElementById('cApartmentSearch').classList.add('is-valid');
+            document.getElementById('aptSelectedLabel').textContent = number + ' (' + buildingName + ')';
+            document.getElementById('aptSelectedBadge').classList.add('show');
+            document.getElementById('aptDropdown').classList.add('d-none');
+            dropdownVisible = false;
+
+            // Reset preview khi đổi căn hộ
             document.getElementById('previewSection').style.display = 'none';
-            document.getElementById('createAlert').innerHTML = '';
             document.getElementById('btnCreate').disabled = true;
             currentPreviewData = null;
+        }
+
+        /** Xóa lựa chọn căn hộ */
+        function clearApartment() {
+            document.getElementById('cApartmentId').value     = '';
+            document.getElementById('cApartmentSearch').value = '';
+            document.getElementById('cApartmentSearch').classList.remove('is-valid', 'is-invalid');
+            document.getElementById('aptSelectedBadge').classList.remove('show');
+            document.getElementById('previewSection').style.display = 'none';
+            document.getElementById('btnCreate').disabled = true;
+            currentPreviewData = null;
+        }
+
+        // ── Open create modal ─────────────────────────────────────────────────
+        async function openCreate() {
+            // Reset form
+            clearApartment();
+            document.getElementById('createAlert').innerHTML = '';
+            document.getElementById('cMonth').selectedIndex  = 0;
+            document.getElementById('cYear').selectedIndex   = 0;
+
+            // Tải danh sách căn hộ (nếu chưa cache)
+            await loadApartmentList();
+
             new bootstrap.Modal('#createModal').show();
         }
 
+        // ── Preview fees ──────────────────────────────────────────────────────
         async function previewFees() {
-            const aptId = document.getElementById('cApartmentId').value.trim().toUpperCase();
+            const aptId = document.getElementById('cApartmentId').value.trim();
             const month = parseInt(document.getElementById('cMonth').value);
             const year  = parseInt(document.getElementById('cYear').value);
 
-            if (!aptId || !month || !year) {
-                showAlert('createAlert', 'Vui lòng nhập đầy đủ căn hộ, tháng, năm', 'warning');
+            // Validate
+            if (!aptId) {
+                // Đánh dấu ô tìm kiếm là invalid
+                document.getElementById('cApartmentSearch').classList.add('is-invalid');
+                showAlert('createAlert', 'Vui lòng chọn căn hộ từ danh sách', 'warning');
+                return;
+            }
+            if (!month || !year) {
+                showAlert('createAlert', 'Vui lòng chọn tháng và năm', 'warning');
                 return;
             }
 
+            showLoading();
             try {
-                const res = await apiRequest(`${API_INV}/preview?apartmentId=${aptId}&month=${month}&year=${year}`);
-                if (!res.ok) throw new Error(await res.text());
-                const data = await res.json();
+                const res = await apiRequest(
+                    `${API_INV}/preview?apartmentId=${encodeURIComponent(aptId)}&month=${month}&year=${year}`
+                );
 
+                if (!res.ok) {
+                    const errText = await res.text();
+                    throw new Error(errText);
+                }
+
+                const data = await res.json();
                 currentPreviewData = data;
 
                 // Render preview table
                 const tbody = document.getElementById('previewTable').querySelector('tbody');
-                tbody.innerHTML = data.feeLines.map(line => `
-                    <tr>
-                        <td>${line.feeName}</td>
-                        <td>${line.qtyNote || line.quantity}</td>
-                        <td class="text-end fw-semibold">${fmtVND(line.amount)}</td>
-                    </tr>`).join('');
 
-                document.getElementById('previewTotal').innerHTML = `Tổng cộng: <span class="text-danger">${fmtVND(data.totalAmount)}</span>`;
+                if (!data.feeLines || data.feeLines.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="3" class="text-center text-warning py-3">
+                        <i class="fas fa-exclamation-triangle me-1"></i>
+                        Không có phí nào áp dụng cho căn hộ này. Kiểm tra lại FeeTemplate.
+                    </td></tr>`;
+                } else {
+                    tbody.innerHTML = data.feeLines.map(line => `
+                        <tr>
+                            <td>${line.feeName}</td>
+                            <td>${line.qtyNote || line.quantity}</td>
+                            <td class="text-end fw-semibold">${fmtVND(line.amount)}</td>
+                        </tr>`).join('');
+                }
+
+                document.getElementById('previewTotal').innerHTML =
+                    `Tổng cộng: <span class="text-danger fw-bold">${fmtVND(data.totalAmount)}</span>`;
+                document.getElementById('previewAptInfo').textContent =
+                    `Căn ${data.apartmentNumber} — ${data.area} m² — ${month}/${year}`;
                 document.getElementById('previewSection').style.display = 'block';
 
                 if (data.alreadyExists) {
-                    showAlert('createAlert', 'Căn hộ này đã có hóa đơn tháng này!', 'warning');
+                    showAlert('createAlert',
+                        `⚠️ Căn hộ <strong>${data.apartmentNumber}</strong> đã có hóa đơn tháng ${month}/${year}!`,
+                        'warning');
                     document.getElementById('btnCreate').disabled = true;
-                } else {
+                } else if (data.feeLines && data.feeLines.length > 0) {
+                    document.getElementById('createAlert').innerHTML = '';
                     document.getElementById('btnCreate').disabled = false;
+                } else {
+                    document.getElementById('btnCreate').disabled = true;
                 }
+
             } catch(e) {
-                showAlert('createAlert', 'Lỗi xem trước: ' + e.message, 'danger');
+                showAlert('createAlert', '❌ Lỗi xem trước: ' + e.message, 'danger');
+                document.getElementById('previewSection').style.display = 'none';
+                document.getElementById('btnCreate').disabled = true;
+                currentPreviewData = null;
+            } finally {
+                hideLoading();
             }
         }
 
+        // ── Submit create ─────────────────────────────────────────────────────
         async function submitCreate() {
             if (!currentPreviewData) return;
             const { apartmentId, month, year } = currentPreviewData;
 
+            showLoading();
             try {
                 const res = await apiRequest(API_INV, {
                     method: 'POST',
@@ -356,14 +570,16 @@
                 bootstrap.Modal.getInstance(document.getElementById('createModal')).hide();
                 loadList(0);
                 loadStats();
-                showAlert('createAlert', '✅ Hóa đơn đã được tạo thành công!', 'success');
             } catch(e) {
-                showAlert('createAlert', 'Tạo hóa đơn thất bại: ' + e.message, 'danger');
+                showAlert('createAlert', '❌ Tạo hóa đơn thất bại: ' + e.message, 'danger');
+            } finally {
+                hideLoading();
             }
         }
 
+        // ── Detail modal ──────────────────────────────────────────────────────
         async function openDetail(id) {
-            const body = document.getElementById('detailBody');
+            const body   = document.getElementById('detailBody');
             const footer = document.getElementById('detailFooter');
             body.innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Đang tải...</div>';
             footer.innerHTML = '';
@@ -371,38 +587,46 @@
 
             try {
                 const res = await apiRequest(`${API_INV}/${id}`);
-                const d = await res.json();
+                const d   = await res.json();
 
-                let feeHtml = d.feeDetails.map(f => `
-                    <div class="d-flex justify-content-between mb-1">
+                const feeHtml = (d.feeDetails || []).map(f => `
+                    <div class="d-flex justify-content-between mb-1 border-bottom pb-1">
                         <span>${f.feeName}</span>
                         <span class="fw-semibold">${fmtVND(f.amount)}</span>
                     </div>`).join('');
 
                 body.innerHTML = `
                     <div class="row g-3">
-                        <div class="col-6"><strong>Mã HĐ:</strong> ${d.id}</div>
-                        <div class="col-6"><strong>Trạng thái:</strong> <span class="badge ${d.status==='PAID'?'bg-success':d.status==='OVERDUE'?'bg-danger':'bg-warning text-dark'}">${d.status}</span></div>
+                        <div class="col-6"><strong>Mã HĐ:</strong> <span class="font-monospace text-primary">${d.id}</span></div>
+                        <div class="col-6"><strong>Trạng thái:</strong>
+                            <span class="badge ${d.status==='PAID'?'bg-success':d.status==='OVERDUE'?'bg-danger':'bg-warning text-dark'}">
+                                ${d.status==='PAID'?'Đã TT':d.status==='OVERDUE'?'Quá hạn':'Chưa TT'}
+                            </span>
+                        </div>
                         <div class="col-6"><strong>Căn hộ:</strong> ${d.apartmentNumber} — ${d.buildingName}</div>
                         <div class="col-6"><strong>Kỳ:</strong> Tháng ${d.month}/${d.year}</div>
-                        <div class="col-12"><hr></div>
+                        <div class="col-12"><hr class="my-1"></div>
                         <div class="col-12"><strong>Chi tiết phí:</strong><div class="mt-2">${feeHtml}</div></div>
                         <div class="col-12 bg-primary bg-opacity-10 rounded p-3 text-center">
                             <div class="fw-bold fs-4">TỔNG CỘNG: ${fmtVND(d.totalAmount)}</div>
                         </div>
-                        <div class="col-4"><strong>Phát hành:</strong> ${d.issuedAt ? new Date(d.issuedAt).toLocaleString('vi-VN') : '—'}</div>
-                        <div class="col-4"><strong>Hạn TT:</strong> ${d.dueDate || '—'}</div>
-                        <div class="col-4"><strong>Thanh toán:</strong> ${d.paidAt ? new Date(d.paidAt).toLocaleString('vi-VN') : '—'}</div>
+                        <div class="col-4"><small class="text-muted">Phát hành</small><div>${d.issuedAt ? new Date(d.issuedAt).toLocaleString('vi-VN') : '—'}</div></div>
+                        <div class="col-4"><small class="text-muted">Hạn TT</small><div>${d.dueDate || '—'}</div></div>
+                        <div class="col-4"><small class="text-muted">Thanh toán</small><div>${d.paidAt ? new Date(d.paidAt).toLocaleString('vi-VN') : '—'}</div></div>
                     </div>`;
 
                 if (d.status !== 'PAID' && !window._invoiceReadOnly) {
                     footer.innerHTML = `
-                        <button class="btn btn-success me-2" onclick="InvoiceMgmt.markPaid('${id}', true)"><i class="fas fa-check me-1"></i>Đánh dấu đã TT</button>
-                        <button class="btn btn-danger" onclick="InvoiceMgmt.confirmDelete('${id}', true)"><i class="fas fa-trash me-1"></i>Xóa</button>`;
+                        <button class="btn btn-success me-2" onclick="InvoiceMgmt.markPaid('${id}', true)">
+                            <i class="fas fa-check me-1"></i>Đánh dấu đã TT
+                        </button>
+                        <button class="btn btn-danger" onclick="InvoiceMgmt.confirmDelete('${id}', true)">
+                            <i class="fas fa-trash me-1"></i>Xóa
+                        </button>`;
                 }
                 footer.innerHTML += '<button class="btn btn-secondary ms-2" data-bs-dismiss="modal">Đóng</button>';
             } catch(e) {
-                body.innerHTML = '<div class="text-danger">Không tải được chi tiết</div>';
+                body.innerHTML = '<div class="text-danger text-center py-3"><i class="fas fa-exclamation-circle me-1"></i>Không tải được chi tiết</div>';
             }
         }
 
@@ -431,9 +655,9 @@
             } catch(e) { alert('Lỗi: ' + e.message); }
         }
 
+        // ── Helpers ───────────────────────────────────────────────────────────
         function showAlert(containerId, msg, type) {
-            const container = document.getElementById(containerId);
-            container.innerHTML = `
+            document.getElementById(containerId).innerHTML = `
                 <div class="alert alert-${type} alert-dismissible fade show">
                     <i class="fas ${type==='success'?'fa-check-circle':type==='warning'?'fa-exclamation-triangle':'fa-exclamation-circle'} me-2"></i>${msg}
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
@@ -445,7 +669,13 @@
             return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
         }
 
-        return { init, loadList, resetFilter, openCreate, previewFees, submitCreate, openDetail, markPaid, confirmDelete };
+        // Public API
+        return {
+            init, loadList, resetFilter, openCreate,
+            filterApartments, showDropdown, hideDropdown,
+            selectApartment, clearApartment,
+            previewFees, submitCreate, openDetail, markPaid, confirmDelete
+        };
     })();
 
     document.addEventListener('DOMContentLoaded', InvoiceMgmt.init);

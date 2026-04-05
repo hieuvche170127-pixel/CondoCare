@@ -22,17 +22,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * InvoiceManagementService — Mô hình B, phí theo khung diện tích.
  *
+ * FIX BUG 1: resolveApartment() hỗ trợ tra cứu bằng cả apartment ID ("APT001")
+ *            lẫn apartment number ("A101") — giải quyết lỗi "Không tìm thấy căn hộ"
+ *            khi frontend gửi số căn thay vì ID.
+ *
  * Logic lọc FeeTemplate áp dụng cho 1 căn hộ:
  *   - PARKING / PER_APT / FIXED  : luôn áp dụng (min_area / max_area bỏ qua)
  *   - PER_M2 (phí quản lý)       : chỉ áp dụng khi diện tích căn hộ
  *                                  nằm trong [min_area, max_area]
  *                                  (NULL = không giới hạn phía đó)
- *
- * Ví dụ 3 khung tòa A:
- *   FT001 Phí QLVH ≤50m²     min=NULL max=50    → áp dụng cho căn ≤ 50 m²
- *   FT002 Phí QLVH 51–100m²  min=50.01 max=100  → áp dụng cho 50.01 ≤ area ≤ 100
- *   FT003 Phí QLVH >100m²    min=100.01 max=NULL→ áp dụng cho area > 100
- * Mỗi căn hộ chỉ khớp đúng 1 trong 3 — không bị tính chồng.
  */
 @Service
 public class InvoiceManagementService {
@@ -66,8 +64,8 @@ public class InvoiceManagementService {
 
         List<Invoice> all;
         if (apartmentId != null && !apartmentId.isBlank()) {
-            Apartment apt = apartmentRepo.findById(apartmentId)
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy căn hộ: " + apartmentId));
+            // FIX: dùng resolveApartment thay vì findById trực tiếp
+            Apartment apt = resolveApartment(apartmentId);
             all = invoiceRepo.findByApartmentOrderByYearDescMonthDesc(apt);
         } else {
             all = invoiceRepo.findAllByOrderByYearDescMonthDesc();
@@ -108,8 +106,8 @@ public class InvoiceManagementService {
 
     @Transactional
     public Map<String, Object> createInvoice(InvoiceCreateRequest req) {
-        Apartment apt = apartmentRepo.findById(req.getApartmentId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy căn hộ: " + req.getApartmentId()));
+        // FIX: dùng resolveApartment — chấp nhận cả ID ("APT001") lẫn number ("A101")
+        Apartment apt = resolveApartment(req.getApartmentId());
 
         if (invoiceRepo.findByApartmentAndMonthAndYear(apt, req.getMonth(), req.getYear()).isPresent())
             throw new RuntimeException("Căn hộ " + apt.getNumber()
@@ -125,8 +123,6 @@ public class InvoiceManagementService {
         BigDecimal totalAmount = BigDecimal.ZERO;
 
         for (FeeTemplate ft : activeTemplates) {
-
-            // ── FIX: Lọc theo khung diện tích ──────────────────────────────
             if (!isApplicableToArea(ft, apt.getArea())) continue;
 
             if (ft.getType() == FeeTemplate.FeeType.SERVICE) {
@@ -182,8 +178,8 @@ public class InvoiceManagementService {
     // ─── PREVIEW ──────────────────────────────────────────────────────────────
 
     public Map<String, Object> previewInvoice(String apartmentId, Integer month, Integer year) {
-        Apartment apt = apartmentRepo.findById(apartmentId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy căn hộ: " + apartmentId));
+        // FIX: dùng resolveApartment — chấp nhận cả ID ("APT001") lẫn number ("A101")
+        Apartment apt = resolveApartment(apartmentId);
 
         boolean exists = invoiceRepo.findByApartmentAndMonthAndYear(apt, month, year).isPresent();
 
@@ -195,8 +191,6 @@ public class InvoiceManagementService {
         BigDecimal total = BigDecimal.ZERO;
 
         for (FeeTemplate ft : activeTemplates) {
-
-            // ── FIX: Lọc theo khung diện tích ──────────────────────────────
             if (!isApplicableToArea(ft, apt.getArea())) continue;
 
             Map<String, Object> line = new LinkedHashMap<>();
@@ -213,7 +207,7 @@ public class InvoiceManagementService {
                 long cnt = countApprovedVehicles(apt.getId(), ft);
                 qty = BigDecimal.valueOf(cnt);
                 line.put("qtyNote", cnt + " xe");
-                if (cnt == 0) continue; // Bỏ qua dòng phí gửi xe = 0
+                if (cnt == 0) continue;
             }
 
             BigDecimal amount = ft.getAmount().multiply(qty);
@@ -224,8 +218,8 @@ public class InvoiceManagementService {
         }
 
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("apartmentId",     apt.getId());
-        result.put("apartmentNumber", apt.getNumber());
+        result.put("apartmentId",     apt.getId());     // luôn trả về ID thực (APT001)
+        result.put("apartmentNumber", apt.getNumber()); // số căn để hiển thị (A101)
         result.put("area",            apt.getArea());
         result.put("month",           month);
         result.put("year",            year);
@@ -233,6 +227,27 @@ public class InvoiceManagementService {
         result.put("feeLines",        lines);
         result.put("totalAmount",     total);
         return result;
+    }
+
+    // ─── DANH SÁCH CĂN HỘ (dùng cho dropdown form tạo hóa đơn) ───────────────
+
+    /**
+     * Trả về danh sách tất cả căn hộ dạng gọn để populate dropdown.
+     * GET /api/invoice-management/apartment-list
+     */
+    public List<Map<String, Object>> getApartmentList() {
+        return apartmentRepo.findAllByOrderByBuilding_NameAscNumberAsc()
+                .stream()
+                .map(a -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("id",           a.getId());
+                    m.put("number",       a.getNumber());
+                    m.put("buildingName", a.getBuilding() != null ? a.getBuilding().getName() : "");
+                    m.put("area",         a.getArea());
+                    m.put("status",       a.getStatus() != null ? a.getStatus().name() : "");
+                    return m;
+                })
+                .toList();
     }
 
     // ─── CẬP NHẬT TRẠNG THÁI ──────────────────────────────────────────────────
@@ -282,6 +297,39 @@ public class InvoiceManagementService {
     // ─── PRIVATE HELPERS ──────────────────────────────────────────────────────
 
     /**
+     * FIX BUG 1 — Resolve apartment từ ID hoặc số căn.
+     *
+     * Ưu tiên:
+     *   1. Thử findById(input) — input là ID như "APT001"
+     *   2. Nếu không tìm thấy → thử findFirstByNumberIgnoreCase(input) — input là "A101"
+     *   3. Nếu vẫn không thấy → ném RuntimeException rõ ràng
+     *
+     * Điều này giải quyết lỗi khi người dùng nhập số căn thay vì apartment ID
+     * vào form tạo hóa đơn (placeholder "VD: A101" nhưng backend cần "APT001").
+     */
+    private Apartment resolveApartment(String apartmentIdOrNumber) {
+        if (apartmentIdOrNumber == null || apartmentIdOrNumber.isBlank())
+            throw new RuntimeException("Mã hoặc số căn hộ không được để trống.");
+
+        // Thử tìm bằng ID trước (trường hợp dropdown đã chọn đúng ID)
+        Optional<Apartment> byId = apartmentRepo.findById(apartmentIdOrNumber.trim());
+        if (byId.isPresent()) return byId.get();
+
+        // Fallback: tìm bằng apartment number (trường hợp user nhập "A101")
+        Optional<Apartment> byNumber = apartmentRepo
+                .findFirstByNumberIgnoreCase(apartmentIdOrNumber.trim());
+        if (byNumber.isPresent()) {
+            logger.debug("resolveApartment: '{}' resolved by number → id={}",
+                    apartmentIdOrNumber, byNumber.get().getId());
+            return byNumber.get();
+        }
+
+        throw new RuntimeException(
+                "Không tìm thấy căn hộ: '" + apartmentIdOrNumber + "'. " +
+                        "Vui lòng chọn từ danh sách hoặc nhập đúng mã căn hộ (VD: APT001) hoặc số căn (VD: A101).");
+    }
+
+    /**
      * Kiểm tra FeeTemplate có áp dụng được cho diện tích căn hộ không.
      *
      * Quy tắc:
@@ -292,9 +340,7 @@ public class InvoiceManagementService {
      *    Cả hai NULL      = áp dụng cho mọi diện tích.
      */
     private boolean isApplicableToArea(FeeTemplate ft, BigDecimal area) {
-        // Phí không tính theo m² → không cần lọc diện tích
         if (ft.getUnit() != FeeTemplate.FeeUnit.PER_M2) return true;
-        // Không có diện tích → cho qua (tránh NPE, sẽ xử lý ở calcServiceQty)
         if (area == null) return true;
 
         boolean aboveMin = ft.getMinArea() == null

@@ -23,14 +23,14 @@ public class ResidentManagementController {
     @Autowired private ResidentManagementService service;
 
     @GetMapping("/stats")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT','TECHNICIAN','RECEPTIONIST')")
     public ResponseEntity<?> getStats() {
         try { return ResponseEntity.ok(service.getStats()); }
         catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT','TECHNICIAN','RECEPTIONIST')")
     public ResponseEntity<?> listResidents(
             @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "10") int size,
@@ -52,7 +52,7 @@ public class ResidentManagementController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT','TECHNICIAN','RECEPTIONIST')")
     public ResponseEntity<?> getResident(@PathVariable String id) {
         try { return ResponseEntity.ok(service.getResidentDetail(id)); }
         catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
