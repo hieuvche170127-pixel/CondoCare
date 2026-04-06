@@ -2,10 +2,10 @@ package com.swp391.condocare_swp.service;
 
 import com.swp391.condocare_swp.entity.*;
 import com.swp391.condocare_swp.repository.*;
+import com.swp391.condocare_swp.security.SecurityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,16 +16,22 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * NotificationService — Luồng quản lý thông báo.
  *
- * 3 loại gửi từ Staff:
+ * 3 loại gửi từ Staff (thủ công):
  *   1. Broadcast toàn tòa   → resident_id = NULL, building_id = set
  *   2. Gửi theo căn hộ      → apartment_id = set, resident_id = NULL
  *   3. Gửi cá nhân          → resident_id = set
  *
  * Thông báo hệ thống tự động (gọi từ các service khác):
- *   - sendAccountApprovedNotification()  → khi manager duyệt tài khoản
- *   - sendAccessCardIssuedNotification() → khi manager cấp thẻ ra vào
- *   - sendRequestStatusNotification()    → khi staff cập nhật trạng thái yêu cầu
- *   - sendPaymentReminder()              → nhắc hóa đơn quá hạn
+ *   - sendAccountApprovedNotification()      → khi manager duyệt tài khoản
+ *   - sendAccessCardIssuedNotification()     → khi manager cấp thẻ ra vào
+ *   - sendRequestStatusNotification()        → khi staff cập nhật trạng thái yêu cầu
+ *   - sendPaymentReminder()                  → nhắc hóa đơn quá hạn
+ *   - sendVehicleApprovedNotification()      → [NEW] khi staff duyệt đăng ký xe
+ *   - sendVehicleRejectedNotification()      → [NEW] khi staff từ chối đăng ký xe
+ *
+ * THAY ĐỔI:
+ *   - getCurrentStaff() → dùng SecurityUtils thay vì tự viết SecurityContextHolder
+ *   - Thêm 2 methods vehicle notification để VehicleService không bypass repo trực tiếp
  */
 @Service
 public class NotificationService {
@@ -38,6 +44,7 @@ public class NotificationService {
     @Autowired private ApartmentRepository    apartmentRepo;
     @Autowired private BuildingRepository     buildingRepo;
     @Autowired private StaffRepository        staffRepo;
+    @Autowired private SecurityUtils          securityUtils;   // [NEW] thay thế SecurityContextHolder inline
 
     // ─── THỐNG KÊ ─────────────────────────────────────────────────────────────
 
@@ -90,7 +97,7 @@ public class NotificationService {
         Building building = buildingRepo.findById(buildingId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tòa nhà: " + buildingId));
 
-        Notification n = buildNotification(body, getCurrentStaff());
+        Notification n = buildNotification(body, securityUtils.getCurrentStaff());
         n.setBuilding(building);
         n.setResident(null);
         n.setApartment(null);
@@ -113,7 +120,7 @@ public class NotificationService {
         Apartment apt = apartmentRepo.findById(apartmentId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy căn hộ: " + apartmentId));
 
-        Staff staff = getCurrentStaff();
+        Staff staff = securityUtils.getCurrentStaff();
         Notification n = buildNotification(body, staff);
         n.setApartment(apt);
         n.setBuilding(apt.getBuilding());
@@ -137,7 +144,7 @@ public class NotificationService {
         Residents resident = residentsRepo.findById(residentId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cư dân: " + residentId));
 
-        Staff staff = getCurrentStaff();
+        Staff staff = securityUtils.getCurrentStaff();
         Notification n = buildNotification(body, staff);
         n.setResident(resident);
         n.setApartment(resident.getApartment());
@@ -174,7 +181,7 @@ public class NotificationService {
     }
 
     /**
-     * Gửi thông báo khi thẻ ra vào được cấp (sau duyệt tài khoản hoặc cấp lại).
+     * Gửi thông báo khi thẻ ra vào được cấp.
      * Gọi từ ResidentManagementService sau khi issueAccessCard().
      */
     @Transactional
@@ -198,13 +205,6 @@ public class NotificationService {
     /**
      * Gửi thông báo khi trạng thái yêu cầu hỗ trợ thay đổi.
      * Gọi từ StaffServiceRequestService khi assign, done, hoặc reject.
-     *
-     * @param resident    Cư dân cần nhận thông báo
-     * @param requestId   ID yêu cầu
-     * @param requestTitle Tiêu đề yêu cầu
-     * @param newStatus   Trạng thái mới (IN_PROGRESS, DONE, REJECTED)
-     * @param note        Ghi chú thêm (lý do từ chối, ghi chú hoàn thành, ...)
-     * @param staff       Staff thực hiện thay đổi
      */
     @Transactional
     public void sendRequestStatusNotification(Residents resident, String requestId,
@@ -219,21 +219,17 @@ public class NotificationService {
                 title   = "Yêu cầu hỗ trợ đang được xử lý";
                 content = "Yêu cầu \"" + requestTitle + "\" (#" + requestId + ") " +
                         "đã được tiếp nhận và đang trong quá trình xử lý.";
-                if (note != null && !note.isBlank())
-                    content += " Ghi chú: " + note;
+                if (note != null && !note.isBlank()) content += " Ghi chú: " + note;
             }
             case "DONE" -> {
                 title   = "Yêu cầu hỗ trợ đã hoàn thành";
                 content = "Yêu cầu \"" + requestTitle + "\" (#" + requestId + ") " +
                         "đã được xử lý xong. Vui lòng xác nhận kết quả trong mục Yêu cầu hỗ trợ.";
-                type    = Notification.NotificationType.INFO;
             }
             case "REJECTED" -> {
                 title   = "Yêu cầu hỗ trợ bị từ chối";
-                content = "Yêu cầu \"" + requestTitle + "\" (#" + requestId + ") " +
-                        "không thể thực hiện.";
-                if (note != null && !note.isBlank())
-                    content += " Lý do: " + note;
+                content = "Yêu cầu \"" + requestTitle + "\" (#" + requestId + ") không thể thực hiện.";
+                if (note != null && !note.isBlank()) content += " Lý do: " + note;
                 type = Notification.NotificationType.WARNING;
             }
             default -> {
@@ -279,6 +275,66 @@ public class NotificationService {
         logger.info("Payment reminder sent to resident {} for invoice {}", resident.getId(), invoiceId);
     }
 
+    /**
+     * [NEW] Gửi thông báo khi đăng ký xe được DUYỆT.
+     * Chuyển từ VehicleService.sendVehicleNotification() → tập trung vào đây.
+     *
+     * @param vehicle    Xe vừa được duyệt
+     * @param approvedBy Staff duyệt
+     */
+    @Transactional
+    public void sendVehicleApprovedNotification(Vehicle vehicle, Staff approvedBy) {
+        String plateInfo  = vehicle.getLicensePlate() != null ? " (" + vehicle.getLicensePlate() + ")" : "";
+        String typeLabel  = getVehicleTypeLabel(vehicle.getType());
+        String expiryDate = vehicle.getExpiredAt() != null
+                ? vehicle.getExpiredAt().toLocalDate().toString() : "N/A";
+
+        Notification n = new Notification();
+        n.setId(generateId());
+        n.setTitle("Đăng ký xe đã được duyệt");
+        n.setContent("Yêu cầu đăng ký " + typeLabel + plateInfo +
+                " của bạn đã được Ban quản lý phê duyệt. " +
+                "Hạn đăng ký: " + expiryDate + ".");
+        n.setType(Notification.NotificationType.INFO);
+        n.setResident(vehicle.getResident());
+        n.setApartment(vehicle.getApartment());
+        n.setBuilding(vehicle.getApartment() != null ? vehicle.getApartment().getBuilding() : null);
+        n.setCreatedBy(approvedBy);
+        n.setIsRead(false);
+        notifRepo.save(n);
+        logger.info("Vehicle approved notification sent to resident {} for vehicle {}",
+                vehicle.getResident().getId(), vehicle.getId());
+    }
+
+    /**
+     * [NEW] Gửi thông báo khi đăng ký xe bị TỪ CHỐI.
+     * Chuyển từ VehicleService.sendVehicleNotification() → tập trung vào đây.
+     *
+     * @param vehicle    Xe bị từ chối
+     * @param reason     Lý do từ chối
+     * @param rejectedBy Staff từ chối
+     */
+    @Transactional
+    public void sendVehicleRejectedNotification(Vehicle vehicle, String reason, Staff rejectedBy) {
+        String plateInfo = vehicle.getLicensePlate() != null ? " (" + vehicle.getLicensePlate() + ")" : "";
+        String typeLabel = getVehicleTypeLabel(vehicle.getType());
+
+        Notification n = new Notification();
+        n.setId(generateId());
+        n.setTitle("Đăng ký xe bị từ chối");
+        n.setContent("Yêu cầu đăng ký " + typeLabel + plateInfo +
+                " của bạn bị từ chối. Lý do: " + (reason != null ? reason : "Không rõ."));
+        n.setType(Notification.NotificationType.WARNING);
+        n.setResident(vehicle.getResident());
+        n.setApartment(vehicle.getApartment());
+        n.setBuilding(vehicle.getApartment() != null ? vehicle.getApartment().getBuilding() : null);
+        n.setCreatedBy(rejectedBy);
+        n.setIsRead(false);
+        notifRepo.save(n);
+        logger.info("Vehicle rejected notification sent to resident {} for vehicle {}",
+                vehicle.getResident().getId(), vehicle.getId());
+    }
+
     // ─── XÓA THÔNG BÁO ───────────────────────────────────────────────────────
 
     @Transactional
@@ -319,6 +375,16 @@ public class NotificationService {
         return n;
     }
 
+    private String getVehicleTypeLabel(Vehicle.VehicleType type) {
+        return switch (type) {
+            case MOTORBIKE     -> "xe máy";
+            case CAR           -> "ô tô";
+            case BICYCLE       -> "xe đạp";
+            case ELECTRIC_BIKE -> "xe đạp điện";
+            default            -> "phương tiện";
+        };
+    }
+
     private Map<String, Object> mapToResponse(Notification n) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id",        n.getId());
@@ -349,17 +415,10 @@ public class NotificationService {
         return m;
     }
 
-    private Staff getCurrentStaff() {
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        return staffRepo.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin Staff đang đăng nhập."));
-    }
-
     private String generateId() {
         String prefix = "NTF" + LocalDate.now().getYear()
                 + String.format("%02d", LocalDate.now().getMonthValue());
-
-        long seq = counter.incrementAndGet() % 10000;   // 0000 → 9999
+        long seq = counter.incrementAndGet() % 10000;
         return prefix + String.format("%04d", seq);
     }
 }

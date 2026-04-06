@@ -6,9 +6,10 @@ import com.swp391.condocare_swp.dto.MomoCreatePaymentResponse;
 import com.swp391.condocare_swp.dto.MomoIpnRequest;
 import com.swp391.condocare_swp.entity.Invoice;
 import com.swp391.condocare_swp.entity.Payments;
+import com.swp391.condocare_swp.entity.Residents;
+import com.swp391.condocare_swp.repository.InvoiceRepository;
 import com.swp391.condocare_swp.repository.PaymentsRepository;
 import com.swp391.condocare_swp.repository.ResidentsRepository;
-import com.swp391.condocare_swp.repository.InvoiceRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,21 +32,17 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Service tích hợp MoMo Payment Gateway
+ * MomoService — Tích hợp MoMo Payment Gateway.
+ *
+ * THAY ĐỔI (so với phiên bản cũ):
+ *   - Thêm createPaymentForUser(String invoiceId, String username):
+ *       Method mới gom toàn bộ logic tìm Invoice + Resident từ DB vào Service,
+ *       thay vì để Controller tự query InvoiceRepository + ResidentsRepository.
+ *       Controller cũ vi phạm nguyên tắc: Controller không nên chứa business logic / DB query.
+ *
+ *   - createPayment(invoiceId, amount, residentId) giữ nguyên để các test/call nội bộ không bị break.
  *
  * Docs: https://developers.momo.vn/v3/docs/payment/api/pay-gate/
- *
- * ── Sandbox credentials (thay bằng LIVE khi production) ──────
- * partnerCode : MOMO
- * accessKey   : F8BBA842ECF85
- * secretKey   : K951B6PE1waDMi640xX08PD3vg6EkVlz
- * endpoint    : https://test-payment.momo.vn/v2/gateway/api/create
- *
- * ── Thay đổi so với phiên bản cũ ────────────────────────────
- * - createPayment() nhận thêm residentId, lưu vào extraData của request MoMo.
- * - handleIpn() đọc extraData để lấy residentId → gán paid_by trực tiếp,
- *   KHÔNG còn tìm ngược findFirstByApartment_Id (method không tồn tại).
- * - ResidentsRepository KHÔNG cần thêm method mới.
  */
 @Service
 public class MomoService {
@@ -78,7 +75,44 @@ public class MomoService {
     private final HttpClient   httpClient   = HttpClient.newHttpClient();
 
     /* ══════════════════════════════════════════════════════
-       TẠO PAYMENT REQUEST
+       [NEW] ENTRY POINT — Được gọi từ MomoController
+    ══════════════════════════════════════════════════════ */
+
+    /**
+     * Tạo MoMo payment link — gom toàn bộ logic tìm Invoice + Resident từ DB vào đây.
+     *
+     * Lý do thêm method này:
+     *   MomoController cũ tự query InvoiceRepository và ResidentsRepository trực tiếp,
+     *   vi phạm nguyên tắc Controller chỉ route request, không chứa business logic.
+     *   Method này thay thế toàn bộ block code trong Controller.createPayment().
+     *
+     * @param invoiceId ID hóa đơn cần thanh toán
+     * @param username  Username của resident đang đăng nhập (lấy từ JWT qua SecurityContext)
+     * @return Map chứa payUrl, qrCodeUrl, deeplink, shortLink, orderId, requestId, amount
+     */
+    public Map<String, Object> createPaymentForUser(String invoiceId, String username) {
+        // 1. Tìm Invoice — lỗi nghiệp vụ được ném từ Service, không phải Controller
+        Invoice invoice = invoiceRepo.findById(invoiceId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn: " + invoiceId));
+
+        if (invoice.getStatus() == Invoice.InvoiceStatus.PAID)
+            throw new RuntimeException("Hóa đơn này đã được thanh toán rồi!");
+
+        // 2. Tìm residentId từ username để lưu vào extraData của MoMo request
+        //    IPN callback sẽ đọc extraData để gán paid_by — không cần query ngược từ apartment
+        String residentId = residentsRepo.findByUsername(username)
+                .map(Residents::getId)
+                .orElse(null);
+
+        logger.info("MoMo createPaymentForUser — user={}, residentId={}, invoiceId={}",
+                username, residentId, invoiceId);
+
+        // 3. Delegate xuống createPayment() để tạo request MoMo thực tế
+        return createPayment(invoiceId, invoice.getTotalAmount(), residentId);
+    }
+
+    /* ══════════════════════════════════════════════════════
+       TẠO PAYMENT REQUEST (internal / có thể gọi trực tiếp)
     ══════════════════════════════════════════════════════ */
 
     /**
@@ -93,8 +127,7 @@ public class MomoService {
         long   amountLong = amount.longValue();
         String orderInfo  = "Thanh toan hoa don " + invoiceId;
 
-        // Lưu residentId vào extraData để IPN callback đọc lại khi gán paid_by.
-        // Không encode Base64 để tránh phức tạp — MoMo chấp nhận plaintext.
+        // Lưu residentId vào extraData để IPN callback đọc lại khi gán paid_by
         String extraData = (residentId != null && !residentId.isBlank()) ? residentId : "";
 
         // Thêm timestamp suffix để tránh duplicate orderId khi user bấm nhiều lần
@@ -217,46 +250,6 @@ public class MomoService {
         return true;
     }
 
-    /**
-     * Lưu bản ghi Payments sau khi IPN xác nhận thành công.
-     * residentId lấy từ extraData — không cần query thêm DB theo apartment.
-     */
-    private void savePaymentRecord(Invoice invoice, MomoIpnRequest ipn, String residentId) {
-        String invoiceId = invoice.getId();
-        try {
-            if (paymentsRepo.existsByInvoiceId(invoiceId)) {
-                logger.info("Payment record already exists for invoice {}, skipping", invoiceId);
-                return;
-            }
-
-            // Validate residentId tồn tại trong DB trước khi gán
-            if (residentId == null || !residentsRepo.existsById(residentId)) {
-                logger.warn("Skipped Payments save — residentId '{}' từ extraData không hợp lệ " +
-                        "hoặc không tồn tại (invoiceId={})", residentId, invoiceId);
-                return;
-            }
-
-            Payments payment = new Payments();
-            payment.setId("PMT_" + System.currentTimeMillis());
-            payment.setInvoiceId(invoiceId);
-            payment.setAmount(invoice.getTotalAmount());
-            payment.setPaidAt(LocalDateTime.now());
-            payment.setMethod(Payments.PaymentMethod.MOMO);
-            payment.setMomoTransId(String.valueOf(ipn.getTransId()));
-            payment.setMomoOrderId(ipn.getOrderId());
-            payment.setNote("MoMo - " + (ipn.getPayType() != null ? ipn.getPayType() : "online"));
-            payment.setPaidBy(residentId);  // ← lấy từ extraData, không query thêm
-
-            paymentsRepo.save(payment);
-            logger.info("Payment record saved — invoiceId={}, transId={}, paidBy={}",
-                    invoiceId, ipn.getTransId(), residentId);
-
-        } catch (Exception ex) {
-            // Không để lỗi Payments rollback Invoice đã PAID
-            logger.warn("Could not save Payments record for invoice {}: {}", invoiceId, ex.getMessage());
-        }
-    }
-
     /* ══════════════════════════════════════════════════════
        QUERY PAYMENT STATUS
     ══════════════════════════════════════════════════════ */
@@ -277,36 +270,75 @@ public class MomoService {
        PRIVATE HELPERS
     ══════════════════════════════════════════════════════ */
 
+    /**
+     * Lưu bản ghi Payments sau khi IPN xác nhận thành công.
+     * residentId lấy từ extraData — không cần query thêm DB theo apartment.
+     */
+    private void savePaymentRecord(Invoice invoice, MomoIpnRequest ipn, String residentId) {
+        String invoiceId = invoice.getId();
+        try {
+            if (paymentsRepo.existsByInvoiceId(invoiceId)) {
+                logger.info("Payment record already exists for invoice {}, skipping", invoiceId);
+                return;
+            }
+
+            if (residentId == null || !residentsRepo.existsById(residentId)) {
+                logger.warn("Skipped Payments save — residentId '{}' từ extraData không hợp lệ " +
+                        "hoặc không tồn tại (invoiceId={})", residentId, invoiceId);
+                return;
+            }
+
+            Payments payment = new Payments();
+            payment.setId("PMT_" + System.currentTimeMillis());
+            payment.setInvoiceId(invoiceId);
+            payment.setAmount(invoice.getTotalAmount());
+            payment.setPaidAt(LocalDateTime.now());
+            payment.setMethod(Payments.PaymentMethod.MOMO);
+            payment.setMomoTransId(String.valueOf(ipn.getTransId()));
+            payment.setMomoOrderId(ipn.getOrderId());
+            payment.setNote("MoMo - " + (ipn.getPayType() != null ? ipn.getPayType() : "online"));
+            payment.setPaidBy(residentId);
+
+            paymentsRepo.save(payment);
+            logger.info("Payment record saved — invoiceId={}, transId={}, paidBy={}",
+                    invoiceId, ipn.getTransId(), residentId);
+
+        } catch (Exception ex) {
+            // Không để lỗi Payments rollback Invoice đã PAID
+            logger.warn("Could not save Payments record for invoice {}: {}", invoiceId, ex.getMessage());
+        }
+    }
+
     private String buildRawSignature(
             String accessKey, String amount, String extraData,
             String ipnUrl, String orderId, String orderInfo,
             String partnerCode, String redirectUrl, String requestId, String requestType) {
-        return "accessKey="   + accessKey
-                + "&amount="     + amount
-                + "&extraData="  + extraData
-                + "&ipnUrl="     + ipnUrl
-                + "&orderId="    + orderId
-                + "&orderInfo="  + orderInfo
+        return "accessKey="    + accessKey
+                + "&amount="      + amount
+                + "&extraData="   + extraData
+                + "&ipnUrl="      + ipnUrl
+                + "&orderId="     + orderId
+                + "&orderInfo="   + orderInfo
                 + "&partnerCode=" + partnerCode
                 + "&redirectUrl=" + redirectUrl
-                + "&requestId="  + requestId
+                + "&requestId="   + requestId
                 + "&requestType=" + requestType;
     }
 
     private String buildIpnRawSignature(MomoIpnRequest ipn) {
-        return "accessKey="   + accessKey
-                + "&amount="     + ipn.getAmount()
-                + "&extraData="  + (ipn.getExtraData() != null ? ipn.getExtraData() : "")
-                + "&message="    + ipn.getMessage()
-                + "&orderId="    + ipn.getOrderId()
-                + "&orderInfo="  + ipn.getOrderInfo()
-                + "&orderType="  + (ipn.getOrderType() != null ? ipn.getOrderType() : "")
-                + "&partnerCode=" + ipn.getPartnerCode()
-                + "&payType="    + (ipn.getPayType() != null ? ipn.getPayType() : "")
-                + "&requestId="  + ipn.getRequestId()
+        return "accessKey="      + accessKey
+                + "&amount="       + ipn.getAmount()
+                + "&extraData="    + (ipn.getExtraData() != null ? ipn.getExtraData() : "")
+                + "&message="      + ipn.getMessage()
+                + "&orderId="      + ipn.getOrderId()
+                + "&orderInfo="    + ipn.getOrderInfo()
+                + "&orderType="    + (ipn.getOrderType() != null ? ipn.getOrderType() : "")
+                + "&partnerCode="  + ipn.getPartnerCode()
+                + "&payType="      + (ipn.getPayType() != null ? ipn.getPayType() : "")
+                + "&requestId="    + ipn.getRequestId()
                 + "&responseTime=" + ipn.getResponseTime()
-                + "&resultCode=" + ipn.getResultCode()
-                + "&transId="    + ipn.getTransId();
+                + "&resultCode="   + ipn.getResultCode()
+                + "&transId="      + ipn.getTransId();
     }
 
     private String hmacSHA256(String key, String data) {

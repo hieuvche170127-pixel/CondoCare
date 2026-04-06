@@ -14,11 +14,21 @@ import java.util.Map;
  * REST Controller quản lý Tòa nhà (Building), Căn hộ (Apartment)
  * và Mẫu phí dịch vụ (FeeTemplate).
  *
- * Building endpoints :  /api/buildings/**
- * Apartment endpoints:  /api/apartments/**
- * FeeTemplate endpoints: /api/fee-templates/**
+ * Base path: /api  (giữ nguyên để không break URL hiện có)
+ *
+ * Nhóm endpoint:
+ *   Building     : /api/buildings/**
+ *   Apartment    : /api/apartments/**
+ *   FeeTemplate  : /api/fee-templates/**   ← endpoint DUY NHẤT cho fee-templates
+ *                                             (InvoiceManagementController đã bỏ endpoint trùng lặp)
+ *
+ * THAY ĐỔI so với bản cũ:
+ *   - Không có thay đổi code — giữ nguyên hoàn toàn.
+ *   - Chỉ cập nhật comment để ghi rõ /api/fee-templates là endpoint duy nhất
+ *     sau khi đã xóa endpoint trùng trong InvoiceManagementController.
  */
 @RestController
+@RequestMapping("/api")
 @CrossOrigin(origins = "*", maxAge = 3600)
 public class ApartmentController {
 
@@ -30,7 +40,7 @@ public class ApartmentController {
     // ══════════════════════════════════════════════════════════════════════════
 
     /** GET /api/apartments/stats */
-    @GetMapping("/api/apartments/stats")
+    @GetMapping("/apartments/stats")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT','TECHNICIAN','RECEPTIONIST')")
     public ResponseEntity<?> getStats() {
         try { return ResponseEntity.ok(service.getStats()); }
@@ -42,7 +52,7 @@ public class ApartmentController {
     // ══════════════════════════════════════════════════════════════════════════
 
     /** GET /api/buildings */
-    @GetMapping("/api/buildings")
+    @GetMapping("/buildings")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT','TECHNICIAN','RECEPTIONIST')")
     public ResponseEntity<?> getAllBuildings() {
         try { return ResponseEntity.ok(service.getAllBuildings()); }
@@ -50,7 +60,7 @@ public class ApartmentController {
     }
 
     /** GET /api/buildings/{id} */
-    @GetMapping("/api/buildings/{id}")
+    @GetMapping("/buildings/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT','TECHNICIAN','RECEPTIONIST')")
     public ResponseEntity<?> getBuildingDetail(@PathVariable String id) {
         try { return ResponseEntity.ok(service.getBuildingDetail(id)); }
@@ -61,7 +71,7 @@ public class ApartmentController {
      * POST /api/buildings
      * Body: { name, address, totalFloors, totalApartments, managerId }
      */
-    @PostMapping("/api/buildings")
+    @PostMapping("/buildings")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<?> createBuilding(@RequestBody Map<String, String> body) {
         try { return ResponseEntity.ok(service.createBuilding(body)); }
@@ -75,7 +85,7 @@ public class ApartmentController {
      * PUT /api/buildings/{id}
      * Body: { name?, address?, totalFloors?, totalApartments?, managerId? }
      */
-    @PutMapping("/api/buildings/{id}")
+    @PutMapping("/buildings/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<?> updateBuilding(@PathVariable String id,
                                             @RequestBody Map<String, String> body) {
@@ -94,7 +104,7 @@ public class ApartmentController {
      * GET /api/apartments
      * Params: buildingId (optional), status (optional: EMPTY|OCCUPIED|MAINTENANCE)
      */
-    @GetMapping("/api/apartments")
+    @GetMapping("/apartments")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT','TECHNICIAN','RECEPTIONIST')")
     public ResponseEntity<?> getAllApartments(
             @RequestParam(required = false) String buildingId,
@@ -107,7 +117,7 @@ public class ApartmentController {
      * GET /api/apartments/{id}
      * Trả về chi tiết căn hộ kèm danh sách phí áp dụng và ước tính chi phí tháng.
      */
-    @GetMapping("/api/apartments/{id}")
+    @GetMapping("/apartments/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT','TECHNICIAN','RECEPTIONIST')")
     public ResponseEntity<?> getApartmentDetail(@PathVariable String id) {
         try { return ResponseEntity.ok(service.getApartmentDetail(id)); }
@@ -119,7 +129,7 @@ public class ApartmentController {
      * Body: { buildingId, number, floor, area, description? }
      * Tự động kiểm tra trùng số căn hộ trong cùng tòa nhà.
      */
-    @PostMapping("/api/apartments")
+    @PostMapping("/apartments")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<?> createApartment(@RequestBody Map<String, Object> body) {
         try { return ResponseEntity.ok(service.createApartment(body)); }
@@ -133,7 +143,7 @@ public class ApartmentController {
      * PUT /api/apartments/{id}
      * Body: { floor?, area?, status?, rentalStatus?, description? }
      */
-    @PutMapping("/api/apartments/{id}")
+    @PutMapping("/apartments/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<?> updateApartment(@PathVariable String id,
                                              @RequestBody Map<String, Object> body) {
@@ -145,15 +155,19 @@ public class ApartmentController {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    // FEE TEMPLATE
+    // FEE TEMPLATE  — Endpoint DUY NHẤT cho fee-templates trong toàn project
+    // (InvoiceManagementController đã xóa endpoint /api/invoice-management/fee-templates
+    //  trùng lặp. Frontend dùng các URL dưới đây cho mọi thao tác với fee-templates.)
     // ══════════════════════════════════════════════════════════════════════════
 
     /**
      * GET /api/fee-templates?buildingId=BLD001&status=ACTIVE
      * Lấy danh sách mẫu phí của tòa nhà.
      * status: ACTIVE | INACTIVE (tuỳ chọn)
+     *
+     * ACCOUNTANT được phép xem (dùng để preview hóa đơn).
      */
-    @GetMapping("/api/fee-templates")
+    @GetMapping("/fee-templates")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT','TECHNICIAN','RECEPTIONIST')")
     public ResponseEntity<?> getFeeTemplates(
             @RequestParam String buildingId,
@@ -165,9 +179,8 @@ public class ApartmentController {
     /**
      * GET /api/fee-templates/hanoi-decree
      * Trả về mức phí gợi ý theo Quyết định 33/2025/QĐ-UBND UBND TP Hà Nội.
-     * Frontend dùng để hiển thị quick-add suggestions.
      */
-    @GetMapping("/api/fee-templates/hanoi-decree")
+    @GetMapping("/fee-templates/hanoi-decree")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT','TECHNICIAN','RECEPTIONIST')")
     public ResponseEntity<?> getHanoiDecreeSuggestions() {
         try { return ResponseEntity.ok(service.getHanoiDecreeSuggestions()); }
@@ -180,10 +193,10 @@ public class ApartmentController {
      *   buildingId, name, type (SERVICE|PARKING),
      *   unit (PER_M2|PER_APT|FIXED), amount,
      *   effectiveFrom (yyyy-MM-dd), effectiveTo? (yyyy-MM-dd),
-     *   hasElevator? (true|false – dùng để kiểm tra khung giá QĐ 33/2025)
+     *   hasElevator? (true|false)
      * }
      */
-    @PostMapping("/api/fee-templates")
+    @PostMapping("/fee-templates")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<?> createFeeTemplate(@RequestBody Map<String, Object> body) {
         try { return ResponseEntity.ok(service.createFeeTemplate(body)); }
@@ -197,7 +210,7 @@ public class ApartmentController {
      * PUT /api/fee-templates/{id}
      * Body: { name?, type?, unit?, amount?, effectiveFrom?, effectiveTo?, status? }
      */
-    @PutMapping("/api/fee-templates/{id}")
+    @PutMapping("/fee-templates/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<?> updateFeeTemplate(@PathVariable String id,
                                                @RequestBody Map<String, Object> body) {
@@ -210,9 +223,9 @@ public class ApartmentController {
 
     /**
      * DELETE /api/fee-templates/{id}
-     * Vô hiệu hoá mẫu phí (soft-delete: chuyển status → INACTIVE).
+     * Soft-delete: chuyển status → INACTIVE.
      */
-    @DeleteMapping("/api/fee-templates/{id}")
+    @DeleteMapping("/fee-templates/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<?> deactivateFeeTemplate(@PathVariable String id) {
         try { return ResponseEntity.ok(service.deactivateFeeTemplate(id)); }

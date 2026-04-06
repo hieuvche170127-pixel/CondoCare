@@ -2,11 +2,11 @@ package com.swp391.condocare_swp.service;
 
 import com.swp391.condocare_swp.entity.*;
 import com.swp391.condocare_swp.repository.*;
+import com.swp391.condocare_swp.security.SecurityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,17 +14,37 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * VehicleService — Quản lý đăng ký phương tiện.
+ *
+ * THAY ĐỔI (so với phiên bản cũ):
+ *   1. Bỏ @Autowired NotificationRepository notifRepo
+ *      → Inject NotificationService để gọi sendVehicleApprovedNotification() / sendVehicleRejectedNotification()
+ *      → Tránh bypass NotificationService, đảm bảo nhất quán với các service khác
+ *
+ *   2. Bỏ private getCurrentResident() và getCurrentStaff() tự viết
+ *      → Dùng SecurityUtils.getCurrentResident() / SecurityUtils.getCurrentStaff()
+ *      → Loại bỏ trùng lặp SecurityContextHolder ở 10+ service
+ *
+ *   3. Bỏ private sendVehicleNotification() chứa logic tạo Notification thủ công
+ *      → Thay bằng: notificationService.sendVehicleApprovedNotification() / sendVehicleRejectedNotification()
+ */
 @Service
 public class VehicleService {
 
     private static final Logger logger = LoggerFactory.getLogger(VehicleService.class);
     private static final AtomicInteger idCounter = new AtomicInteger(0);
 
-    @Autowired private VehicleRepository      vehicleRepo;
-    @Autowired private ResidentsRepository    residentRepo;
-    @Autowired private ApartmentRepository    apartmentRepo;
-    @Autowired private StaffRepository        staffRepo;
-    @Autowired private NotificationRepository notifRepo;
+    @Autowired private VehicleRepository   vehicleRepo;
+    @Autowired private ResidentsRepository residentRepo;
+    @Autowired private ApartmentRepository apartmentRepo;
+    @Autowired private StaffRepository     staffRepo;
+
+    // [THAY ĐỔI] Bỏ NotificationRepository, inject NotificationService thay thế
+    @Autowired private NotificationService notificationService;
+
+    // [THAY ĐỔI] Dùng SecurityUtils thay vì tự viết getCurrentResident/getCurrentStaff
+    @Autowired private SecurityUtils securityUtils;
 
     // ─── STAFF: Thống kê ──────────────────────────────────────────────────────
 
@@ -50,7 +70,8 @@ public class VehicleService {
      */
     @Transactional
     public String registerVehicle(Map<String, String> body) {
-        Residents resident = getCurrentResident();
+        // [THAY ĐỔI] securityUtils.getCurrentResident() thay vì private method tự viết
+        Residents resident = securityUtils.getCurrentResident();
 
         if (resident.getStatus() != Residents.ResidentStatus.ACTIVE)
             throw new RuntimeException("Tài khoản chưa được kích hoạt, không thể đăng ký xe.");
@@ -93,7 +114,8 @@ public class VehicleService {
     // ─── RESIDENT: Xem danh sách xe của mình ──────────────────────────────────
 
     public List<Map<String, Object>> getMyVehicles() {
-        Residents resident = getCurrentResident();
+        // [THAY ĐỔI] securityUtils thay vì private method
+        Residents resident = securityUtils.getCurrentResident();
         return vehicleRepo.findByResidentId(resident.getId())
                 .stream().map(this::mapToResponse).toList();
     }
@@ -107,14 +129,6 @@ public class VehicleService {
 
     // ─── STAFF: Danh sách tất cả xe (có filter) ───────────────────────────────
 
-    /**
-     * Lấy danh sách xe với các bộ lọc tuỳ chọn.
-     *
-     * @param type          Loại xe: MOTORBIKE | CAR | BICYCLE | ELECTRIC_BIKE | OTHER
-     * @param pendingStatus Trạng thái duyệt: PENDING | APPROVED | REJECTED
-     * @param status        Trạng thái xe: ACTIVE | INACTIVE | REVOKED | LOST
-     * @param apartmentId   Lọc theo căn hộ
-     */
     public List<Map<String, Object>> getAllVehicles(String type, String pendingStatus,
                                                     String status, String apartmentId) {
         Specification<Vehicle> spec = (root, query, cb) -> {
@@ -149,13 +163,12 @@ public class VehicleService {
         if (v.getPendingStatus() != Vehicle.PendingStatus.PENDING)
             throw new RuntimeException("Xe này không ở trạng thái chờ duyệt.");
 
-        Staff staff = getCurrentStaff();
+        // [THAY ĐỔI] securityUtils.getCurrentStaff()
+        Staff staff = securityUtils.getCurrentStaff();
         v.setPendingStatus(Vehicle.PendingStatus.APPROVED);
         v.setApprovedBy(staff);
         v.setApprovedAt(LocalDateTime.now());
         v.setNote(note);
-
-        // Tính ngày hết hạn
         v.setRegisteredAt(LocalDateTime.now());
         v.setExpiredAt(calculateExpiry(v.getDurationType()));
 
@@ -166,8 +179,8 @@ public class VehicleService {
 
         vehicleRepo.save(v);
 
-        // Gửi thông báo cho resident
-        sendVehicleNotification(v, true, null, staff);
+        // [THAY ĐỔI] Gọi NotificationService thay vì tự save thông qua repo
+        notificationService.sendVehicleApprovedNotification(v, staff);
 
         logger.info("Vehicle {} approved by staff {}", vehicleId, staff.getId());
         return "Đã duyệt đăng ký xe thành công!";
@@ -182,14 +195,15 @@ public class VehicleService {
         if (v.getPendingStatus() != Vehicle.PendingStatus.PENDING)
             throw new RuntimeException("Xe này không ở trạng thái chờ duyệt.");
 
-        Staff staff = getCurrentStaff();
+        // [THAY ĐỔI] securityUtils.getCurrentStaff()
+        Staff staff = securityUtils.getCurrentStaff();
         v.setPendingStatus(Vehicle.PendingStatus.REJECTED);
         v.setRejectReason(reason);
         v.setStatus(Vehicle.VehicleStatus.INACTIVE);
         vehicleRepo.save(v);
 
-        // Gửi thông báo từ chối
-        sendVehicleNotification(v, false, reason, staff);
+        // [THAY ĐỔI] Gọi NotificationService thay vì tự save thông qua repo
+        notificationService.sendVehicleRejectedNotification(v, reason, staff);
 
         logger.info("Vehicle {} rejected by staff {} — {}", vehicleId, staff.getId(), reason);
         return "Đã từ chối đăng ký xe.";
@@ -228,44 +242,6 @@ public class VehicleService {
         };
     }
 
-    private void sendVehicleNotification(Vehicle v, boolean approved,
-                                         String reason, Staff staff) {
-        Notification notif = new Notification();
-        notif.setId("NTF" + String.format("%012d", System.currentTimeMillis() % 1_000_000_000_000L));
-        notif.setResident(v.getResident());
-        notif.setCreatedBy(staff);
-        notif.setIsRead(false);
-
-        String plateInfo = v.getLicensePlate() != null ? " (" + v.getLicensePlate() + ")" : "";
-        String typeLabel = getTypeLabel(v.getType());
-
-        if (approved) {
-            notif.setTitle("Đăng ký xe đã được duyệt");
-            notif.setContent("Yêu cầu đăng ký " + typeLabel + plateInfo +
-                    " của bạn đã được Ban quản lý phê duyệt. " +
-                    "Hạn đăng ký: " + (v.getExpiredAt() != null
-                    ? v.getExpiredAt().toLocalDate().toString() : "N/A") + ".");
-            notif.setType(Notification.NotificationType.INFO);
-        } else {
-            notif.setTitle("Đăng ký xe bị từ chối");
-            notif.setContent("Yêu cầu đăng ký " + typeLabel + plateInfo +
-                    " của bạn bị từ chối. Lý do: " + (reason != null ? reason : "Không rõ."));
-            notif.setType(Notification.NotificationType.WARNING);
-        }
-
-        notifRepo.save(notif);
-    }
-
-    private String getTypeLabel(Vehicle.VehicleType type) {
-        return switch (type) {
-            case MOTORBIKE     -> "xe máy";
-            case CAR           -> "ô tô";
-            case BICYCLE       -> "xe đạp";
-            case ELECTRIC_BIKE -> "xe đạp điện";
-            default            -> "phương tiện";
-        };
-    }
-
     private Map<String, Object> mapToResponse(Vehicle v) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id",            v.getId());
@@ -298,16 +274,14 @@ public class VehicleService {
         return m;
     }
 
-    private Residents getCurrentResident() {
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        return residentRepo.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin cư dân."));
-    }
-
-    private Staff getCurrentStaff() {
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        return staffRepo.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin Staff."));
+    private String getTypeLabel(Vehicle.VehicleType type) {
+        return switch (type) {
+            case MOTORBIKE     -> "xe máy";
+            case CAR           -> "ô tô";
+            case BICYCLE       -> "xe đạp";
+            case ELECTRIC_BIKE -> "xe đạp điện";
+            default            -> "phương tiện";
+        };
     }
 
     private synchronized String generateVehicleId() {

@@ -13,13 +13,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.Map;
 
 /**
- * REST Controller quản lý yêu cầu hỗ trợ phía Staff.
+ * StaffServiceRequestController
  *
- * Phân quyền:
- *   ADMIN / MANAGER    — toàn quyền: xem tất cả, phân công, từ chối, đánh dấu xong
- *   RECEPTIONIST       — xem tất cả, PHÂN CÔNG kỹ thuật viên (không reject/done)
- *   TECHNICIAN         — chỉ xem yêu cầu được phân công cho mình, đánh dấu xong
- *   ACCOUNTANT         — chỉ xem danh sách (read-only, không hành động)
+ * THAY ĐỔI: Tách isTechnician(auth) thành private helper dùng chung
+ * thay vì inline stream().anyMatch() lặp lại 3 lần.
+ * Logic nghiệp vụ (assertAssignedTo) vẫn ở Service.
  */
 @RestController
 @RequestMapping("/api/staff/requests")
@@ -28,12 +26,8 @@ public class StaffServiceRequestController {
 
     private static final Logger logger = LoggerFactory.getLogger(StaffServiceRequestController.class);
 
-    @Autowired
-    private StaffServiceRequestService service;
+    @Autowired private StaffServiceRequestService service;
 
-    // ─── THỐNG KÊ ─────────────────────────────────────────────────────────────
-
-    /** GET /stats — tất cả staff */
     @GetMapping("/stats")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','RECEPTIONIST','TECHNICIAN','ACCOUNTANT')")
     public ResponseEntity<?> getStats() {
@@ -41,12 +35,6 @@ public class StaffServiceRequestController {
         catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
     }
 
-    // ─── DANH SÁCH KỸ THUẬT VIÊN (để dropdown phân công) ─────────────────────
-
-    /**
-     * GET /assignable-staff
-     * ADMIN, MANAGER, RECEPTIONIST dùng để chọn người phân công.
-     */
     @GetMapping("/assignable-staff")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','RECEPTIONIST')")
     public ResponseEntity<?> getAssignableStaff() {
@@ -54,14 +42,6 @@ public class StaffServiceRequestController {
         catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
     }
 
-    // ─── DANH SÁCH YÊU CẦU ────────────────────────────────────────────────────
-
-    /**
-     * GET /
-     * - TECHNICIAN: tự động lọc chỉ các yêu cầu được phân công cho mình
-     *   (service đọc username từ SecurityContext và filter theo assigned_to)
-     * - Các role khác: xem tất cả
-     */
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','RECEPTIONIST','TECHNICIAN','ACCOUNTANT')")
     public ResponseEntity<?> listRequests(
@@ -73,16 +53,10 @@ public class StaffServiceRequestController {
             @RequestParam(defaultValue = "10") int size) {
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            boolean isTechnician = auth.getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().equals("ROLE_TECHNICIAN"));
-
-            // TECHNICIAN chỉ thấy yêu cầu của mình — ghi đè bộ lọc assignedToId
-            String effectiveAssignedToId = assignedToId;
-            if (isTechnician) {
-                // Service sẽ tự lookup staffId từ username
-                effectiveAssignedToId = service.getStaffIdByUsername(auth.getName());
-            }
-
+            // [THAY ĐỔI] helper method thay vì inline
+            String effectiveAssignedToId = isTechnician(auth)
+                    ? service.getStaffIdByUsername(auth.getName())
+                    : assignedToId;
             return ResponseEntity.ok(
                     service.listRequests(status, priority, effectiveAssignedToId, keyword, page, size));
         } catch (Exception e) {
@@ -91,101 +65,54 @@ public class StaffServiceRequestController {
         }
     }
 
-    // ─── CHI TIẾT ─────────────────────────────────────────────────────────────
-
-    /**
-     * GET /{id}
-     * TECHNICIAN chỉ được xem yêu cầu được phân công cho mình.
-     */
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','RECEPTIONIST','TECHNICIAN','ACCOUNTANT')")
     public ResponseEntity<?> getDetail(@PathVariable String id) {
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            boolean isTechnician = auth.getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().equals("ROLE_TECHNICIAN"));
-
-            if (isTechnician) {
-                // Kiểm tra yêu cầu có được phân công cho technician này không
-                String staffId = service.getStaffIdByUsername(auth.getName());
-                service.assertAssignedTo(id, staffId);
+            if (isTechnician(auth)) {
+                service.assertAssignedTo(id, service.getStaffIdByUsername(auth.getName()));
             }
-
             return ResponseEntity.ok(service.getDetail(id));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
-    // ─── PHÂN CÔNG ────────────────────────────────────────────────────────────
-
-    /**
-     * POST /{id}/assign
-     * ADMIN, MANAGER, RECEPTIONIST được phân công kỹ thuật viên.
-     * TECHNICIAN không được tự phân công.
-     */
     @PostMapping("/{id}/assign")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','RECEPTIONIST')")
-    public ResponseEntity<?> assign(
-            @PathVariable String id,
-            @RequestBody Map<String, String> body) {
+    public ResponseEntity<?> assign(@PathVariable String id, @RequestBody Map<String, String> body) {
         try {
             String assigneeId = body.get("assigneeId");
-            String note       = body.get("note");
             if (assigneeId == null || assigneeId.isBlank())
                 return ResponseEntity.badRequest().body("assigneeId không được để trống");
-            return ResponseEntity.ok(service.assignAndStart(id, assigneeId, note));
+            return ResponseEntity.ok(service.assignAndStart(id, assigneeId, body.get("note")));
         } catch (Exception e) {
             logger.error("Error assigning request {}", id, e);
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
-    // ─── TỪ CHỐI ─────────────────────────────────────────────────────────────
-
-    /**
-     * POST /{id}/reject — chỉ ADMIN + MANAGER
-     * RECEPTIONIST không được từ chối (chỉ phân công).
-     */
     @PostMapping("/{id}/reject")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
-    public ResponseEntity<?> reject(
-            @PathVariable String id,
-            @RequestBody Map<String, String> body) {
+    public ResponseEntity<?> reject(@PathVariable String id, @RequestBody Map<String, String> body) {
         try {
-            String reason = body.get("rejectReason");
-            return ResponseEntity.ok(service.reject(id, reason));
+            return ResponseEntity.ok(service.reject(id, body.get("rejectReason")));
         } catch (Exception e) {
             logger.error("Error rejecting request {}", id, e);
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
-    // ─── HOÀN THÀNH ────────────────────────────────────────────────────────────
-
-    /**
-     * POST /{id}/done
-     * ADMIN, MANAGER, TECHNICIAN (người được phân công) mới được đánh dấu xong.
-     */
     @PostMapping("/{id}/done")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','TECHNICIAN')")
-    public ResponseEntity<?> markDone(
-            @PathVariable String id,
-            @RequestBody Map<String, String> body) {
+    public ResponseEntity<?> markDone(@PathVariable String id, @RequestBody Map<String, String> body) {
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            boolean isTechnician = auth.getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().equals("ROLE_TECHNICIAN"));
-
-            // TECHNICIAN chỉ được đánh dấu xong yêu cầu của mình
-            if (isTechnician) {
-                String staffId = service.getStaffIdByUsername(auth.getName());
-                service.assertAssignedTo(id, staffId);
+            if (isTechnician(auth)) {
+                service.assertAssignedTo(id, service.getStaffIdByUsername(auth.getName()));
             }
-
-            String image = body.get("completionImage");
-            String note  = body.get("note");
-            return ResponseEntity.ok(service.markDone(id, image, note));
+            return ResponseEntity.ok(service.markDone(id, body.get("completionImage"), body.get("note")));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
@@ -194,30 +121,30 @@ public class StaffServiceRequestController {
         }
     }
 
-    // ─── GHI CHÚ ─────────────────────────────────────────────────────────────
-
-    /**
-     * PATCH /{id}/note
-     * ADMIN, MANAGER, TECHNICIAN có thể ghi chú.
-     */
     @PatchMapping("/{id}/note")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','TECHNICIAN')")
-    public ResponseEntity<?> updateNote(
-            @PathVariable String id,
-            @RequestBody Map<String, String> body) {
+    public ResponseEntity<?> updateNote(@PathVariable String id, @RequestBody Map<String, String> body) {
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            boolean isTechnician = auth.getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().equals("ROLE_TECHNICIAN"));
-
-            if (isTechnician) {
-                String staffId = service.getStaffIdByUsername(auth.getName());
-                service.assertAssignedTo(id, staffId);
+            if (isTechnician(auth)) {
+                service.assertAssignedTo(id, service.getStaffIdByUsername(auth.getName()));
             }
-
             return ResponseEntity.ok(service.updateNote(id, body.get("note")));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
+    }
+
+    // ─── PRIVATE HELPER ───────────────────────────────────────────────────────
+
+    /**
+     * [NEW] Kiểm tra Authentication hiện tại có role TECHNICIAN không.
+     * Trước: 3 method đều inline stream().anyMatch() giống nhau.
+     * Sau: dùng method này dùng chung — dễ đổi nếu cần.
+     */
+    private boolean isTechnician(Authentication auth) {
+        if (auth == null) return false;
+        return auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_TECHNICIAN"));
     }
 }

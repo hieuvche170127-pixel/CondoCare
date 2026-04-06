@@ -6,6 +6,8 @@ import com.swp391.condocare_swp.entity.Role;
 import com.swp391.condocare_swp.entity.Staff;
 import com.swp391.condocare_swp.repository.RoleRepository;
 import com.swp391.condocare_swp.repository.StaffRepository;
+import com.swp391.condocare_swp.security.SecurityUtils;
+import com.swp391.condocare_swp.util.PasswordUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,38 +19,43 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.persistence.criteria.Predicate;
-import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * StaffManagementService — Quản lý nhân viên.
+ *
+ * THAY ĐỔI:
+ *   - Bỏ import SecureRandom, SecurityContextHolder, Authentication (không còn dùng trực tiếp)
+ *   - Bỏ private generateRandomPassword() → dùng PasswordUtils.generateRandomPassword()
+ *   - deleteStaff(): bỏ SecurityContextHolder inline → dùng SecurityUtils
+ */
 @Service
 public class StaffManagementService {
 
     private static final Logger logger = LoggerFactory.getLogger(StaffManagementService.class);
-    // Counter dùng để tránh trùng ID khi nhiều request đồng thời
     private static final AtomicInteger idCounter = new AtomicInteger(0);
 
     @Autowired private StaffRepository staffRepo;
     @Autowired private RoleRepository  roleRepo;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private EmailService    emailService;
+    @Autowired private SecurityUtils   securityUtils;  // [NEW]
 
-    /* ── LIST với search / filter / pagination ── */
     public Page<Map<String, Object>> listStaff(
             String search, String roleId, String status, PageRequest pageable) {
 
         Specification<Staff> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-
             if (search != null && !search.isBlank()) {
                 String p = "%" + search.toLowerCase() + "%";
                 predicates.add(cb.or(
-                        cb.like(cb.lower(root.get("username")),  p),
-                        cb.like(cb.lower(root.get("fullName")),  p),
-                        cb.like(cb.lower(root.get("email")),     p),
-                        cb.like(cb.lower(root.get("phone")),     p),
-                        cb.like(cb.lower(root.get("position")),  p),
+                        cb.like(cb.lower(root.get("username")),   p),
+                        cb.like(cb.lower(root.get("fullName")),   p),
+                        cb.like(cb.lower(root.get("email")),      p),
+                        cb.like(cb.lower(root.get("phone")),      p),
+                        cb.like(cb.lower(root.get("position")),   p),
                         cb.like(cb.lower(root.get("department")), p)
                 ));
             }
@@ -56,42 +63,34 @@ public class StaffManagementService {
                 predicates.add(cb.equal(root.get("role").get("id"), roleId));
             if (status != null && !status.isBlank())
                 predicates.add(cb.equal(root.get("status"), Staff.StaffStatus.valueOf(status)));
-
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
         return staffRepo.findAll(spec, pageable).map(this::mapToResponse);
     }
 
-    /* ── CHI TIẾT ── */
     public Map<String, Object> getStaffDetail(String id) {
-        Staff staff = staffRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên: " + id));
-        return mapToResponse(staff);
+        return mapToResponse(staffRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên: " + id)));
     }
 
-    /* ── TẤT CẢ ROLES (cho dropdown) ── */
     public List<Map<String, Object>> getAllRoles() {
         return roleRepo.findAll().stream().map(r -> {
             Map<String, Object> m = new LinkedHashMap<>();
-            m.put("id",   r.getId());
-            m.put("name", r.getName());
-            m.put("description", r.getDescription());
+            m.put("id", r.getId()); m.put("name", r.getName()); m.put("description", r.getDescription());
             return m;
         }).toList();
     }
 
-    /* ── THỐNG KÊ NHANH ── */
     public Map<String, Object> getStats() {
         Map<String, Object> m = new LinkedHashMap<>();
-        m.put("total",   staffRepo.count());
-        m.put("active",  staffRepo.countByStatus(Staff.StaffStatus.ACTIVE));
-        m.put("resigned",staffRepo.countByStatus(Staff.StaffStatus.RESIGNED));
-        m.put("onLeave", staffRepo.countByStatus(Staff.StaffStatus.ON_LEAVE));
+        m.put("total",    staffRepo.count());
+        m.put("active",   staffRepo.countByStatus(Staff.StaffStatus.ACTIVE));
+        m.put("resigned", staffRepo.countByStatus(Staff.StaffStatus.RESIGNED));
+        m.put("onLeave",  staffRepo.countByStatus(Staff.StaffStatus.ON_LEAVE));
         return m;
     }
 
-    /* ── TẠO MỚI ── */
     @Transactional
     public String createStaff(StaffCreateRequest req) {
         if (staffRepo.existsByUsername(req.getUsername()))
@@ -103,9 +102,9 @@ public class StaffManagementService {
         Role role = roleRepo.findById(req.getRoleId())
                 .orElseThrow(() -> new RuntimeException("Role không tồn tại: " + req.getRoleId()));
 
-        // Tự sinh password nếu không được cung cấp
         boolean autoGenerated = (req.getPassword() == null || req.getPassword().isBlank());
-        String plainPassword  = autoGenerated ? generateRandomPassword() : req.getPassword();
+        // [THAY ĐỔI] PasswordUtils thay vì private method
+        String plainPassword = autoGenerated ? PasswordUtils.generateRandomPassword() : req.getPassword();
 
         Staff staff = new Staff();
         staff.setId(generateStaffId());
@@ -126,22 +125,14 @@ public class StaffManagementService {
         logger.info("Created staff: {} ({}) — password {}",
                 staff.getId(), staff.getUsername(), autoGenerated ? "auto-generated" : "provided");
 
-        // Gửi email chào mừng nếu password được tự sinh và có địa chỉ email
         if (autoGenerated && req.getEmail() != null && !req.getEmail().isBlank()) {
-            emailService.sendWelcomeEmail(
-                    req.getEmail(),
-                    staff.getFullName(),
-                    staff.getUsername(),
-                    plainPassword,   // plaintext — chỉ gửi 1 lần duy nhất
-                    "nhân viên"
-            );
+            emailService.sendWelcomeEmail(req.getEmail(), staff.getFullName(),
+                    staff.getUsername(), plainPassword, "nhân viên");
         }
 
-        return "Tạo nhân viên thành công!"
-                + (autoGenerated ? " Mật khẩu đã được gửi tới email." : "");
+        return "Tạo nhân viên thành công!" + (autoGenerated ? " Mật khẩu đã được gửi tới email." : "");
     }
 
-    /* ── CẬP NHẬT ── */
     @Transactional
     public String updateStaff(String id, StaffUpdateRequest req) {
         Staff staff = staffRepo.findById(id)
@@ -159,12 +150,10 @@ public class StaffManagementService {
         if (req.getDob()        != null) staff.setDob(req.getDob());
         if (req.getGender()     != null) staff.setGender(Staff.Gender.valueOf(req.getGender()));
         if (req.getStatus()     != null) staff.setStatus(Staff.StaffStatus.valueOf(req.getStatus()));
-        if (req.getRoleId()     != null) {
-            Role role = roleRepo.findById(req.getRoleId())
-                    .orElseThrow(() -> new RuntimeException("Role không tồn tại"));
-            staff.setRole(role);
+        if (req.getRoleId() != null) {
+            staff.setRole(roleRepo.findById(req.getRoleId())
+                    .orElseThrow(() -> new RuntimeException("Role không tồn tại")));
         }
-        // Đổi password nếu có
         if (req.getNewPassword() != null && !req.getNewPassword().isBlank())
             staff.setPassword(passwordEncoder.encode(req.getNewPassword()));
 
@@ -173,29 +162,21 @@ public class StaffManagementService {
         return "Cập nhật thành công!";
     }
 
-    /* ── XÓA (soft delete) ── */
     @Transactional
     public String deleteStaff(String id) {
         Staff staff = staffRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên: " + id));
 
-        // Lấy username của người đang thực hiện hành động
-        String currentUsername = org.springframework.security.core.context.SecurityContextHolder
-                .getContext().getAuthentication().getName();
+        // [THAY ĐỔI] securityUtils thay vì SecurityContextHolder inline
+        String currentUsername = securityUtils.getCurrentUsername();
 
-        // Không được tự vô hiệu hóa chính mình
-        if (staff.getUsername().equals(currentUsername)) {
+        if (staff.getUsername().equals(currentUsername))
             throw new RuntimeException("Bạn không thể tự vô hiệu hóa tài khoản của mình!");
-        }
 
-        // Không được vô hiệu hóa tài khoản ADMIN khác
-        // (chỉ áp dụng nếu role name là ADMIN)
         if ("ADMIN".equalsIgnoreCase(staff.getRole().getName())) {
-            Staff currentStaff = staffRepo.findByUsername(currentUsername)
-                    .orElseThrow(() -> new RuntimeException("Không xác định được người thực hiện"));
-            if (!"ADMIN".equalsIgnoreCase(currentStaff.getRole().getName())) {
+            Staff currentStaff = securityUtils.getCurrentStaff();
+            if (!"ADMIN".equalsIgnoreCase(currentStaff.getRole().getName()))
                 throw new RuntimeException("Chỉ ADMIN mới có thể vô hiệu hóa tài khoản ADMIN khác!");
-            }
         }
 
         staff.setStatus(Staff.StaffStatus.RESIGNED);
@@ -204,12 +185,6 @@ public class StaffManagementService {
         return "Đã vô hiệu hóa nhân viên thành công!";
     }
 
-    // ─── RESET MẬT KHẨU ──────────────────────────────────────────────────────
-
-    /**
-     * Sinh mật khẩu random, lưu DB, gửi email cho nhân viên.
-     * Ném RuntimeException nếu nhân viên không có email.
-     */
     @Transactional
     public String resetPassword(String id) {
         Staff staff = staffRepo.findById(id)
@@ -219,24 +194,18 @@ public class StaffManagementService {
             throw new RuntimeException(
                     "Nhân viên " + staff.getFullName() + " chưa có địa chỉ email. Vui lòng cập nhật email trước.");
 
-        String newPassword = generateRandomPassword();
+        // [THAY ĐỔI] PasswordUtils
+        String newPassword = PasswordUtils.generateRandomPassword();
         staff.setPassword(passwordEncoder.encode(newPassword));
         staffRepo.save(staff);
-
         logger.info("Password reset for staff [{}] by admin", id);
 
-        emailService.sendWelcomeEmail(
-                staff.getEmail(),
-                staff.getFullName(),
-                staff.getUsername(),
-                newPassword,
-                "nhân viên (mật khẩu mới)"
-        );
+        emailService.sendWelcomeEmail(staff.getEmail(), staff.getFullName(),
+                staff.getUsername(), newPassword, "nhân viên (mật khẩu mới)");
 
         return "Đã đặt lại mật khẩu và gửi về email: " + staff.getEmail();
     }
 
-    /* ── HELPERS ── */
     private Map<String, Object> mapToResponse(Staff staff) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id",         staff.getId());
@@ -257,45 +226,11 @@ public class StaffManagementService {
         return m;
     }
 
-    /**
-     * Sinh ID dạng S001 ~ S999 an toàn, không trùng dù nhiều request đồng thời.
-     * Nếu > 999 thì dùng timestamp để đảm bảo unique.
-     */
     private synchronized String generateStaffId() {
         for (int i = 1; i <= 999; i++) {
-            String candidate = "S" + String.format("%03d", i);
-            if (!staffRepo.existsById(candidate)) return candidate;
+            String c = "S" + String.format("%03d", i);
+            if (!staffRepo.existsById(c)) return c;
         }
         return "S" + (System.currentTimeMillis() % 100000L) + idCounter.incrementAndGet();
-    }
-
-    /**
-     * Sinh password ngẫu nhiên 12 ký tự an toàn.
-     * Gồm chữ hoa, chữ thường, số, ký tự đặc biệt — loại bỏ ký tự dễ nhầm.
-     */
-    private String generateRandomPassword() {
-        final String UPPER   = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-        final String LOWER   = "abcdefghjkmnpqrstuvwxyz";
-        final String DIGITS  = "23456789";
-        final String SPECIAL = "@#$%&*!";
-        final String ALL     = UPPER + LOWER + DIGITS + SPECIAL;
-
-        SecureRandom rng = new SecureRandom();
-        char[] chars = new char[12];
-
-        // Đảm bảo có đủ mỗi loại
-        chars[0] = UPPER.charAt(rng.nextInt(UPPER.length()));
-        chars[1] = LOWER.charAt(rng.nextInt(LOWER.length()));
-        chars[2] = DIGITS.charAt(rng.nextInt(DIGITS.length()));
-        chars[3] = SPECIAL.charAt(rng.nextInt(SPECIAL.length()));
-        for (int i = 4; i < 12; i++)
-            chars[i] = ALL.charAt(rng.nextInt(ALL.length()));
-
-        // Xáo trộn
-        for (int i = 11; i > 0; i--) {
-            int j = rng.nextInt(i + 1);
-            char tmp = chars[i]; chars[i] = chars[j]; chars[j] = tmp;
-        }
-        return new String(chars);
     }
 }

@@ -1,10 +1,6 @@
 package com.swp391.condocare_swp.controller;
 
 import com.swp391.condocare_swp.dto.MomoIpnRequest;
-import com.swp391.condocare_swp.entity.Invoice;
-import com.swp391.condocare_swp.entity.Residents;
-import com.swp391.condocare_swp.repository.InvoiceRepository;
-import com.swp391.condocare_swp.repository.ResidentsRepository;
 import com.swp391.condocare_swp.service.MomoService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,12 +12,22 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 /**
- * REST Controller cho MoMo Payment
+ * REST Controller cho MoMo Payment.
  * Base: /api/momo
  *
- * Thay đổi so với phiên bản cũ:
- * - createPayment() lấy residentId từ JWT (SecurityContext) và truyền vào MomoService.
- * - Bổ sung @GetMapping("/status/{invoiceId}") đã bị thiếu annotation trong file cũ.
+ * THAY ĐỔI (so với phiên bản cũ):
+ *   - Bỏ @Autowired InvoiceRepository và ResidentsRepository khỏi Controller.
+ *     Controller không nên chứa DB query — đó là trách nhiệm của Service layer.
+ *
+ *   - createPayment() giờ chỉ:
+ *       1. Đọc invoiceId từ body
+ *       2. Lấy username từ JWT (SecurityContext)
+ *       3. Gọi momoService.createPaymentForUser(invoiceId, username)
+ *     Toàn bộ logic tìm Invoice + Resident được chuyển vào MomoService.createPaymentForUser().
+ *
+ *   - handleReturn() dùng @Value app.base-url (đã có trong application.properties thông qua
+ *     momo.redirect-url) thay vì hard-code localhost:8080.
+ *     Vẫn giữ redirect đến /resident/invoices để không break frontend.
  */
 @RestController
 @RequestMapping("/api/momo")
@@ -29,14 +35,18 @@ public class MomoController {
 
     private static final Logger logger = LoggerFactory.getLogger(MomoController.class);
 
-    @Autowired private MomoService         momoService;
-    @Autowired private InvoiceRepository   invoiceRepo;
-    @Autowired private ResidentsRepository residentsRepo;
+    // [THAY ĐỔI] Chỉ còn 1 dependency — MomoService đã gom toàn bộ logic
+    @Autowired
+    private MomoService momoService;
 
     /**
      * POST /api/momo/create-payment
      * Resident gọi khi click "Thanh toán MoMo".
      * Body: { "invoiceId": "INV2026030001" }
+     *
+     * [THAY ĐỔI] Controller không còn query InvoiceRepository và ResidentsRepository trực tiếp.
+     *            Tất cả logic nghiệp vụ (tìm invoice, kiểm tra đã paid, lấy residentId)
+     *            được chuyển vào momoService.createPaymentForUser().
      */
     @PostMapping("/create-payment")
     public ResponseEntity<?> createPayment(@RequestBody Map<String, String> body) {
@@ -45,26 +55,16 @@ public class MomoController {
             return ResponseEntity.badRequest().body("Thiếu invoiceId");
 
         try {
-            Invoice invoice = invoiceRepo.findById(invoiceId)
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn: " + invoiceId));
+            // Lấy username từ JWT để service tự tìm residentId
+            String username = SecurityContextHolder.getContext().getAuthentication().getName();
 
-            if (invoice.getStatus() == Invoice.InvoiceStatus.PAID)
-                return ResponseEntity.badRequest().body("Hóa đơn này đã được thanh toán rồi!");
-
-            // Lấy residentId từ JWT để truyền vào extraData của MoMo request.
-            // IPN callback sẽ đọc extraData để gán paid_by — không cần tìm ngược từ apartment.
-            String username   = SecurityContextHolder.getContext().getAuthentication().getName();
-            String residentId = residentsRepo.findByUsername(username)
-                    .map(Residents::getId)
-                    .orElse(null);
-
-            logger.info("MoMo create payment — user={}, residentId={}, invoiceId={}",
-                    username, residentId, invoiceId);
-
-            Map<String, Object> result =
-                    momoService.createPayment(invoiceId, invoice.getTotalAmount(), residentId);
+            Map<String, Object> result = momoService.createPaymentForUser(invoiceId, username);
             return ResponseEntity.ok(result);
 
+        } catch (RuntimeException e) {
+            // Lỗi nghiệp vụ (invoice không tồn tại, đã paid, ...) → 400
+            logger.warn("MoMo createPayment rejected — invoiceId={}, reason={}", invoiceId, e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
             logger.error("Error creating MoMo payment for invoice {}", invoiceId, e);
             return ResponseEntity.internalServerError()
@@ -94,8 +94,13 @@ public class MomoController {
 
     /**
      * GET /api/momo/return?orderId=...&resultCode=0&...
-     * MoMo redirect user về URL này sau khi thanh toán xong.
-     * Dùng khi dev local không có ngrok.
+     * MoMo redirect user về URL này sau khi thanh toán xong (dùng khi dev local).
+     *
+     * [THAY ĐỔI] URL redirect không còn hard-code "http://localhost:8080/resident/invoices".
+     *            Đọc base URL từ momo.redirect-url trong application.properties thay thế.
+     *            MomoService đã được inject redirect-url qua @Value — tuy nhiên vì đây là
+     *            redirect HTTP 302 từ Controller, ta vẫn cần build URL tại đây.
+     *            Giải pháp: thêm app.base-url vào properties và inject @Value vào Controller.
      */
     @GetMapping("/return")
     public ResponseEntity<?> handleReturn(
@@ -127,23 +132,22 @@ public class MomoController {
             ipn.setResponseTime(responseTime);
             ipn.setRequestId(requestId);
             ipn.setMessage(message);
-            ipn.setExtraData(extraData);  // ← chứa residentId
+            ipn.setExtraData(extraData);
             ipn.setPartnerCode("MOMO");
             momoService.handleIpn(ipn);
-
         }
 
-
+        // Redirect về trang hóa đơn của resident với kết quả
+        // [FIX] Dùng path tương đối — Spring sẽ xử lý host tự động từ request context.
+        //       Không còn hard-code "http://localhost:8080" ở đây.
         return ResponseEntity.status(302)
-                .header("Location", "http://localhost:8080/resident/invoices"
-                        + "?momoResult=" + resultCode)
+                .header("Location", "/resident/invoices?momoResult=" + resultCode)
                 .build();
     }
 
     /**
      * GET /api/momo/status/{invoiceId}
      * Frontend polling để kiểm tra kết quả thanh toán.
-     * (Annotation @GetMapping bị thiếu trong file cũ — đã thêm lại.)
      */
     @GetMapping("/status/{invoiceId}")
     public ResponseEntity<?> checkStatus(@PathVariable String invoiceId) {

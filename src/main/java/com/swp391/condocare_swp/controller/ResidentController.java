@@ -1,6 +1,7 @@
 package com.swp391.condocare_swp.controller;
 
 import com.swp391.condocare_swp.service.ResidentDashboardService;
+import com.swp391.condocare_swp.service.VehicleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,8 +13,9 @@ import java.util.Map;
  * REST API cho toàn bộ Resident Dashboard.
  * Base path: /api/resident
  *
- * Mọi endpoint đều dùng JWT để biết "ai đang gọi"
- * → Không cần truyền residentId trong URL.
+ * Phân chia trách nhiệm:
+ *   - ResidentDashboardService : home, notifications, invoices, apartment, service requests
+ *   - VehicleService           : đăng ký xe + xem danh sách xe (tránh trùng lặp logic)
  */
 @RestController
 @RequestMapping("/api/resident")
@@ -24,6 +26,9 @@ public class ResidentController {
 
     @Autowired
     private ResidentDashboardService service;
+
+    @Autowired
+    private VehicleService vehicleService;
 
     /* ─── HOME ─────────────────────────────────────── */
 
@@ -83,7 +88,10 @@ public class ResidentController {
 
     /* ─── APARTMENT ─────────────────────────────────── */
 
-    /** GET /api/resident/apartment → thông tin căn hộ */
+    /**
+     * GET /api/resident/apartment → thông tin căn hộ.
+     * Response không kèm danh sách xe — dùng GET /api/resident/vehicles riêng.
+     */
     @GetMapping("/apartment")
     public ResponseEntity<?> getApartment() {
         try   { return ResponseEntity.ok(service.getApartmentInfo()); }
@@ -131,7 +139,6 @@ public class ResidentController {
             String category = body.getOrDefault("category", "OTHER");
             String priority = body.getOrDefault("priority", "MEDIUM");
 
-            // Log để debug — xác nhận controller nhận đúng data
             logger.info("  title=[{}], desc=[{}], category=[{}], priority=[{}]",
                     title, desc, category, priority);
 
@@ -142,7 +149,6 @@ public class ResidentController {
             logger.warn("Validation error creating request: {}", e.getMessage());
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
-            // Log full stack trace để thấy root cause
             logger.error("Unexpected error creating service request", e);
             return ResponseEntity.internalServerError()
                     .body("Lỗi server: " + e.getMessage() +
@@ -150,10 +156,7 @@ public class ResidentController {
         }
     }
 
-    /**
-     * Đánh dấu hóa đơn đã thanh toán
-     * PUT /api/resident/invoices/{id}/pay
-     */
+    /** PUT /api/resident/invoices/{id}/pay → đánh dấu hóa đơn đã thanh toán */
     @PutMapping("/invoices/{id}/pay")
     public ResponseEntity<?> markInvoiceAsPaid(@PathVariable String id) {
         try {
@@ -165,9 +168,7 @@ public class ResidentController {
         }
     }
 
-    /**
-     * GET /api/resident/requests/{id} → chi tiết yêu cầu (bao gồm ảnh xác nhận)
-     */
+    /** GET /api/resident/requests/{id} → chi tiết yêu cầu (bao gồm ảnh xác nhận) */
     @GetMapping("/requests/{id}")
     public ResponseEntity<?> getRequestDetail(@PathVariable String id) {
         try { return ResponseEntity.ok(service.getServiceRequestDetail(id)); }
@@ -192,9 +193,25 @@ public class ResidentController {
         }
     }
 
+    /* ─── VEHICLES ───────────────────────────────────── */
+
     /**
-     * POST /api/resident/vehicles
-     * Resident đăng ký gửi xe mới — tạo bản ghi với pending_status = PENDING.
+     * GET /api/resident/vehicles → danh sách xe của cư dân đang đăng nhập.
+     * Delegate hoàn toàn cho VehicleService (nguồn dữ liệu duy nhất cho vehicle).
+     */
+    @GetMapping("/vehicles")
+    public ResponseEntity<?> getMyVehicles() {
+        try {
+            return ResponseEntity.ok(vehicleService.getMyVehicles());
+        } catch (Exception e) {
+            logger.error("Error loading resident vehicles", e);
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    /**
+     * POST /api/resident/vehicles → đăng ký gửi xe mới.
+     * Delegate hoàn toàn cho VehicleService — không còn xử lý trong ResidentDashboardService.
      * Body JSON: {
      *   "type": "MOTORBIKE|CAR|BICYCLE|ELECTRIC_BIKE|OTHER",
      *   "licensePlate": "29B1-12345",   // optional
@@ -208,10 +225,10 @@ public class ResidentController {
     public ResponseEntity<?> registerVehicle(@RequestBody Map<String, String> body) {
         logger.info("POST /api/resident/vehicles — body: {}", body);
         try {
-            String msg = service.registerVehicle(body);
+            String msg = vehicleService.registerVehicle(body);
             return ResponseEntity.ok(msg);
-        } catch (IllegalArgumentException e) {
-            logger.warn("Validation error registering vehicle: {}", e.getMessage());
+        } catch (IllegalArgumentException | RuntimeException e) {
+            logger.warn("Error registering vehicle: {}", e.getMessage());
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
             logger.error("Unexpected error registering vehicle", e);

@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 /**
- * REST Controller quản lý hóa đơn (phía Staff) — Mô hình B.
+ * REST Controller quản lý hóa đơn (phía Staff).
  *
  * Phân quyền:
  *   GET  (xem danh sách, thống kê, chi tiết, preview) → ADMIN, MANAGER, ACCOUNTANT
@@ -23,11 +23,12 @@ import java.util.Map;
  *   PATCH (cập nhật trạng thái)                       → ADMIN, MANAGER
  *   DELETE (xóa hóa đơn)                              → ADMIN, MANAGER
  *
- * ACCOUNTANT chỉ có quyền XEM — không tạo/sửa/xóa.
- *
- * FIX BUG 1:
- *   - Thêm GET /apartment-list để frontend populate dropdown chọn căn hộ.
- *   - Preview + Create vẫn gọi service.resolveApartment() — chấp nhận cả ID lẫn số căn.
+ * THAY ĐỔI so với bản cũ:
+ *   - XÓA endpoint GET /fee-templates vì trùng lặp với GET /api/fee-templates
+ *     trong ApartmentController (cùng query DB theo buildingId, cùng mục đích).
+ *     Frontend đổi URL: /api/invoice-management/fee-templates?buildingId=X
+ *                    → /api/fee-templates?buildingId=X&status=ACTIVE
+ *   - Giữ nguyên tất cả endpoint còn lại.
  */
 @RestController
 @RequestMapping("/api/invoice-management")
@@ -36,7 +37,7 @@ public class InvoiceManagementController {
     private static final Logger logger = LoggerFactory.getLogger(InvoiceManagementController.class);
     @Autowired private InvoiceManagementService service;
 
-    // ─── ĐỌC (ACCOUNTANT + ADMIN + MANAGER) ──────────────────────────────────
+    // ─── THỐNG KÊ ─────────────────────────────────────────────────────────────
 
     /** GET /api/invoice-management/stats */
     @GetMapping("/stats")
@@ -45,6 +46,8 @@ public class InvoiceManagementController {
         try { return ResponseEntity.ok(service.getStats()); }
         catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
     }
+
+    // ─── DANH SÁCH ────────────────────────────────────────────────────────────
 
     /**
      * GET /api/invoice-management
@@ -74,6 +77,8 @@ public class InvoiceManagementController {
         }
     }
 
+    // ─── CHI TIẾT ─────────────────────────────────────────────────────────────
+
     /** GET /api/invoice-management/{id} */
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
@@ -82,13 +87,11 @@ public class InvoiceManagementController {
         catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
     }
 
+    // ─── PREVIEW ──────────────────────────────────────────────────────────────
+
     /**
      * GET /api/invoice-management/preview?apartmentId=APT001&month=6&year=2025
-     *
-     * FIX BUG 1: apartmentId giờ chấp nhận cả apartment ID ("APT001") lẫn
-     *            apartment number ("A101") — service.previewInvoice sẽ tự resolve.
-     *
-     * ACCOUNTANT xem được preview — chỉ để kiểm tra, không tạo được hóa đơn.
+     * apartmentId chấp nhận cả ID ("APT001") lẫn số căn ("A101").
      */
     @GetMapping("/preview")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
@@ -98,18 +101,16 @@ public class InvoiceManagementController {
             @RequestParam Integer year) {
         try { return ResponseEntity.ok(service.previewInvoice(apartmentId, month, year)); }
         catch (Exception e) {
-            logger.error("Error previewing invoice for apartment='{}' {}/{}",
-                    apartmentId, month, year, e);
+            logger.error("Error previewing invoice for apartment='{}' {}/{}", apartmentId, month, year, e);
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
+    // ─── DANH SÁCH CĂN HỘ (cho dropdown form tạo hóa đơn) ───────────────────
+
     /**
      * GET /api/invoice-management/apartment-list
-     *
-     * FIX BUG 1 (NEW): Trả về danh sách tất cả căn hộ dạng gọn để frontend
-     *                   populate dropdown chọn căn hộ trong form tạo hóa đơn.
-     *                   Trả về: [{id, number, buildingName, area, status}, ...]
+     * Trả về [{id, number, buildingName, area, status}, ...]
      */
     @GetMapping("/apartment-list")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
@@ -121,24 +122,20 @@ public class InvoiceManagementController {
         }
     }
 
-    /**
-     * GET /api/invoice-management/fee-templates?buildingId=BLD001
-     */
-    @GetMapping("/fee-templates")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNTANT')")
-    public ResponseEntity<?> getActiveFeeTemplates(@RequestParam String buildingId) {
-        try { return ResponseEntity.ok(service.getActiveFeesForBuilding(buildingId)); }
-        catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
-    }
+    // ─── [ĐÃ XÓA] GET /fee-templates ─────────────────────────────────────────
+    //
+    // Endpoint này bị xóa vì TRÙNG LẶP với:
+    //   GET /api/fee-templates?buildingId=BLD001 (ApartmentController)
+    //
+    // Frontend cần đổi:
+    //   TRƯỚC: GET /api/invoice-management/fee-templates?buildingId=BLD001
+    //   SAU:   GET /api/fee-templates?buildingId=BLD001&status=ACTIVE
 
-    // ─── GHI (chỉ ADMIN + MANAGER) ────────────────────────────────────────────
+    // ─── TẠO HÓA ĐƠN ─────────────────────────────────────────────────────────
 
     /**
      * POST /api/invoice-management
-     *
-     * FIX BUG 1: apartmentId trong request body giờ cũng chấp nhận cả ID lẫn
-     *            number nhờ service.resolveApartment() — nhưng nếu dùng dropdown
-     *            đúng thì luôn gửi ID chính xác.
+     * apartmentId chấp nhận cả ID lẫn số căn nhờ service.resolveApartment().
      */
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
@@ -154,9 +151,11 @@ public class InvoiceManagementController {
         }
     }
 
+    // ─── CẬP NHẬT TRẠNG THÁI ─────────────────────────────────────────────────
+
     /**
      * PATCH /api/invoice-management/{id}/status
-     * Đánh dấu trạng thái — ACCOUNTANT KHÔNG được thay đổi.
+     * ACCOUNTANT không được thay đổi trạng thái.
      */
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
@@ -173,9 +172,11 @@ public class InvoiceManagementController {
         }
     }
 
+    // ─── XÓA HÓA ĐƠN ─────────────────────────────────────────────────────────
+
     /**
      * DELETE /api/invoice-management/{id}
-     * Chỉ ADMIN + MANAGER — không bao gồm ACCOUNTANT.
+     * Chỉ ADMIN + MANAGER.
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")

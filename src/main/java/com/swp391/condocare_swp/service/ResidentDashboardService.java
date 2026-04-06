@@ -30,7 +30,7 @@ public class ResidentDashboardService {
     @Autowired private ServiceRequestRepository   srRepo;
     @Autowired private InvoiceRepository          invoiceRepo;
     @Autowired private InvoiceFeeDetailRepository detailRepo;
-    @Autowired private VehicleRepository          vehicleRepo;
+    @Autowired private VehicleRepository          vehicleRepo;   // dùng cho home summary (đếm xe active)
     @Autowired private AccessCardRepository       accessCardRepo;
 
     // ─── HELPER ───────────────────────────────────────────────────────────────
@@ -259,22 +259,6 @@ public class ResidentDashboardService {
                 }).toList();
         map.put("accessCards", cards);
 
-        // Xe của cư dân trong căn hộ này
-        List<Map<String, Object>> vehicles = vehicleRepo.findByResidentId(r.getId())
-                .stream().map(v -> {
-                    Map<String, Object> vm = new LinkedHashMap<>();
-                    vm.put("id",            v.getId());
-                    vm.put("type",          v.getType().name());
-                    vm.put("licensePlate",  v.getLicensePlate());
-                    vm.put("brand",         v.getBrand());
-                    vm.put("color",         v.getColor());
-                    vm.put("pendingStatus", v.getPendingStatus().name());
-                    vm.put("status",        v.getStatus().name());
-                    vm.put("expiredAt",     v.getExpiredAt() != null ? v.getExpiredAt().toString() : null);
-                    return vm;
-                }).toList();
-        map.put("vehicles", vehicles);
-
         return map;
     }
 
@@ -401,83 +385,6 @@ public class ResidentDashboardService {
         invoice.setPaidAt(LocalDateTime.now());
         invoiceRepo.save(invoice);
         return "Thanh toán thành công!";
-    }
-
-    // ─── VEHICLE REGISTRATION ─────────────────────────────────────────────────
-
-    /**
-     * Cư dân đăng ký gửi xe mới.
-     * Vehicle được tạo với pending_status = PENDING, chờ BQL duyệt.
-     *
-     * @param body Map chứa: type, licensePlate?, brand?, model?, color?, durationType
-     */
-    @Transactional
-    public String registerVehicle(Map<String, String> body) {
-        Residents r = currentResident();
-
-        if (r.getApartment() == null)
-            throw new IllegalArgumentException("Bạn chưa được gán căn hộ. Không thể đăng ký gửi xe.");
-
-        // Validate type
-        String typeStr = body.get("type");
-        if (typeStr == null || typeStr.isBlank())
-            throw new IllegalArgumentException("Vui lòng chọn loại xe.");
-        Vehicle.VehicleType type;
-        try {
-            type = Vehicle.VehicleType.valueOf(typeStr.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Loại xe không hợp lệ: " + typeStr);
-        }
-
-        // Validate durationType
-        String durationStr = body.getOrDefault("durationType", "MONTHLY");
-        Vehicle.DurationType durationType;
-        try {
-            durationType = Vehicle.DurationType.valueOf(durationStr.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Thời hạn đăng ký không hợp lệ: " + durationStr);
-        }
-
-        // Kiểm tra biển số trùng (nếu có)
-        String licensePlate = body.get("licensePlate");
-        if (licensePlate != null && !licensePlate.isBlank()) {
-            licensePlate = licensePlate.trim().toUpperCase();
-            if (vehicleRepo.existsByLicensePlate(licensePlate))
-                throw new IllegalArgumentException(
-                        "Biển số " + licensePlate + " đã được đăng ký trong hệ thống.");
-        } else {
-            licensePlate = null; // xe đạp không cần biển
-        }
-
-        // Sinh Vehicle ID
-        String vehicleId = generateVehicleId();
-
-        Vehicle v = new Vehicle();
-        v.setId(vehicleId);
-        v.setType(type);
-        v.setLicensePlate(licensePlate);
-        v.setBrand(body.get("brand") != null ? body.get("brand").trim() : null);
-        v.setModel(body.get("model") != null ? body.get("model").trim() : null);
-        v.setColor(body.get("color") != null ? body.get("color").trim() : null);
-        v.setResident(r);                    // @ManyToOne → Residents
-        v.setApartment(r.getApartment());    // @ManyToOne → Apartment
-        v.setDurationType(durationType);
-        v.setPendingStatus(Vehicle.PendingStatus.PENDING);
-        v.setStatus(Vehicle.VehicleStatus.ACTIVE);
-
-        vehicleRepo.save(v);
-        logger.info("Vehicle registration submitted — id={}, type={}, plate={}, residentId={}",
-                vehicleId, type, licensePlate, r.getId());
-
-        return "Đăng ký gửi xe thành công! Vui lòng chờ Ban quản lý xem xét và phê duyệt.";
-    }
-
-    private synchronized String generateVehicleId() {
-        for (int i = 1; i <= 99999; i++) {
-            String id = "VH" + String.format("%06d", i);
-            if (!vehicleRepo.existsById(id)) return id;
-        }
-        return "VH" + System.currentTimeMillis() % 10000000L;
     }
 
     // ─── PRIVATE HELPERS ──────────────────────────────────────────────────────
