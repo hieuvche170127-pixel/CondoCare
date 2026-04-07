@@ -163,6 +163,7 @@
                                 <option value="IN_PROGRESS">🔧 Đang xử lý</option>
                                 <option value="DONE">✅ Hoàn thành</option>
                                 <option value="REJECTED">❌ Từ chối</option>
+                                <option value="CANCELLED">🚫 Đã hủy</option>
                             </select>
                         </div>
                         <div>
@@ -435,6 +436,7 @@ Ví dụ: Vấn đề này thuộc trách nhiệm cư dân tự xử lý theo n�
         IN_PROGRESS: { cls: 'primary',           label: '🔧 Đang xử lý' },
         DONE:        { cls: 'success',           label: '✅ Hoàn thành' },
         REJECTED:    { cls: 'danger',            label: '❌ Từ chối' },
+        CANCELLED:   { cls: 'secondary',         label: '🚫 Đã hủy' },   // [FIX] cư dân hủy
     };
     const PRIORITY_MAP = {
         HIGH:   { cls: 'danger',  label: '🔴 Cao' },

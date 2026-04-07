@@ -190,13 +190,14 @@ function generateLocalPassword(len = 12) {
  * Định nghĩa menu sidebar theo từng role.
  * Gọi renderStaffSidebar(activePage) trong inline script của mỗi trang staff.
  *
- * activePage: 'dashboard' | 'buildings' | 'apartments' | 'resident' |
- *             'staff' | 'invoices' | 'service-requests'
+ * activePage: 'dashboard' | 'apartments' | 'resident' |
+ *             'staff' | 'invoices' | 'vehicles' | 'notifications' | 'service-requests'
  *
- * Role redirect mặc định (gọi khi trang không phù hợp):
- *   TECHNICIAN  → /dashboard/service-requests
- *   ACCOUNTANT  → /dashboard/invoices
- *   RECEPTIONIST→ /dashboard/service-requests (hoặc resident)
+ * Role redirect mặc định (khi trang không phù hợp với role hiện tại):
+ *   ADMIN / MANAGER → /dashboard
+ *   TECHNICIAN      → /dashboard/service-requests
+ *   ACCOUNTANT      → /dashboard/invoices
+ *   RECEPTIONIST    → /dashboard/vehicles
  */
 const _STAFF_MENU = [
     {
@@ -204,20 +205,18 @@ const _STAFF_MENU = [
         href:  '/dashboard',
         icon:  'fa-tachometer-alt',
         label: 'Tổng quan',
-        roles: ['ADMIN', 'MANAGER', 'RECEPTIONIST', 'ACCOUNTANT'],
+        // [FIX #4] Thêm TECHNICIAN — DashboardController đã cho phép TECHNICIAN xem stats
+        // TECHNICIAN không có mục này trong sidebar nhưng vẫn có thể truy cập URL nếu cần
+        roles: ['ADMIN', 'MANAGER', 'RECEPTIONIST', 'ACCOUNTANT', 'TECHNICIAN'],
     },
     {
-        key:   'buildings',
-        href:  '/dashboard/apartments',
-        icon:  'fa-building',
-        label: 'Tòa nhà',
-        roles: ['ADMIN', 'MANAGER'],
-    },
-    {
+        // [FIX #4] Xóa item key='buildings' trùng lặp (cùng href /dashboard/apartments).
+        // Gộp thành 1 mục duy nhất 'apartments' với label rõ hơn.
+        // Quản lý tòa nhà nằm trong cùng trang apartments.html (tab riêng sẽ được thêm vào HTML).
         key:   'apartments',
         href:  '/dashboard/apartments',
-        icon:  'fa-home',
-        label: 'Căn hộ & Phí',
+        icon:  'fa-building',
+        label: 'Tòa nhà & Căn hộ',
         roles: ['ADMIN', 'MANAGER', 'ACCOUNTANT'],
     },
     {
@@ -239,7 +238,6 @@ const _STAFF_MENU = [
         href:  '/dashboard/invoices',
         icon:  'fa-receipt',
         label: 'Hóa đơn',
-        // ACCOUNTANT chỉ thấy mục này
         roles: ['ADMIN', 'MANAGER', 'ACCOUNTANT'],
     },
     {
@@ -247,7 +245,6 @@ const _STAFF_MENU = [
         href:  '/dashboard/vehicles',
         icon:  'fa-car',
         label: 'Quản lý xe',
-        // RECEPTIONIST duyệt đăng ký xe từ resident
         roles: ['ADMIN', 'MANAGER', 'RECEPTIONIST'],
     },
     {
@@ -255,15 +252,14 @@ const _STAFF_MENU = [
         href:  '/dashboard/notifications',
         icon:  'fa-bell',
         label: 'Thông báo',
-        // RECEPTIONIST gửi thông báo đến cư dân
-        roles: ['ADMIN', 'MANAGER', 'RECEPTIONIST'],
+        // [FIX #10] ACCOUNTANT + TECHNICIAN xem được thông báo (đồng bộ SecurityConfig)
+        roles: ['ADMIN', 'MANAGER', 'RECEPTIONIST', 'ACCOUNTANT', 'TECHNICIAN'],
     },
     {
         key:   'service-requests',
         href:  '/dashboard/service-requests',
         icon:  'fa-tools',
         label: 'Yêu cầu hỗ trợ',
-        // TECHNICIAN và RECEPTIONIST chỉ thấy mục này
         roles: ['ADMIN', 'MANAGER', 'TECHNICIAN', 'RECEPTIONIST'],
     },
 ];

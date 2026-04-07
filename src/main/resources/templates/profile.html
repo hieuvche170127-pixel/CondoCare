@@ -113,79 +113,105 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="/js/common.js"></script>
-<script src="/js/resident-common.js"></script>
 <script>
     const _ui = getUserInfo();
     if (!_ui) { window.location.href = '/login'; }
 
-    const _isResident = _ui.userType === 'resident';
-    const _wrap = document.getElementById('profileContainer');
+    const _isResident = _ui && _ui.userType === 'resident';
 
+    // [FIX #8] Chỉ load resident-common.js khi user là resident.
+    // Trước đây file này được load cho cả staff → làm render hàm không cần thiết.
     if (_isResident) {
-        _wrap.innerHTML = `
-        <div class="resident-wrapper">
-            <nav class="resident-sidebar" id="residentSidebar"></nav>
-            <button class="mobile-toggle" id="mobileToggle"><i class="fas fa-bars"></i></button>
-            <main class="resident-main">
-                <div class="page-header mb-3">
-                    <div>
-                        <h4><i class="fas fa-user-circle text-primary me-2"></i>Thông tin cá nhân</h4>
-                        <nav aria-label="breadcrumb"><ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item"><a href="/resident">Trang chủ</a></li>
-                            <li class="breadcrumb-item active">Thông tin cá nhân</li>
-                        </ol></nav>
-                    </div>
-                </div>
-                <div id="alertContainer"></div>
-                <div id="profileContent"></div>
-            </main>
-        </div>`;
-        renderResidentSidebar('profile');
-        document.getElementById('mobileToggle').addEventListener('click', () =>
-            document.getElementById('residentSidebar').classList.toggle('open'));
+        const s = document.createElement('script');
+        s.src = '/js/resident-common.js';
+        s.onload = initProfileLayout;
+        document.head.appendChild(s);
     } else {
-        _wrap.innerHTML = `
-        <nav class="sidebar d-flex flex-column p-3">
-            <div class="text-center mb-4">
-                <i class="fas fa-building fa-2x mb-2 text-white-50"></i>
-                <div class="fw-bold">CondoCare</div>
-                <small class="text-white-50">${_ui.fullName || ''}</small>
-            </div>
-            <ul class="nav flex-column gap-1 flex-grow-1">
-                <li><a href="/dashboard" class="nav-link text-white-50"><i class="fas fa-chart-bar me-2"></i>Tổng quan</a></li>
-                <li><a href="/profile" class="nav-link text-white active bg-white bg-opacity-10 rounded"><i class="fas fa-user me-2"></i>Hồ sơ</a></li>
-            </ul>
-            <hr class="border-secondary">
-            <a href="#" id="logoutBtn" class="nav-link text-danger-emphasis"><i class="fas fa-sign-out-alt me-2"></i>Đăng xuất</a>
-        </nav>
-        <div class="resident-main">
-            <div class="mb-4">
-                <h4 class="fw-bold mb-0"><i class="fas fa-user-circle text-primary me-2"></i>Thông tin cá nhân</h4>
-                <small class="text-muted">Xem và cập nhật thông tin tài khoản</small>
-            </div>
-            <div id="alertContainer"></div>
-            <div id="profileContent"></div>
-        </div>`;
-        document.getElementById('logoutBtn')?.addEventListener('click', e => {
-            e.preventDefault(); if (confirm('Đăng xuất?')) logout();
-        });
+        initProfileLayout();
+    }
+
+    function initProfileLayout() {
+        const _wrap = document.getElementById('profileContainer');
+
+        if (_isResident) {
+            _wrap.innerHTML = `
+            <div class="resident-wrapper">
+                <nav class="resident-sidebar" id="residentSidebar"></nav>
+                <button class="mobile-toggle" id="mobileToggle"><i class="fas fa-bars"></i></button>
+                <main class="resident-main">
+                    <div class="page-header mb-3">
+                        <div>
+                            <h4><i class="fas fa-user-circle text-primary me-2"></i>Thông tin cá nhân</h4>
+                            <nav aria-label="breadcrumb"><ol class="breadcrumb mb-0">
+                                <li class="breadcrumb-item"><a href="/resident">Trang chủ</a></li>
+                                <li class="breadcrumb-item active">Thông tin cá nhân</li>
+                            </ol></nav>
+                        </div>
+                    </div>
+                    <div id="alertContainer"></div>
+                    <div id="profileContent"></div>
+                </main>
+            </div>`;
+            renderResidentSidebar('profile');
+            document.getElementById('mobileToggle').addEventListener('click', () =>
+                document.getElementById('residentSidebar').classList.toggle('open'));
+        } else {
+            // [FIX #8] Dùng đúng cấu trúc sidebar mà renderStaffSidebar() cần
+            // Trước đây: hardcode mini sidebar với 2 link tĩnh → staff mất toàn bộ menu điều hướng
+            // Sau khi fix: dùng renderStaffSidebar() → sidebar đầy đủ, đúng role
+            _wrap.innerHTML = `
+            <div class="container-fluid">
+                <div class="row">
+                    <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse" id="sidebarNav">
+                        <div class="position-sticky pt-3">
+                            <div class="text-center mb-4">
+                                <h5 class="text-white fw-bold"><i class="fas fa-building me-1"></i> CondoCare</h5>
+                                <small class="text-white-50" id="sidebarUser"></small>
+                            </div>
+                            <ul class="nav flex-column"></ul>
+                        </div>
+                    </nav>
+                    <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+                        <div class="mb-4">
+                            <h4 class="fw-bold mb-0"><i class="fas fa-user-circle text-primary me-2"></i>Thông tin cá nhân</h4>
+                            <small class="text-muted">Xem và cập nhật thông tin tài khoản</small>
+                        </div>
+                        <div id="alertContainer"></div>
+                        <div id="profileContent"></div>
+                    </main>
+                </div>
+            </div>`;
+            // redirectIfForbidden=false vì profile không có key trong _STAFF_MENU → không redirect
+            renderStaffSidebar(null, false);
+        }
+
+        // Load profile.js sau khi layout đã render xong, rồi áp dụng override
+        const ps = document.createElement('script');
+        ps.src = '/js/profile.js';
+        ps.onload = () => {
+            // [FIX #8] Override phải được đặt SAU khi profile.js load xong
+            // vì renderProfile được định nghĩa trong profile.js
+            if (typeof window.renderProfile === 'function') {
+                const _origRender = window.renderProfile;
+                window.renderProfile = function(p) {
+                    _origRender(p);
+                    if (p.userType === 'resident') {
+                        injectAccessCardInfo(p);
+                        injectVehicleRegistration(p);
+                    }
+                };
+            }
+            if (typeof loadProfile === 'function') loadProfile();
+        };
+        document.body.appendChild(ps);
     }
 </script>
-<script src="/js/profile.js"></script>
 <script>
     /* ══════════════════════════════════════════════════
-       OVERRIDE renderProfile để thêm thẻ từ ra vào
-       và tab đăng ký gửi xe cải tiến
+       HELPER FUNCTIONS cho override renderProfile
+       (injectAccessCardInfo, injectVehicleRegistration)
+       — Khai báo toàn cục để ps.onload có thể gọi được
     ══════════════════════════════════════════════════ */
-    const _origRender = window.renderProfile;
-    window.renderProfile = function(p) {
-        _origRender(p);
-        // Sau khi render xong, inject thêm thẻ từ vào qi list nếu là resident
-        if (p.userType === 'resident') {
-            injectAccessCardInfo(p);
-            injectVehicleRegistration(p);
-        }
-    };
 
     function injectAccessCardInfo(p) {
         // Tìm quick-info container và thêm thẻ từ

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 — Không tìm thấy trang | CondoCare</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Nunito', sans-serif; background: #f0f4f8; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        .error-card { background: #fff; border-radius: 1.5rem; padding: 3rem 2.5rem; max-width: 480px; width: 100%; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,.10); }
+        .error-icon { font-size: 5rem; color: #667eea; margin-bottom: 1rem; }
+        .error-code { font-size: 5rem; font-weight: 800; color: #667eea; line-height: 1; }
+        .error-title { font-size: 1.4rem; font-weight: 700; color: #2d3748; margin-bottom: .5rem; }
+        .error-msg { color: #718096; margin-bottom: 2rem; }
+        .btn-home { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border: none; border-radius: 0.75rem; padding: .75rem 2rem; font-weight: 700; text-decoration: none; display: inline-block; transition: opacity .2s; }
+        .btn-home:hover { opacity: .88; color: #fff; }
+        .btn-back { color: #667eea; font-weight: 600; text-decoration: none; margin-left: 1rem; }
+        .btn-back:hover { text-decoration: underline; }
+        .suggestion-links { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: center; margin-top: 1.5rem; }
+        .suggestion-links a { background: #f7fafc; border: 1px solid #e2e8f0; border-radius: .5rem; padding: .35rem .9rem; font-size: .85rem; color: #4a5568; text-decoration: none; transition: background .15s; }
+        .suggestion-links a:hover { background: #edf2f7; }
+    </style>
+</head>
+<body>
+<div class="error-card">
+    <div class="error-icon"><i class="fas fa-map-signs"></i></div>
+    <div class="error-code">404</div>
+    <div class="error-title mt-2">Không tìm thấy trang</div>
+    <p class="error-msg">Trang bạn đang tìm không tồn tại hoặc đã bị di chuyển.<br>Kiểm tra lại đường dẫn hoặc quay về trang chủ.</p>
+    <div>
+        <a href="javascript:history.back()" class="btn-home"><i class="fas fa-arrow-left me-2"></i>Quay lại</a>
+        <a href="/" class="btn-back">Trang chủ</a>
+    </div>
+    <div class="suggestion-links" id="suggestionLinks">
+        <!-- Điền động theo userType sau khi JS chạy -->
+    </div>
+</div>
+<script src="/js/common.js" defer></script>
+<script defer>
+    document.addEventListener('DOMContentLoaded', () => {
+        const info = typeof getUserInfo === 'function' ? getUserInfo() : null;
+        const links = document.getElementById('suggestionLinks');
+        if (!links) return;
+
+        if (!info) {
+            links.innerHTML = `
+                <a href="/login"><i class="fas fa-sign-in-alt me-1"></i>Đăng nhập</a>
+                <a href="/register"><i class="fas fa-user-plus me-1"></i>Đăng ký</a>`;
+        } else if (info.userType === 'resident') {
+            links.innerHTML = `
+                <a href="/resident"><i class="fas fa-home me-1"></i>Trang chủ</a>
+                <a href="/resident/invoices"><i class="fas fa-receipt me-1"></i>Hóa đơn</a>
+                <a href="/resident/requests"><i class="fas fa-tools me-1"></i>Yêu cầu</a>
+                <a href="/resident/vehicles"><i class="fas fa-car me-1"></i>Xe</a>
+                <a href="/profile"><i class="fas fa-user me-1"></i>Hồ sơ</a>`;
+        } else {
+            links.innerHTML = `
+                <a href="/dashboard"><i class="fas fa-chart-bar me-1"></i>Dashboard</a>
+                <a href="/dashboard/resident"><i class="fas fa-users me-1"></i>Cư dân</a>
+                <a href="/dashboard/invoices"><i class="fas fa-receipt me-1"></i>Hóa đơn</a>
+                <a href="/profile"><i class="fas fa-user me-1"></i>Hồ sơ</a>`;
+        }
+    });
+</script>
+</body>
+</html>

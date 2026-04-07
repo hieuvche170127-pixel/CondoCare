@@ -156,17 +156,19 @@ public class ResidentController {
         }
     }
 
-    /** PUT /api/resident/invoices/{id}/pay → đánh dấu hóa đơn đã thanh toán */
-    @PutMapping("/invoices/{id}/pay")
-    public ResponseEntity<?> markInvoiceAsPaid(@PathVariable String id) {
-        try {
-            String message = service.markInvoiceAsPaid(id);
-            return ResponseEntity.ok(message);
-        } catch (Exception e) {
-            logger.error("Error marking invoice as paid", e);
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
-    }
+    /** PUT /api/resident/invoices/{id}/pay — ĐÃ XÓA
+     *
+     * [FIX #2] Endpoint này cho phép resident tự đánh dấu hóa đơn là PAID mà không
+     * thực sự thanh toán, tạo ra lỗ hổng nghiệp vụ nghiêm trọng.
+     *
+     * Luồng thanh toán hợp lệ duy nhất là qua MoMo:
+     *   1. Resident gọi POST /api/momo/create-payment  → nhận payUrl / deeplink
+     *   2. Resident hoàn thành thanh toán trên app MoMo
+     *   3. MoMo gọi POST /api/momo/ipn (IPN callback) → MomoService cập nhật Invoice → PAID
+     *
+     * Nếu cần Staff đánh dấu PAID thủ công (ví dụ: thanh toán tiền mặt),
+     * dùng: PATCH /api/invoice-management/{id}/status  (chỉ ADMIN/MANAGER)
+     */
 
     /** GET /api/resident/requests/{id} → chi tiết yêu cầu (bao gồm ảnh xác nhận) */
     @GetMapping("/requests/{id}")
@@ -189,6 +191,23 @@ public class ResidentController {
             return ResponseEntity.ok(message);
         } catch (Exception e) {
             logger.error("Error confirming request {}", id, e);
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    /**
+     * PUT /api/resident/requests/{id}/cancel
+     * Resident hủy yêu cầu hỗ trợ khi còn ở trạng thái PENDING.
+     * [FIX #11] Trước đây resident không có cách hủy yêu cầu đã tạo nhầm/không cần nữa.
+     * Chỉ được hủy khi status = PENDING (chưa có nhân viên xử lý).
+     */
+    @PutMapping("/requests/{id}/cancel")
+    public ResponseEntity<?> cancelRequest(@PathVariable String id) {
+        try {
+            String message = service.cancelServiceRequest(id);
+            return ResponseEntity.ok(message);
+        } catch (Exception e) {
+            logger.error("Error cancelling request {}", id, e);
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }

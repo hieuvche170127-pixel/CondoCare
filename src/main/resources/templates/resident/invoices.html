@@ -591,123 +591,14 @@
         return new Intl.NumberFormat('vi-VN', { style:'currency', currency:'VND' }).format(amount);
     }
 
-    // ══ MoMo Payment ══════════════════════════════════════════
-    let _momoInvoiceId = null, _momoPollingTimer = null, _momoCountdownTimer = null;
-    const MOMO_TIMEOUT_SEC = 15 * 60;
+    // ── MoMo Payment logic đã được tách ra momo-payment.js [FIX low-priority]
+    // Các hàm: openMoMo, momoSwitchTab, momoShowError, momoCancelPolling
+    // được load từ /js/momo-payment.js bên dưới.
 
-    async function openMoMo(invoiceId, fromDetail = false) {
-        _momoInvoiceId = invoiceId;
-        document.getElementById('momoLoading').classList.remove('d-none');
-        document.getElementById('momoError').classList.add('d-none');
-        document.getElementById('momoContent').classList.add('d-none');
-        document.getElementById('momoSuccess').classList.add('d-none');
-
-        const detailModal = bootstrap.Modal.getInstance(document.getElementById('detailModal'));
-        if (detailModal && fromDetail) detailModal.hide();
-        const delay = detailModal && fromDetail ? 320 : 0;
-        setTimeout(async () => {
-            new bootstrap.Modal(document.getElementById('momoModal')).show();
-            await momoCallCreatePayment(invoiceId);
-        }, delay);
-    }
-
-    async function momoCallCreatePayment(invoiceId) {
-        try {
-            const res = await apiRequest(`${API_BASE_URL}/momo/create-payment`, {
-                method: 'POST', body: JSON.stringify({ invoiceId })
-            });
-            if (!res.ok) { momoShowError(await res.text()); return; }
-            const data = await res.json();
-            const inv  = _allInvoices.find(i => i.id === invoiceId);
-            const total = inv ? (inv.totalAmount ?? 0) : data.amount;
-            document.getElementById('momoInvoiceLabel').textContent =
-                `Hóa đơn ${invoiceId}` + (inv ? ` — Tháng ${inv.month}/${inv.year}` : '');
-            document.getElementById('momoAmountDisplay').textContent =
-                new Intl.NumberFormat('vi-VN', { style:'currency', currency:'VND' }).format(total);
-            const qrSrc = data.qrCodeUrl ||
-                `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.payUrl||'')}`;
-            document.getElementById('momoQrImg').src = qrSrc;
-            document.getElementById('momoDeeplinkBtn').href = data.deeplink || data.payUrl || '#';
-            document.getElementById('momoPayUrlBtn').href   = data.payUrl || '#';
-            document.getElementById('momoLoading').classList.add('d-none');
-            document.getElementById('momoContent').classList.remove('d-none');
-            momoSwitchTab('qr');
-            momoStartCountdown(MOMO_TIMEOUT_SEC);
-            momoStartPolling(invoiceId);
-        } catch(e) { momoShowError('Lỗi kết nối: ' + e.message); }
-    }
-
-    function momoSwitchTab(tab) {
-        document.getElementById('tabQr').classList.toggle('d-none', tab !== 'qr');
-        document.getElementById('tabLink').classList.toggle('d-none', tab !== 'link');
-        document.getElementById('tabQrBtn').classList.toggle('active', tab === 'qr');
-        document.getElementById('tabLinkBtn').classList.toggle('active', tab === 'link');
-    }
-
-    function momoShowError(msg) {
-        document.getElementById('momoLoading').classList.add('d-none');
-        document.getElementById('momoContent').classList.add('d-none');
-        document.getElementById('momoError').classList.remove('d-none');
-        document.getElementById('momoErrorMsg').textContent = msg;
-        momoCancelPolling();
-    }
-
-    function momoStartPolling(invoiceId) {
-        momoCancelPolling();
-        _momoPollingTimer = setInterval(async () => {
-            try {
-                const res = await apiRequest(`${API_BASE_URL}/momo/status/${invoiceId}`);
-                if (!res) return;
-                const data = await res.json();
-                if (data.paid === true || data.status === 'PAID') {
-                    momoCancelPolling(); momoShowSuccess();
-                }
-            } catch(e) {}
-        }, 3000);
-    }
-
-    function momoCancelPolling() {
-        if (_momoPollingTimer)    { clearInterval(_momoPollingTimer);    _momoPollingTimer    = null; }
-        if (_momoCountdownTimer)  { clearInterval(_momoCountdownTimer);  _momoCountdownTimer  = null; }
-    }
-
-    function momoStartCountdown(seconds) {
-        let remaining = seconds;
-        const el = document.getElementById('momoCountdown');
-        if (_momoCountdownTimer) clearInterval(_momoCountdownTimer);
-        _momoCountdownTimer = setInterval(() => {
-            remaining--;
-            const m = Math.floor(remaining/60).toString().padStart(2,'0');
-            const s = (remaining%60).toString().padStart(2,'0');
-            if (el) el.textContent = `${m}:${s}`;
-            if (remaining <= 0) { momoCancelPolling(); momoShowError('Mã QR đã hết hạn. Vui lòng thử lại.'); }
-        }, 1000);
-    }
-
-    function momoShowSuccess() {
-        document.getElementById('momoContent').classList.add('d-none');
-        document.getElementById('momoSuccess').classList.remove('d-none');
-        setTimeout(() => {
-            bootstrap.Modal.getInstance(document.getElementById('momoModal'))?.hide();
-            showResidentAlert('alertContainer', '✅ Thanh toán MoMo thành công! Hóa đơn đã được cập nhật.', 'success');
-            loadInvoices(_currentPage);
-        }, 2500);
-    }
-
-    // Xử lý redirect sau khi MoMo return
-    const urlParams = new URLSearchParams(window.location.search);
-    const momoResult = urlParams.get('momoResult');
-    if (momoResult !== null) {
-        if (momoResult === '0') {
-            showResidentAlert('alertContainer', '✅ Thanh toán MoMo thành công!', 'success');
-        } else {
-            showResidentAlert('alertContainer', `Thanh toán MoMo thất bại (mã lỗi: ${momoResult})`, 'warning');
-        }
-        // Xóa query param khỏi URL
-        window.history.replaceState({}, '', '/resident/invoices');
-    }
+    // Xử lý redirect sau khi MoMo return được xử lý trong momo-payment.js (tự gọi khi load)
 
     loadInvoices(0);
 </script>
+<script src="/js/momo-payment.js"></script>
 </body>
 </html>

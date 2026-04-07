@@ -369,22 +369,29 @@ public class ResidentDashboardService {
         return "Xác nhận thành công! Cảm ơn bạn đã phản hồi.";
     }
 
+    /**
+     * [FIX #11] Resident hủy yêu cầu hỗ trợ khi còn ở trạng thái PENDING.
+     * Chỉ được hủy nếu chưa có nhân viên tiếp nhận (status = PENDING).
+     * Sau khi hủy → status = CANCELLED, không thể hoàn tác.
+     */
     @Transactional
-    public String markInvoiceAsPaid(String invoiceId) {
+    public String cancelServiceRequest(String requestId) {
         Residents r = currentResident();
-        Invoice invoice = invoiceRepo.findById(invoiceId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn."));
+        ServiceRequest sr = srRepo.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy yêu cầu."));
 
-        if (r.getApartment() == null
-                || !invoice.getApartment().getId().equals(r.getApartment().getId()))
-            throw new RuntimeException("Bạn không có quyền thanh toán hóa đơn này.");
-        if (invoice.getStatus() == Invoice.InvoiceStatus.PAID)
-            throw new RuntimeException("Hóa đơn đã được thanh toán rồi.");
+        if (!sr.getResident().getId().equals(r.getId()))
+            throw new RuntimeException("Bạn không có quyền hủy yêu cầu này.");
+        if (sr.getStatus() != ServiceRequest.RequestStatus.PENDING)
+            throw new RuntimeException(
+                    "Chỉ có thể hủy yêu cầu đang ở trạng thái chờ xử lý (PENDING). " +
+                            "Trạng thái hiện tại: " + sr.getStatus().name());
 
-        invoice.setStatus(Invoice.InvoiceStatus.PAID);
-        invoice.setPaidAt(LocalDateTime.now());
-        invoiceRepo.save(invoice);
-        return "Thanh toán thành công!";
+        sr.setStatus(ServiceRequest.RequestStatus.CANCELLED);
+        sr.setUpdatedAt(LocalDateTime.now());
+        srRepo.save(sr);
+        logger.info("ServiceRequest [{}] cancelled by resident [{}]", requestId, r.getId());
+        return "Đã hủy yêu cầu thành công.";
     }
 
     // ─── PRIVATE HELPERS ──────────────────────────────────────────────────────

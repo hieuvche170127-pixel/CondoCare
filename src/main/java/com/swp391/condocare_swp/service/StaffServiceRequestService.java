@@ -118,6 +118,8 @@ public class StaffServiceRequestService {
         m.put("inProgress", srRepo.countByStatus(ServiceRequest.RequestStatus.IN_PROGRESS));
         m.put("done",       srRepo.countByStatus(ServiceRequest.RequestStatus.DONE));
         m.put("rejected",   srRepo.countByStatus(ServiceRequest.RequestStatus.REJECTED));
+        // [FIX] Thêm thống kê CANCELLED — cư dân tự hủy khi còn PENDING
+        m.put("cancelled",  srRepo.countByStatus(ServiceRequest.RequestStatus.CANCELLED));
         return m;
     }
 

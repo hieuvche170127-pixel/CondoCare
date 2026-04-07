@@ -262,13 +262,14 @@ public class NotificationService {
                                     String amount, Staff staff) {
         Notification n = new Notification();
         n.setId(generateId());
-        n.setTitle("Nhắc nhở: Hóa đơn chưa thanh toán");
+        n.setTitle("Nhắc nhở: Hóa đơn đã quá hạn");
         n.setContent("Hóa đơn " + invoiceId + " với số tiền " + amount +
-                " đã quá hạn. Vui lòng thanh toán sớm để tránh bị tạm ngừng dịch vụ.");
+                " đã quá hạn thanh toán. Vui lòng thanh toán sớm để tránh bị tạm ngừng dịch vụ.");
         n.setType(Notification.NotificationType.PAYMENT);
         n.setResident(resident);
         n.setApartment(resident.getApartment());
         n.setBuilding(resident.getApartment() != null ? resident.getApartment().getBuilding() : null);
+        // [FIX #6] staff có thể null khi được gọi từ Scheduler (hệ thống tự động)
         n.setCreatedBy(staff);
         n.setIsRead(false);
         notifRepo.save(n);
@@ -336,6 +337,37 @@ public class NotificationService {
     }
 
     // ─── XÓA THÔNG BÁO ───────────────────────────────────────────────────────
+
+    /**
+     * [FIX #5] Gửi thông báo cho cư dân khi xe bị thu hồi (REVOKED) bởi staff.
+     * Trước đây revokeVehicle() không gửi bất kỳ thông báo nào.
+     *
+     * @param vehicle    Xe bị thu hồi
+     * @param reason     Lý do thu hồi
+     * @param revokedBy  Staff thực hiện thu hồi
+     */
+    @Transactional
+    public void sendVehicleRevokedNotification(Vehicle vehicle, String reason, Staff revokedBy) {
+        String plateInfo = vehicle.getLicensePlate() != null ? " (" + vehicle.getLicensePlate() + ")" : "";
+        String typeLabel = getVehicleTypeLabel(vehicle.getType());
+
+        Notification n = new Notification();
+        n.setId(generateId());
+        n.setTitle("Đăng ký xe bị thu hồi");
+        n.setContent("Đăng ký " + typeLabel + plateInfo +
+                " của bạn đã bị Ban quản lý thu hồi. Lý do: " +
+                (reason != null ? reason : "Không rõ.") +
+                " Vui lòng liên hệ Ban quản lý nếu cần hỗ trợ.");
+        n.setType(Notification.NotificationType.WARNING);
+        n.setResident(vehicle.getResident());
+        n.setApartment(vehicle.getApartment());
+        n.setBuilding(vehicle.getApartment() != null ? vehicle.getApartment().getBuilding() : null);
+        n.setCreatedBy(revokedBy);
+        n.setIsRead(false);
+        notifRepo.save(n);
+        logger.info("Vehicle revoked notification sent to resident {} for vehicle {}",
+                vehicle.getResident().getId(), vehicle.getId());
+    }
 
     @Transactional
     public String deleteNotification(String id) {

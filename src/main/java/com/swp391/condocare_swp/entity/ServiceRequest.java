@@ -119,7 +119,8 @@ public class ServiceRequest {
         PENDING,     // Chờ xử lý
         IN_PROGRESS, // Đang xử lý
         DONE,        // Hoàn thành (staff đã upload ảnh)
-        REJECTED     // Từ chối
+        REJECTED,    // Từ chối (staff từ chối)
+        CANCELLED    // [FIX #11] Cư dân tự hủy khi còn PENDING
     }
 
     public enum Priority {

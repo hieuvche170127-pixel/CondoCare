@@ -228,6 +228,16 @@ public class VehicleService {
         }
 
         vehicleRepo.save(v);
+
+        // [FIX #5] Gửi thông báo cho cư dân khi xe bị thu hồi
+        // Trước đây không có notification → cư dân không biết xe bị thu hồi
+        try {
+            Staff staff = securityUtils.getCurrentStaff();
+            notificationService.sendVehicleRevokedNotification(v, reason, staff);
+        } catch (Exception e) {
+            logger.warn("Could not send revoke notification for vehicle {}: {}", vehicleId, e.getMessage());
+        }
+
         logger.info("Vehicle {} revoked — {}", vehicleId, reason);
         return "Đã thu hồi đăng ký xe thành công!";
     }

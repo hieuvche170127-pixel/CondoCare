@@ -84,6 +84,38 @@ public class EmailService {
         }
     }
 
+    // ─── ĐĂNG KÝ MỚI (PENDING) ────────────────────────────────────────────────
+
+    /**
+     * [FIX #9] Gửi email xác nhận đăng ký ngay khi resident tự đăng ký thành công.
+     * Trước đây AuthService không gửi email nào — cư dân không biết đơn đã được nhận.
+     *
+     * @param toEmail   Email cư dân vừa đăng ký
+     * @param fullName  Tên đầy đủ cư dân
+     * @param username  Username đã chọn
+     */
+    public void sendPendingRegistrationEmail(String toEmail, String fullName, String username) {
+        try {
+            SimpleMailMessage msg = new SimpleMailMessage();
+            msg.setFrom(fromEmail);
+            msg.setTo(toEmail);
+            msg.setSubject("CondoCare — Đăng ký tài khoản thành công, chờ xét duyệt");
+            msg.setText(
+                    "Xin chào " + fullName + ",\n\n" +
+                            "Hệ thống CondoCare đã nhận được đơn đăng ký tài khoản của bạn.\n\n" +
+                            "Thông tin đăng ký:\n" +
+                            "  • Tên đăng nhập: " + username + "\n\n" +
+                            "Tài khoản đang được Ban quản lý xem xét và xác minh thông tin.\n" +
+                            "Bạn sẽ nhận được email thông báo kết quả trong thời gian sớm nhất.\n\n" +
+                            "Nếu bạn không thực hiện đăng ký này, vui lòng bỏ qua email này.\n\n" +
+                            "Trân trọng,\nBan quản lý CondoCare");
+            mailSender.send(msg);
+            logger.info("Pending registration email sent to: {}", toEmail);
+        } catch (Exception e) {
+            logger.error("Failed to send pending registration email to {}: {}", toEmail, e.getMessage());
+        }
+    }
+
     // ─── DUYỆT TÀI KHOẢN PENDING ─────────────────────────────────────────────
 
     public void sendAccountApprovedEmail(String toEmail, String fullName) {

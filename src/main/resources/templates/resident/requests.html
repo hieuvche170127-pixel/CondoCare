@@ -26,6 +26,7 @@
         .IN_PROGRESS-left { border-left:4px solid #0d6efd !important; }
         .DONE-left        { border-left:4px solid #198754 !important; }
         .REJECTED-left    { border-left:4px solid #dc3545 !important; }
+        .CANCELLED-left   { border-left:4px solid #6c757d !important; opacity:.75; }
     </style>
 </head>
 <body>
@@ -107,6 +108,7 @@
                         <option value="IN_PROGRESS">Đang xử lý</option>
                         <option value="DONE">Hoàn thành</option>
                         <option value="REJECTED">Từ chối</option>
+                        <option value="CANCELLED">Đã hủy</option>
                     </select>
                 </div>
                 <div class="d-flex gap-2 mt-3">
@@ -370,10 +372,12 @@
             IN_PROGRESS: { cls: 'bg-primary',           label: 'Đang xử lý' },
             DONE:        { cls: 'bg-success',            label: 'Hoàn thành' },
             REJECTED:    { cls: 'bg-danger',             label: 'Từ chối' },
+            // [FIX #11] Thêm trạng thái CANCELLED
+            CANCELLED:   { cls: 'bg-secondary',          label: 'Đã hủy' },
         };
 
         document.getElementById('requestList').innerHTML = list.map(sr => {
-            const s = STATUS_MAP[sr.status] || STATUS_MAP.PENDING;
+            const s = STATUS_MAP[sr.status] || { cls: 'bg-secondary', label: sr.status };
             const c = SR_CATEGORY[sr.category] || SR_CATEGORY.OTHER;
             const pColor = { LOW:'success', MEDIUM:'warning', HIGH:'danger' }[sr.priority] || 'secondary';
 
@@ -397,35 +401,45 @@
             const rejectSection = (sr.rejectReason)
                 ? `<div class="alert alert-danger py-2 px-3 mb-1 small mt-2">
                        <i class="fas fa-times-circle me-1"></i>
-                       <strong>Ly do tu choi:</strong> ${sr.rejectReason}
+                       <strong>Lý do từ chối:</strong> ${sr.rejectReason}
                    </div>` : '';
 
+            // [FIX #11] Nút hủy — chỉ hiện khi PENDING, ngăn sự kiện click lan ra card
+            const cancelBtn = (sr.status === 'PENDING')
+                ? `<button class="btn btn-sm btn-outline-danger ms-auto" title="Hủy yêu cầu này"
+                       onclick="event.stopPropagation(); confirmCancel('${sr.id}')">
+                       <i class="fas fa-times me-1"></i>Hủy yêu cầu
+                   </button>` : '';
+
             return `
-            <div class="request-card ${sr.status}-left" onclick="openDetail('${sr.id}')">
+            <div class="request-card ${sr.status}-left" onclick="${sr.status !== 'CANCELLED' ? `openDetail('${sr.id}')` : ''}">
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
                     <div>
                         <span class="badge bg-light text-dark border me-1">
                             <i class="fas ${c.icon} me-1"></i>${c.label}
                         </span>
                         <span class="badge bg-${pColor} me-1">
-                            ${sr.priority === 'HIGH' ? 'CAO' : sr.priority === 'MEDIUM' ? 'TB' : 'THAP'}
+                            ${sr.priority === 'HIGH' ? 'CAO' : sr.priority === 'MEDIUM' ? 'TB' : 'THẤP'}
                         </span>
                         ${imgBadge}
                         <span class="request-title">${sr.title}</span>
                         ${confirmedBadge}
                     </div>
-                    <span class="badge ${s.cls}">${s.label}</span>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge ${s.cls}">${s.label}</span>
+                        ${cancelBtn}
+                    </div>
                 </div>
                 <p class="text-muted small mt-2 mb-1">${sr.description.substring(0,150)}${sr.description.length>150?'...':''}</p>
                 ${rejectSection}
                 ${sr.note ? `<div class="alert alert-info py-2 px-3 mb-1 small">
-                    <i class="fas fa-comment-alt me-1"></i><strong>Ghi chu tu Ban quan ly:</strong> ${sr.note}
+                    <i class="fas fa-comment-alt me-1"></i><strong>Ghi chú từ Ban quản lý:</strong> ${sr.note}
                 </div>` : ''}
                 ${needConfirm}
                 <div class="request-meta d-flex gap-3 flex-wrap align-items-center">
                     <span><i class="fas fa-calendar me-1"></i>${formatDate(sr.createdAt)}</span>
                     ${sr.assignedTo ? `<span><i class="fas fa-user-cog me-1"></i>Phụ trách: ${sr.assignedTo}</span>` : ''}
-                    ${sr.updatedAt  ? `<span><i class="fas fa-sync me-1"></i>Cap nhat: ${formatDate(sr.updatedAt)}</span>` : ''}
+                    ${sr.updatedAt  ? `<span><i class="fas fa-sync me-1"></i>Cập nhật: ${formatDate(sr.updatedAt)}</span>` : ''}
                 </div>
             </div>`;
         }).join('');
@@ -576,6 +590,28 @@
     });
 
     loadRequests();
+
+    // [FIX #11] Hủy yêu cầu hỗ trợ — chỉ khi status = PENDING
+    async function confirmCancel(id) {
+        if (!confirm('Bạn có chắc muốn hủy yêu cầu này?\nSau khi hủy sẽ không thể khôi phục.')) return;
+        showLoading();
+        try {
+            const res = await apiRequest(`${API_BASE_URL}/resident/requests/${id}/cancel`, {
+                method: 'PUT'
+            });
+            const msg = await res.text();
+            if (res.ok) {
+                showResidentAlert('alertContainer', '✅ ' + msg, 'success');
+                loadRequests();
+            } else {
+                showResidentAlert('alertContainer', '⚠️ ' + msg, 'warning');
+            }
+        } catch (e) {
+            showResidentAlert('alertContainer', 'Lỗi: ' + e.message, 'danger');
+        } finally {
+            hideLoading();
+        }
+    }
 </script>
 </body>
 </html>
