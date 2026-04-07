@@ -1141,33 +1141,57 @@
     /* ── Mở modal sửa mẫu phí ── */
     async function openEditFee(id) {
         _editFeeId = id;
+        document.getElementById('feeModalTitle').innerHTML =
+            '<i class="fas fa-edit text-primary me-2"></i>Sửa mẫu phí';
+        document.getElementById('feeAlert').innerHTML = '';
         try {
-            // Lấy data từ bảng đang render (không cần gọi thêm API)
-            const btn = document.querySelector(`button[onclick="openEditFee('${id}')"]`);
-            const row = btn?.closest('tr');
-            if (!row) { openCreateFee(); return; }
-
-            document.getElementById('feeModalTitle').innerHTML =
-                '<i class="fas fa-edit text-primary me-2"></i>Sửa mẫu phí';
-            document.getElementById('feeAlert').innerHTML = '';
-            // Refetch để lấy đầy đủ data
+            // Luôn refetch từ API — không dùng querySelector DOM (dễ fail, gây reset form)
             const buildingId = document.getElementById('feeBuildingFilter').value;
+            if (!buildingId) { alert('Vui lòng chọn tòa nhà trước khi sửa mẫu phí.'); return; }
             const res  = await apiRequest(`${API}/fee-templates?buildingId=${buildingId}`);
+            if (!res || !res.ok) { alert('Không thể tải dữ liệu mẫu phí.'); return; }
             const list = await res.json();
             const f    = list.find(x => x.id === id);
-            if (!f) return;
+            if (!f) { alert('Không tìm thấy mẫu phí. Hãy tải lại danh sách.'); return; }
+
+            // 1. Điền các field cơ bản
             document.getElementById('feeFormBuilding').value = f.buildingId || '';
             document.getElementById('feeFormName').value     = f.name;
             document.getElementById('feeFormType').value     = f.type;
             document.getElementById('feeFormUnit').value     = f.unit;
             document.getElementById('feeFormAmount').value   = f.amount;
             document.getElementById('feeFormEffFrom').value  = f.effectiveFrom || '';
-            document.getElementById('feeFormEffTo').value    = f.effectiveTo || '';
-            document.getElementById('feeFormMinArea').value  = f.minArea != null ? f.minArea : '';
-            document.getElementById('feeFormMaxArea').value  = f.maxArea != null ? f.maxArea : '';
-            onFeeTypeChange(); onFeeUnitChange();
+            document.getElementById('feeFormEffTo').value    = f.effectiveTo   || '';
+            // 2. Cập nhật visibility UI (elevator group, area range group, hint)
+            //    mà KHÔNG overwrite unit/amount đã điền ở trên
+            _updateFeeFormUI(f.type, f.unit);
+            // 3. Gán minArea/maxArea SAU _updateFeeFormUI để không bị xóa
+            document.getElementById('feeFormMinArea').value = f.minArea != null ? f.minArea : '';
+            document.getElementById('feeFormMaxArea').value = f.maxArea != null ? f.maxArea : '';
+
             new bootstrap.Modal('#feeModal').show();
-        } catch(e) { alert('Lỗi: ' + e.message); }
+        } catch(e) { alert('Lỗi khi mở form sửa phí: ' + e.message); }
+    }
+
+    /**
+     * Chỉ cập nhật visibility/hint cho fee form — KHÔNG có side effect ghi đè giá trị.
+     * Dùng khi edit (thay cho onFeeTypeChange+onFeeUnitChange để tránh override unit/amount).
+     */
+    function _updateFeeFormUI(type, unit) {
+        const showElevator = type === 'SERVICE' && unit === 'PER_M2';
+        document.getElementById('elevatorGroup').style.display  = showElevator ? '' : 'none';
+        document.getElementById('areaRangeGroup').style.display = unit === 'PER_M2' ? '' : 'none';
+        const hint = document.getElementById('feeRangeHint');
+        if (type === 'SERVICE' && unit === 'PER_M2') {
+            const hasElevator = document.getElementById('feeFormHasElevator').checked;
+            hint.innerHTML = hasElevator
+                ? '<i class="fas fa-info-circle text-info"></i> QĐ 33/2025: <strong>1.200 – 16.500</strong> đ/m²/tháng (có thang máy)'
+                : '<i class="fas fa-info-circle text-info"></i> QĐ 33/2025: <strong>700 – 5.000</strong> đ/m²/tháng (không thang máy)';
+        } else if (type === 'SERVICE' && unit === 'PER_APT') {
+            hint.innerHTML = '<small class="text-muted">Tính cố định theo mỗi căn hộ</small>';
+        } else {
+            hint.innerHTML = '';
+        }
     }
 
     /* ── Lưu mẫu phí ── */

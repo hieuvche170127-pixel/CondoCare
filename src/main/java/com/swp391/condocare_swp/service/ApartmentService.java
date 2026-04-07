@@ -4,10 +4,12 @@ import com.swp391.condocare_swp.entity.Apartment;
 import com.swp391.condocare_swp.entity.Building;
 import com.swp391.condocare_swp.entity.FeeTemplate;
 import com.swp391.condocare_swp.entity.Staff;
+import com.swp391.condocare_swp.entity.Vehicle;
 import com.swp391.condocare_swp.repository.ApartmentRepository;
 import com.swp391.condocare_swp.repository.BuildingRepository;
 import com.swp391.condocare_swp.repository.FeeTemplateRepository;
 import com.swp391.condocare_swp.repository.StaffRepository;
+import com.swp391.condocare_swp.repository.VehicleRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,6 +45,7 @@ public class ApartmentService {
     @Autowired private StaffRepository        staffRepo;
     @Autowired private SecurityUtils       securityUtils; // [FIX] dùng chung SecurityUtils
     @Autowired private FeeTemplateRepository  feeTemplateRepo;
+    @Autowired private VehicleRepository      vehicleRepo;   // để tính phí gửi xe thực tế
 
     // ═════════════════════════════════════════════════════════════════════════
     // BUILDING CRUD
@@ -151,18 +154,39 @@ public class ApartmentService {
         BigDecimal totalEstimated = BigDecimal.ZERO;
         List<Map<String, Object>> feeDetails = new ArrayList<>();
 
+        // Lấy danh sách xe APPROVED + ACTIVE của căn hộ một lần
+        List<Vehicle> approvedVehicles = vehicleRepo.findByApartmentId(apt.getId())
+                .stream()
+                .filter(v -> v.getPendingStatus() == Vehicle.PendingStatus.APPROVED
+                        && v.getStatus()        == Vehicle.VehicleStatus.ACTIVE)
+                .toList();
+
         for (FeeTemplate ft : fees) {
             Map<String, Object> feeMap = mapFeeTemplate(ft);
-
-            // Tính ước tính chi phí cho căn hộ này
             BigDecimal estimated;
-            if (ft.getUnit() == FeeTemplate.FeeUnit.PER_M2) {
-                estimated = ft.getAmount().multiply(apt.getArea());
-            } else if (ft.getUnit() == FeeTemplate.FeeUnit.PER_APT) {
-                estimated = ft.getAmount();
-            } else { // FIXED
-                estimated = ft.getAmount();
+
+            if (ft.getType() == FeeTemplate.FeeType.SERVICE) {
+                // SERVICE/PER_M2: chỉ áp dụng nếu diện tích căn hộ nằm trong [min_area, max_area]
+                if (ft.getUnit() == FeeTemplate.FeeUnit.PER_M2) {
+                    boolean inRange = isAreaInRange(apt.getArea(), ft);
+                    if (!inRange) continue; // bỏ qua khung giá không áp dụng cho căn hộ này
+                    estimated = ft.getAmount().multiply(apt.getArea());
+                    feeMap.put("metaDetail", String.format("%.0f đ/m² × %.1f m²", ft.getAmount(), apt.getArea()));
+                } else { // PER_APT
+                    estimated = ft.getAmount();
+                    feeMap.put("metaDetail", "Phí cố định / căn");
+                }
+
+            } else { // PARKING
+                // Đếm xe thực tế khớp loại với tên FeeTemplate
+                long vehicleCount = countVehiclesByTemplate(approvedVehicles, ft.getName());
+                if (vehicleCount == 0) continue; // không có xe loại này → không hiện dòng phí
+                estimated = ft.getAmount().multiply(java.math.BigDecimal.valueOf(vehicleCount));
+                feeMap.put("vehicleCount", vehicleCount);
+                feeMap.put("metaDetail",
+                        String.format("%s × %d xe", fmtAmount(ft.getAmount()), vehicleCount));
             }
+
             feeMap.put("estimatedAmount", estimated);
             totalEstimated = totalEstimated.add(estimated);
             feeDetails.add(feeMap);
@@ -490,6 +514,51 @@ public class ApartmentService {
             m.put("buildingName", a.getBuilding().getName());
         }
         return m;
+    }
+
+    /**
+     * Kiểm tra diện tích căn hộ có nằm trong khung [min_area, max_area] của FeeTemplate không.
+     * NULL ở một đầu = không giới hạn phía đó.
+     */
+    private boolean isAreaInRange(java.math.BigDecimal area, FeeTemplate ft) {
+        if (area == null) return true;
+        boolean aboveMin = ft.getMinArea() == null || area.compareTo(ft.getMinArea()) >= 0;
+        boolean belowMax = ft.getMaxArea() == null || area.compareTo(ft.getMaxArea()) <= 0;
+        return aboveMin && belowMax;
+    }
+
+    /**
+     * Đếm xe APPROVED+ACTIVE khớp với loại trong tên FeeTemplate.
+     * Logic nhất quán với InvoiceManagementService.countApprovedVehicles().
+     */
+    private long countVehiclesByTemplate(List<Vehicle> vehicles, String feeName) {
+        String n = feeName.toLowerCase();
+        // "xe đạp/xe điện" — template kết hợp: tính cả BICYCLE lẫn ELECTRIC_BIKE
+        if ((n.contains("xe đạp") || n.contains("bicycle")) && (n.contains("điện") || n.contains("electric")))
+            return vehicles.stream().filter(v ->
+                    v.getType() == Vehicle.VehicleType.BICYCLE ||
+                            v.getType() == Vehicle.VehicleType.ELECTRIC_BIKE).count();
+        // Template riêng cho "xe điện"
+        if (n.contains("xe điện") || n.contains("electric"))
+            return vehicles.stream().filter(v -> v.getType() == Vehicle.VehicleType.ELECTRIC_BIKE).count();
+        // "xe máy" — tính cả MOTORBIKE lẫn ELECTRIC_BIKE khi không có template xe điện riêng
+        if (n.contains("xe máy") || n.contains("motorbike"))
+            return vehicles.stream().filter(v ->
+                    v.getType() == Vehicle.VehicleType.MOTORBIKE ||
+                            v.getType() == Vehicle.VehicleType.ELECTRIC_BIKE).count();
+        if (n.contains("ô tô") || n.contains("car"))
+            return vehicles.stream().filter(v -> v.getType() == Vehicle.VehicleType.CAR).count();
+        if (n.contains("xe đạp") || n.contains("bicycle"))
+            return vehicles.stream().filter(v -> v.getType() == Vehicle.VehicleType.BICYCLE).count();
+        // fallback: tất cả xe
+        return vehicles.size();
+    }
+
+    /** Format số tiền không cần đơn vị đ, dùng trong metaDetail */
+    private String fmtAmount(java.math.BigDecimal amount) {
+        if (amount == null) return "0";
+        java.text.NumberFormat nf = java.text.NumberFormat.getNumberInstance(new java.util.Locale("vi", "VN"));
+        return nf.format(amount);
     }
 
     private Map<String, Object> mapFeeTemplate(FeeTemplate ft) {

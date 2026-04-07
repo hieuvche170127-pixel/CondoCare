@@ -374,12 +374,21 @@ public class InvoiceManagementService {
                 .toList();
 
         String n = ft.getName().toLowerCase();
+        // "xe đạp/xe điện" template kết hợp
+        if ((n.contains("xe đạp") || n.contains("bicycle")) && (n.contains("điện") || n.contains("electric")))
+            return vehicles.stream().filter(v ->
+                    v.getType() == Vehicle.VehicleType.BICYCLE ||
+                            v.getType() == Vehicle.VehicleType.ELECTRIC_BIKE).count();
+        // Template riêng cho xe điện
+        if (n.contains("xe điện") || n.contains("electric"))
+            return vehicles.stream().filter(v -> v.getType() == Vehicle.VehicleType.ELECTRIC_BIKE).count();
+        // xe máy tính cả ELECTRIC_BIKE khi không có template xe điện riêng
         if (n.contains("xe máy") || n.contains("motorbike"))
-            return vehicles.stream().filter(v -> v.getType() == Vehicle.VehicleType.MOTORBIKE).count();
+            return vehicles.stream().filter(v ->
+                    v.getType() == Vehicle.VehicleType.MOTORBIKE ||
+                            v.getType() == Vehicle.VehicleType.ELECTRIC_BIKE).count();
         if (n.contains("ô tô") || n.contains("car"))
             return vehicles.stream().filter(v -> v.getType() == Vehicle.VehicleType.CAR).count();
-        if (n.contains("điện") || n.contains("electric"))
-            return vehicles.stream().filter(v -> v.getType() == Vehicle.VehicleType.ELECTRIC_BIKE).count();
         if (n.contains("xe đạp") || n.contains("bicycle"))
             return vehicles.stream().filter(v -> v.getType() == Vehicle.VehicleType.BICYCLE).count();
 

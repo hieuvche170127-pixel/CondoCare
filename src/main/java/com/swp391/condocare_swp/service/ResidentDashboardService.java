@@ -31,6 +31,7 @@ public class ResidentDashboardService {
     @Autowired private InvoiceFeeDetailRepository detailRepo;
     @Autowired private VehicleRepository          vehicleRepo;   // dùng cho home summary (đếm xe active)
     @Autowired private AccessCardRepository       accessCardRepo;
+    @Autowired private ApartmentService           apartmentService; // để lấy activeFees cho resident
     // [FIX #4] Dùng SecurityUtils tập trung thay vì tự viết currentResident() ở đây
     //          (tránh trùng lặp SecurityContextHolder ở 10+ service)
     @Autowired private SecurityUtils              securityUtils;
@@ -259,6 +260,18 @@ public class ResidentDashboardService {
                     return cm;
                 }).toList();
         map.put("accessCards", cards);
+
+        // Phí dịch vụ áp dụng cho căn hộ (delegate sang ApartmentService để dùng chung logic)
+        try {
+            Map<String, Object> feeDetail = apartmentService.getApartmentDetail(apt.getId());
+            map.put("activeFees",            feeDetail.get("activeFees"));
+            map.put("totalEstimatedMonthly", feeDetail.get("totalEstimatedMonthly"));
+            map.put("feeNote",               feeDetail.get("feeNote"));
+        } catch (Exception e) {
+            logger.warn("Could not load fee details for apartment {}: {}", apt.getId(), e.getMessage());
+            map.put("activeFees",            new java.util.ArrayList<>());
+            map.put("totalEstimatedMonthly", java.math.BigDecimal.ZERO);
+        }
 
         return map;
     }
