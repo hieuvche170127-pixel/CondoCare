@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import com.swp391.condocare_swp.security.SecurityUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +41,7 @@ public class ApartmentService {
     @Autowired private ApartmentRepository    apartmentRepo;
     @Autowired private BuildingRepository     buildingRepo;
     @Autowired private StaffRepository        staffRepo;
+    @Autowired private SecurityUtils       securityUtils; // [FIX] dùng chung SecurityUtils
     @Autowired private FeeTemplateRepository  feeTemplateRepo;
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -456,12 +457,9 @@ public class ApartmentService {
         }
     }
 
+    // [FIX] Delegate sang SecurityUtils thay vì SecurityContextHolder inline
     private Staff getCurrentStaff() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null) throw new RuntimeException("Không xác định được người dùng hiện tại.");
-        String username = auth.getName();
-        return staffRepo.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản: " + username));
+        return securityUtils.getCurrentStaff();
     }
 
     private Map<String, Object> mapBuilding(Building b) {

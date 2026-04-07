@@ -62,9 +62,9 @@ public class ResidentManagementService {
                         cb.like(cb.lower(root.get("idNumber")), p)));
             }
             if (type != null && !type.isBlank())
-                predicates.add(cb.equal(root.get("type"), Residents.ResidentType.valueOf(type)));
+                predicates.add(cb.equal(root.get("type"), Residents.ResidentType.valueOf(type.toUpperCase()))) ;// [FIX];
             if (status != null && !status.isBlank())
-                predicates.add(cb.equal(root.get("status"), Residents.ResidentStatus.valueOf(status)));
+                predicates.add(cb.equal(root.get("status"), Residents.ResidentStatus.valueOf(status.toUpperCase()))) ;// [FIX];
             if (apartmentId != null && !apartmentId.isBlank())
                 predicates.add(cb.equal(root.get("apartment").get("id"), apartmentId));
             return cb.and(predicates.toArray(new Predicate[0]));
@@ -299,6 +299,26 @@ public class ResidentManagementService {
         apt.setTotalResident(newCount);
         if (newCount == 0) apt.setStatus(Apartment.ApartmentStatus.EMPTY);
         apartmentRepo.save(apt);
+    }
+
+    /**
+     * Danh sách căn hộ EMPTY dùng cho dropdown khi tạo cư dân mới.
+     * Chỉ trả về căn hộ status = EMPTY (còn trống, chưa có ai ở).
+     */
+    public java.util.List<java.util.Map<String, Object>> getAvailableApartments() {
+        return apartmentRepo.findAllByOrderByBuilding_NameAscNumberAsc()
+                .stream()
+                .filter(a -> a.getStatus() == Apartment.ApartmentStatus.EMPTY)
+                .map(a -> {
+                    java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+                    m.put("id",           a.getId());
+                    m.put("number",       a.getNumber());
+                    m.put("buildingName", a.getBuilding() != null ? a.getBuilding().getName() : "");
+                    m.put("area",         a.getArea());
+                    m.put("status",       a.getStatus().name());
+                    return m;
+                })
+                .toList();
     }
 
     private void validateCreateRequest(ResidentCreateRequest req) {

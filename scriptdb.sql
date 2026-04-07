@@ -270,7 +270,7 @@ CREATE TABLE IF NOT EXISTS `Notification` (
     `apartment_id` char(10)     DEFAULT NULL,
     `building_id`  char(10)     DEFAULT NULL,
     `is_read`      tinyint(1)   NOT NULL DEFAULT 0,
-    `created_by`   char(10)     NOT NULL,
+    `created_by`   char(10)     DEFAULT NULL,
     `created_at`   datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`ID`),
     INDEX `idx_notif_resident` (`resident_id`),

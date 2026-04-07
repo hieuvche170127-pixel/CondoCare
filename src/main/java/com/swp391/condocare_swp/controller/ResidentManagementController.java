@@ -89,6 +89,17 @@ public class ResidentManagementController {
         }
     }
 
+    /**
+     * GET /api/resident-management/apartment-list
+     * Trả về danh sách căn hộ EMPTY cho dropdown khi tạo cư dân.
+     */
+    @GetMapping("/apartment-list")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    public ResponseEntity<?> getApartmentList() {
+        try { return ResponseEntity.ok(service.getAvailableApartments()); }
+        catch (Exception e) { return ResponseEntity.badRequest().body(e.getMessage()); }
+    }
+
     // ── LUỒNG DUYỆT PENDING ───────────────────────────────────────────────────
 
     @PutMapping("/{id}/approve")

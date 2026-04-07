@@ -102,9 +102,7 @@
                     <label class="form-label small text-muted mb-1">Năm</label>
                     <select class="form-select form-select-sm" id="filterYear">
                         <option value="">— Năm —</option>
-                        <option value="2026">2026</option>
-                        <option value="2025">2025</option>
-                        <option value="2024">2024</option>
+                        <!-- Tự động thêm năm từ dữ liệu hóa đơn thực tế -->
                     </select>
                 </div>
                 <div class="col-auto">
@@ -318,6 +316,7 @@
             if (!res.ok) throw new Error(await res.text());
             _allInvoices = await res.json();
             updateStats(_allInvoices);
+            populateYearFilter(_allInvoices);
             renderPage(_currentPage);
         } catch(e) {
             tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-4">
@@ -428,6 +427,25 @@
 
         window.invoiceMap = {};
         list.forEach(inv => window.invoiceMap[inv.id] = inv);
+    }
+
+    // Tự động thêm năm vào dropdown dựa trên dữ liệu thực tế
+    function populateYearFilter(list) {
+        const sel = document.getElementById('filterYear');
+        const currentVal = sel.value;
+        // Lấy tập năm duy nhất từ danh sách, sắp xếp giảm dần
+        const years = [...new Set(list.map(i => i.year))].sort((a, b) => b - a);
+        // Giữ năm hiện tại trong list, thêm năm hiện tại nếu chưa có
+        const currentYear = new Date().getFullYear();
+        if (!years.includes(currentYear)) years.unshift(currentYear);
+        // Rebuild options
+        sel.innerHTML = '<option value="">— Năm —</option>';
+        years.forEach(y => {
+            const opt = document.createElement('option');
+            opt.value = y; opt.textContent = y;
+            if (String(y) === currentVal) opt.selected = true;
+            sel.appendChild(opt);
+        });
     }
 
     function updateStats(list) {

@@ -122,7 +122,15 @@
                 } catch(_) {}
             }
 
-            renderPage(data, aptDetail);
+            /* ── Lấy danh sách xe của cư dân từ VehicleService ── */
+            // getApartmentInfo() không trả về vehicles — cần gọi riêng /api/resident/vehicles
+            let vehicles = [];
+            try {
+                const rv = await apiRequest(`${API_BASE_URL}/resident/vehicles`);
+                if (rv && rv.ok) vehicles = await rv.json();
+            } catch(_) {}
+
+            renderPage(data, aptDetail, vehicles);
 
         } catch(e) {
             showResidentAlert('alertContainer', 'Không thể tải thông tin căn hộ: ' + e.message);
@@ -132,7 +140,7 @@
     /* ════════════════════════════════════════════════════════
        RENDER TOÀN BỘ TRANG
     ════════════════════════════════════════════════════════ */
-    function renderPage(data, detail) {
+    function renderPage(data, detail, vehicles = []) {
         const statusBadge = {
             OCCUPIED:    '<span class="badge bg-success">Đang ở</span>',
             MAINTENANCE: '<span class="badge bg-warning text-dark">Đang bảo trì</span>',
@@ -237,7 +245,7 @@
         }
 
         /* ── Xe của cư dân ── */
-        const vehicles = data.vehicles || [];
+        // vehicles đã được truyền từ loadApartment() qua tham số riêng
         let vehicleRows = '';
         if (vehicles.length) {
             const typeLabel = { MOTORBIKE:'Xe máy', CAR:'Ô tô', BICYCLE:'Xe đạp',

@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.context.SecurityContextHolder;
+import com.swp391.condocare_swp.security.SecurityUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,6 +44,7 @@ public class InvoiceManagementService {
     @Autowired private FeeTemplateRepository      feeTemplateRepo;
     @Autowired private VehicleRepository          vehicleRepo;
     @Autowired private StaffRepository            staffRepo;
+    @Autowired private SecurityUtils              securityUtils; // [FIX] dùng chung SecurityUtils
 
     // ─── THỐNG KÊ ─────────────────────────────────────────────────────────────
 
@@ -72,7 +73,7 @@ public class InvoiceManagementService {
         }
 
         if (status != null && !status.isBlank() && !status.equals("ALL")) {
-            Invoice.InvoiceStatus s = Invoice.InvoiceStatus.valueOf(status);
+            Invoice.InvoiceStatus s = Invoice.InvoiceStatus.valueOf(status.toUpperCase()); // [FIX]
             all = all.stream().filter(i -> i.getStatus() == s).toList();
         }
         if (month != null) all = all.stream().filter(i -> month.equals(i.getMonth())).toList();
@@ -256,7 +257,7 @@ public class InvoiceManagementService {
     public Map<String, Object> updateStatus(String id, String newStatus) {
         Invoice invoice = invoiceRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn: " + id));
-        Invoice.InvoiceStatus s = Invoice.InvoiceStatus.valueOf(newStatus);
+        Invoice.InvoiceStatus s = Invoice.InvoiceStatus.valueOf(newStatus.toUpperCase()); // [FIX]
         invoice.setStatus(s);
         if (s == Invoice.InvoiceStatus.PAID) invoice.setPaidAt(LocalDateTime.now());
         invoiceRepo.save(invoice);
@@ -430,10 +431,9 @@ public class InvoiceManagementService {
         return m;
     }
 
+    // [FIX] Delegate sang SecurityUtils thay vì SecurityContextHolder inline
     private Staff getCurrentStaff() {
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        return staffRepo.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy Staff đang đăng nhập."));
+        return securityUtils.getCurrentStaff();
     }
 
     private synchronized String generateInvoiceId() {

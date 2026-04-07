@@ -4,9 +4,8 @@ import com.swp391.condocare_swp.entity.*;
 import com.swp391.condocare_swp.repository.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.swp391.condocare_swp.security.SecurityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,13 +31,15 @@ public class ResidentDashboardService {
     @Autowired private InvoiceFeeDetailRepository detailRepo;
     @Autowired private VehicleRepository          vehicleRepo;   // dùng cho home summary (đếm xe active)
     @Autowired private AccessCardRepository       accessCardRepo;
+    // [FIX #4] Dùng SecurityUtils tập trung thay vì tự viết currentResident() ở đây
+    //          (tránh trùng lặp SecurityContextHolder ở 10+ service)
+    @Autowired private SecurityUtils              securityUtils;
 
     // ─── HELPER ───────────────────────────────────────────────────────────────
 
+    // [FIX #4] Delegate sang SecurityUtils — xóa bỏ code trùng lặp
     private Residents currentResident() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return residentsRepo.findByUsername(auth.getName())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin cư dân."));
+        return securityUtils.getCurrentResident();
     }
 
     // ─── HOME ─────────────────────────────────────────────────────────────────

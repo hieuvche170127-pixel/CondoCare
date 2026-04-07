@@ -246,7 +246,7 @@ public class ResidentController {
         try {
             String msg = vehicleService.registerVehicle(body);
             return ResponseEntity.ok(msg);
-        } catch (IllegalArgumentException | RuntimeException e) {
+        } catch (RuntimeException e) { // IllegalArgumentException is a subclass — covered by RuntimeException
             logger.warn("Error registering vehicle: {}", e.getMessage());
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {

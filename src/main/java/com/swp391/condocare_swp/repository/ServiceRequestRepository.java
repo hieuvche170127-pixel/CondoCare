@@ -81,7 +81,7 @@ public interface ServiceRequestRepository extends JpaRepository<ServiceRequest, 
             "ORDER BY s.createdAt DESC")
     Page<ServiceRequest> searchAllByKeyword(@Param("keyword") String keyword, Pageable pageable);
 
-    /** Filter kết hợp status + priority */
+    /** Filter kết hợp status + priority (legacy - dùng assignedToId String) */
     @Query("SELECT s FROM ServiceRequest s WHERE " +
             "(:status IS NULL OR s.status = :status) AND " +
             "(:priority IS NULL OR s.priority = :priority) AND " +
@@ -91,6 +91,27 @@ public interface ServiceRequestRepository extends JpaRepository<ServiceRequest, 
             @Param("status")       ServiceRequest.RequestStatus status,
             @Param("priority")     ServiceRequest.Priority priority,
             @Param("assignedToId") String assignedToId,
+            Pageable pageable);
+
+    /**
+     * Filter kết hợp status + priority + assignee (Staff object) + keyword.
+     * Được gọi từ StaffServiceRequestService.filterRequests().
+     * Nếu tham số là null thì điều kiện đó bị bỏ qua.
+     */
+    @Query("SELECT s FROM ServiceRequest s WHERE " +
+            "(:status   IS NULL OR s.status      = :status)   AND " +
+            "(:priority IS NULL OR s.priority    = :priority) AND " +
+            "(:assignee IS NULL OR s.assignedTo  = :assignee) AND " +
+            "(:keyword  IS NULL OR " +
+            "   LOWER(s.title)               LIKE LOWER(CONCAT('%',:keyword,'%')) OR " +
+            "   LOWER(s.description)         LIKE LOWER(CONCAT('%',:keyword,'%')) OR " +
+            "   LOWER(s.resident.fullName)   LIKE LOWER(CONCAT('%',:keyword,'%'))) " +
+            "ORDER BY s.createdAt DESC")
+    Page<ServiceRequest> findWithFilters(
+            @Param("status")   ServiceRequest.RequestStatus status,
+            @Param("priority") ServiceRequest.Priority priority,
+            @Param("assignee") Staff assignee,
+            @Param("keyword")  String keyword,
             Pageable pageable);
 
     /** Thống kê theo status */

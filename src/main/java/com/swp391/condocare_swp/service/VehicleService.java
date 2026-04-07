@@ -93,16 +93,34 @@ public class VehicleService {
                 && vehicleRepo.existsByLicensePlate(licensePlate.trim().toUpperCase()))
             throw new RuntimeException("Biển số xe '" + licensePlate + "' đã được đăng ký trong hệ thống.");
 
+        // [FIX] valueOf() phải dùng toUpperCase() + try-catch để trả về message rõ ràng
+        //       thay vì để JVM throw "No enum constant ..." khó hiểu cho client.
+        Vehicle.VehicleType vehicleType;
+        try {
+            vehicleType = Vehicle.VehicleType.valueOf(type.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(
+                    "Loại xe không hợp lệ: '" + type + "'. Giá trị hợp lệ: MOTORBIKE, CAR, BICYCLE, ELECTRIC_BIKE, OTHER");
+        }
+
+        Vehicle.DurationType durType;
+        try {
+            durType = Vehicle.DurationType.valueOf(duration.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(
+                    "Loại thời hạn không hợp lệ: '" + duration + "'. Giá trị hợp lệ: MONTHLY, QUARTERLY, YEARLY");
+        }
+
         Vehicle v = new Vehicle();
         v.setId(generateVehicleId());
-        v.setType(Vehicle.VehicleType.valueOf(type));
+        v.setType(vehicleType);
         v.setLicensePlate(licensePlate != null ? licensePlate.trim().toUpperCase() : null);
         v.setBrand(brand);
         v.setModel(model);
         v.setColor(color);
         v.setResident(resident);
         v.setApartment(resident.getApartment());
-        v.setDurationType(Vehicle.DurationType.valueOf(duration));
+        v.setDurationType(durType);
         v.setPendingStatus(Vehicle.PendingStatus.PENDING);
         v.setStatus(Vehicle.VehicleStatus.ACTIVE);
 
@@ -134,17 +152,18 @@ public class VehicleService {
         Specification<Vehicle> spec = (root, query, cb) -> {
             List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
 
+            // [FIX] toUpperCase() để chịu được lowercase input từ frontend
             if (type != null && !type.isBlank())
                 predicates.add(cb.equal(root.get("type"),
-                        Vehicle.VehicleType.valueOf(type)));
+                        Vehicle.VehicleType.valueOf(type.toUpperCase())));
 
             if (pendingStatus != null && !pendingStatus.isBlank())
                 predicates.add(cb.equal(root.get("pendingStatus"),
-                        Vehicle.PendingStatus.valueOf(pendingStatus)));
+                        Vehicle.PendingStatus.valueOf(pendingStatus.toUpperCase())));
 
             if (status != null && !status.isBlank())
                 predicates.add(cb.equal(root.get("status"),
-                        Vehicle.VehicleStatus.valueOf(status)));
+                        Vehicle.VehicleStatus.valueOf(status.toUpperCase())));
 
             if (apartmentId != null && !apartmentId.isBlank())
                 predicates.add(cb.equal(root.get("apartment").get("id"), apartmentId));

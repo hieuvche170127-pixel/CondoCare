@@ -75,7 +75,8 @@ public class NotificationService {
         }
 
         if (type != null && !type.isBlank() && !type.equals("ALL")) {
-            Notification.NotificationType t = Notification.NotificationType.valueOf(type);
+            // [FIX] Dùng final variable để lambda có thể capture được (effectively final)
+            final Notification.NotificationType t = parseNotificationType(type);
             list = list.stream().filter(n -> n.getType() == t).toList();
         }
 
@@ -379,6 +380,15 @@ public class NotificationService {
     }
 
     // ─── PRIVATE HELPERS ──────────────────────────────────────────────────────
+
+    // [FIX] Tách parse logic ra method riêng → trả về final-compatible value
+    private Notification.NotificationType parseNotificationType(String type) {
+        try {
+            return Notification.NotificationType.valueOf(type.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return Notification.NotificationType.INFO; // fallback an toàn
+        }
+    }
 
     private Notification buildNotification(Map<String, String> body, Staff staff) {
         String title   = body.get("title");

@@ -169,10 +169,22 @@
                             <input type="text" id="rFormUsername" class="form-control" required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Mật khẩu <span class="text-danger">*</span></label>
+                            <label class="form-label fw-semibold">Mật khẩu</label>
                             <div class="input-group">
-                                <input type="password" id="rFormPassword" class="form-control" required>
-                                <button class="btn btn-outline-secondary" type="button" onclick="togglePwd('rFormPassword',this)"><i class="fas fa-eye"></i></button>
+                                <input type="password" id="rFormPassword" class="form-control"
+                                       placeholder="Để trống để tự sinh ngẫu nhiên">
+                                <button class="btn btn-outline-secondary" type="button"
+                                        onclick="togglePwd('rFormPassword',this)" title="Hiện/Ẩn">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn btn-outline-primary" type="button"
+                                        onclick="genResidentPassword()" title="Tự sinh mật khẩu">
+                                    <i class="fas fa-random"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle text-info me-1"></i>
+                                Để trống → hệ thống tự sinh và <strong>gửi email</strong> cho cư dân.
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -213,8 +225,15 @@
                             <input type="text" id="rFormIdNumber" class="form-control" maxlength="12" placeholder="12 chữ số">
                         </div>
                         <div class="col-md-12">
-                            <label class="form-label fw-semibold">Căn hộ <small class="text-muted">(ID, VD: APT001)</small></label>
-                            <input type="text" id="rFormApartment" class="form-control" placeholder="Để trống nếu chưa phân căn hộ">
+                            <label class="form-label fw-semibold">Căn hộ <small class="text-muted">(chỉ hiện căn hộ còn trống)</small></label>
+                            <select id="rFormApartment" class="form-select">
+                                <option value="">— Để trống nếu chưa phân căn hộ —</option>
+                                <!-- Tự động load từ API -->
+                            </select>
+                            <div class="form-text text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Danh sách căn hộ trạng thái <strong>EMPTY</strong> hoặc <strong>AVAILABLE</strong>
+                            </div>
                         </div>
                         <div class="col-12">
                             <div class="form-check">
@@ -452,7 +471,7 @@
                 badge.style.display = pendingCount > 0 ? '' : 'none';
             }
 
-            renderPagination(data, 'rPaginationContainer', `ResidentMgmt.loadList`);
+            renderPaginationR(data, 'rPaginationContainer', `ResidentMgmt.loadList`);
         } catch(e) {
             showMgmtAlert('rAlertContainer', 'Không thể tải danh sách: ' + e.message, 'danger');
         } finally { hideLoading(); }
@@ -738,6 +757,44 @@
         const hint  = document.getElementById('rResetPwdEmailHint');
         if (hint) hint.textContent = email ? `Email nhận: ${email}` : 'Chưa có email';
         document.getElementById('rResetPwdAlert').innerHTML = '';
+    });
+
+    // Tự sinh mật khẩu ngẫu nhiên 10 ký tự (giống staff)
+    function genResidentPassword() {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!';
+        let pwd = '';
+        for (let i = 0; i < 10; i++) pwd += chars[Math.floor(Math.random() * chars.length)];
+        const el = document.getElementById('rFormPassword');
+        el.value = pwd;
+        el.type = 'text';
+    }
+
+    // Load căn hộ EMPTY/AVAILABLE vào dropdown khi mở modal
+    async function loadEmptyApartments() {
+        const sel = document.getElementById('rFormApartment');
+        sel.innerHTML = '<option value="">— Để trống nếu chưa phân căn hộ —</option>';
+        try {
+            const res = await apiRequest(`${API_BASE_URL}/resident-management/apartment-list`);
+            if (!res.ok) return;
+            const apts = await res.json();
+            // Chỉ hiện căn hộ EMPTY hoặc AVAILABLE (còn chỗ)
+            apts
+              .filter(a => a.status === 'EMPTY' || a.status === 'AVAILABLE')
+              .forEach(a => {
+                const o = document.createElement('option');
+                o.value = a.id;
+                o.textContent = `${a.number} — ${a.buildingName} (${a.area} m²)`;
+                sel.appendChild(o);
+              });
+        } catch(e) { console.warn('Could not load apartments:', e.message); }
+    }
+
+    // Load căn hộ mỗi khi mở modal tạo cư dân
+    document.getElementById('rCreateModal').addEventListener('show.bs.modal', () => {
+        loadEmptyApartments();
+        // Reset password field về ẩn
+        const pwdEl = document.getElementById('rFormPassword');
+        if (pwdEl) { pwdEl.value = ''; pwdEl.type = 'password'; }
     });
 
     ResidentMgmt.init();
