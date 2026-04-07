@@ -1,390 +1,535 @@
 -- =============================================================
 -- SWP391 - Apartment Management System
--- SCRIPT DỮ LIỆU TEST ĐẦY ĐỦ — Phiên bản 3.0
--- Phí dịch vụ theo khung diện tích, nghị định QĐ 33/2025/QĐ-UBND
+-- SCRIPT DỮ LIỆU TEST ĐẦY ĐỦ
+-- Phiên bản: 2.1 — Đã sửa lỗi nhất quán với schema v3.0
+-- Thay đổi:
+--   [1] Staff: sửa `create_at` → `created_at`
+--   [2] IFD008,011,027,030: sửa amount = unit_amount × quantity
+--   [3] INV-2024-03-002/04-002: total_amount 1,070,000 → 970,000
+--   [4] INV-2024-03-003/04-003: total_amount 855,000   → 905,000
+--   [5] INV-2024-03-006/04-006: total_amount 1,410,000 → 2,160,000
+--   [6] PAY-UUID-002: 1,070,000 → 970,000
+--   [7] PAY-UUID-003: 855,000   → 905,000
+--   [8] PAY-UUID-004: 1,410,000 → 2,160,000
+--   [9] NTF003: nội dung "A203" → "A201"
 -- =============================================================
 
+ALTER TABLE `service_request`
+    MODIFY `completion_image` LONGTEXT DEFAULT NULL COMMENT 'URL hoặc base64 ảnh xác nhận hoàn thành';
+
 USE SWP391;
+select * from residents;
 SET FOREIGN_KEY_CHECKS = 0;
 
--- ─────────────────────────────────────────────────────────────
+-- =============================================================
+-- PHẦN 1: PHÂN QUYỀN & NHÂN SỰ
+-- =============================================================
+
+-- -----------------------------------------------------
 -- 1. Role
--- ─────────────────────────────────────────────────────────────
+-- -----------------------------------------------------
 INSERT INTO `Role` (`ID`, `name`, `description`) VALUES
                                                      ('R001', 'ADMIN',        'Quản trị hệ thống — toàn quyền'),
                                                      ('R002', 'MANAGER',      'Trưởng ban quản lý tòa nhà'),
-                                                     ('R003', 'ACCOUNTANT',   'Kế toán — chỉ xem hóa đơn, không tạo/xóa'),
-                                                     ('R004', 'TECHNICIAN',   'Kỹ thuật viên — xử lý yêu cầu được phân công'),
-                                                     ('R005', 'RECEPTIONIST', 'Lễ tân — tiếp nhận và phân công yêu cầu');
+                                                     ('R003', 'ACCOUNTANT',   'Kế toán — quản lý hóa đơn và thanh toán'),
+                                                     ('R004', 'TECHNICIAN',   'Kỹ thuật viên — xử lý yêu cầu sửa chữa'),
+                                                     ('R005', 'RECEPTIONIST', 'Lễ tân — tiếp nhận yêu cầu cư dân');
 
--- ─────────────────────────────────────────────────────────────
--- 2. Staff  (password = "Admin@123" cho tất cả)
--- ─────────────────────────────────────────────────────────────
-INSERT INTO `Staff` (`ID`, `username`, `password`, `full_name`, `email`, `phone`,
-                     `position`, `department`, `dob`, `gender`, `status`, `role_id`, `hired_at`) VALUES
-                                                                                                     ('ST001','admin.system',  '$2a$12$G6e4EaUmdIgS.pDzEm063ex3AlTeiwqNmEwOzfdgk06LnpIogrejC',
-                                                                                                      'Nguyễn Văn Khoa',  'admin@gmail.com',       '0901000001','Quản trị viên','IT',        '1985-03-15','M','ACTIVE',  'R001','2020-01-01 08:00:00'),
-                                                                                                     ('ST002','manager.toaA',  '$2a$12$G6e4EaUmdIgS.pDzEm063ex3AlTeiwqNmEwOzfdgk06LnpIogrejC',
-                                                                                                      'Trần Thị Lan',     'lan.tran@gmail.com',    '0901000002','Trưởng BQL Tòa A','Quản lý','1980-07-22','F','ACTIVE',  'R002','2020-02-01 08:00:00'),
-                                                                                                     ('ST003','manager.toaB',  '$2a$12$G6e4EaUmdIgS.pDzEm063ex3AlTeiwqNmEwOzfdgk06LnpIogrejC',
-                                                                                                      'Lê Văn Bình',      'binh.le@gmail.com',     '0901000003','Trưởng BQL Tòa B','Quản lý','1978-11-10','M','ACTIVE',  'R002','2020-02-01 08:00:00'),
-                                                                                                     ('ST004','ketoan.nguyen', '$2a$12$G6e4EaUmdIgS.pDzEm063ex3AlTeiwqNmEwOzfdgk06LnpIogrejC',
-                                                                                                      'Phạm Thị Hoa',     'hoa.pham@gmail.com',    '0901000004','Kế toán viên','Kế toán',   '1990-05-18','F','ACTIVE',  'R003','2021-01-15 08:00:00'),
-                                                                                                     ('ST005','kythuatvien01', '$2a$12$G6e4EaUmdIgS.pDzEm063ex3AlTeiwqNmEwOzfdgk06LnpIogrejC',
-                                                                                                      'Võ Văn Cường',     'cuong.vo@gmail.com',    '0901000005','KTV điện','Kỹ thuật',       '1992-09-30','M','ACTIVE',  'R004','2021-03-01 08:00:00'),
-                                                                                                     ('ST006','kythuatvien02', '$2a$12$G6e4EaUmdIgS.pDzEm063ex3AlTeiwqNmEwOzfdgk06LnpIogrejC',
-                                                                                                      'Đặng Thị Mỹ',      'my.dang@gmail.com',     '0901000006','KTV nước','Kỹ thuật',      '1993-02-14','F','ACTIVE',  'R004','2021-03-01 08:00:00'),
-                                                                                                     ('ST007','letan.toa',     '$2a$12$G6e4EaUmdIgS.pDzEm063ex3AlTeiwqNmEwOzfdgk06LnpIogrejC',
-                                                                                                      'Bùi Văn Lễ',       'le.bui@gmail.com',      '0901000007','Lễ tân','Tiếp đón',        '1995-06-20','M','ON_LEAVE','R005','2022-05-01 08:00:00'),
-                                                                                                     ('ST008','staff.resigned','$2a$12$G6e4EaUmdIgS.pDzEm063ex3AlTeiwqNmEwOzfdgk06LnpIogrejC',
-                                                                                                      'Hoàng Thị Xưa',    'xua.hoang@gmail.com',   '0901000008','Nhân viên cũ','Kế toán',   '1988-12-01','F','RESIGNED','R003','2019-01-01 08:00:00');
+SELECT 'Role: OK' AS test_result, COUNT(*) AS rows_inserted FROM `Role`;
 
--- ─────────────────────────────────────────────────────────────
+-- -----------------------------------------------------
+-- 2. Staff
+-- FIX [1]: đổi `create_at` → `created_at` cho đúng với schema
+-- -----------------------------------------------------
+INSERT INTO `Staff` (`ID`, `username`, `password`, `full_name`, `email`, `phone`, `position`, `department`, `dob`, `gender`, `status`, `role_id`, `hired_at`, `created_at`) VALUES
+                                                                                                                                                                                ('ST001', 'admin.system',   '$2a$12$G6e4EaUmdIgS.pDzEm063ex3AlTeiwqNmEwOzfdgk06LnpIogrejC', 'Nguyễn Văn Khoa',  'admin@gmail.com',      '0901000001', 'Quản trị viên',      'IT',       '1985-03-15', 'M', 'ACTIVE',   'R001', '2020-01-01 08:00:00', '2020-01-01 08:00:00'),
+                                                                                                                                                                                ('ST002', 'manager.toaA',   '$2a$12$G6e4EaUmdIgS.pDzEm063ex3AlTeiwqNmEwOzfdgk06LnpIogrejC', 'Trần Thị Lan',     'lan.tran@gmail.com',   '0901000002', 'Trưởng BQL Tòa A',   'Quản lý',  '1980-07-22', 'F', 'ACTIVE',   'R002', '2020-02-01 08:00:00', '2020-02-01 08:00:00'),
+                                                                                                                                                                                ('ST003', 'manager.toaB',   '$2a$12$G6e4EaUmdIgS.pDzEm063ex3AlTeiwqNmEwOzfdgk06LnpIogrejC', 'Lê Văn Bình',      'binh.le@gmail.com',    '0901000003', 'Trưởng BQL Tòa B',   'Quản lý',  '1978-11-10', 'M', 'ACTIVE',   'R002', '2020-02-01 08:00:00', '2020-02-01 08:00:00'),
+                                                                                                                                                                                ('ST004', 'ketoan.nguyen',  '$2a$12$G6e4EaUmdIgS.pDzEm063ex3AlTeiwqNmEwOzfdgk06LnpIogrejC', 'Phạm Thị Hoa',     'hoa.pham@gmail.com',   '0901000004', 'Kế toán viên',       'Kế toán',  '1990-05-18', 'F', 'ACTIVE',   'R003', '2021-01-15 08:00:00', '2021-01-15 08:00:00'),
+                                                                                                                                                                                ('ST005', 'kythuatvien01',  '$2a$12$G6e4EaUmdIgS.pDzEm063ex3AlTeiwqNmEwOzfdgk06LnpIogrejC', 'Võ Văn Cường',     'cuong.vo@gmail.com',   '0901000005', 'Kỹ thuật viên điện', 'Kỹ thuật', '1992-09-30', 'M', 'ACTIVE',   'R004', '2021-03-01 08:00:00', '2021-03-01 08:00:00'),
+                                                                                                                                                                                ('ST006', 'kythuatvien02',  '$2a$12$G6e4EaUmdIgS.pDzEm063ex3AlTeiwqNmEwOzfdgk06LnpIogrejC', 'Đặng Thị Mỹ',      'my.dang@gmail.com',    '0901000006', 'Kỹ thuật viên nước', 'Kỹ thuật', '1993-02-14', 'F', 'ACTIVE',   'R004', '2021-03-01 08:00:00', '2021-03-01 08:00:00'),
+                                                                                                                                                                                ('ST007', 'letan.toa',      '$2a$12$G6e4EaUmdIgS.pDzEm063ex3AlTeiwqNmEwOzfdgk06LnpIogrejC', 'Bùi Văn Lễ',       'le.bui@gmail.com',     '0901000007', 'Lễ tân',             'Tiếp đón', '1995-06-20', 'M', 'ON_LEAVE', 'R005', '2022-05-01 08:00:00', '2022-05-01 08:00:00'),
+                                                                                                                                                                                ('ST008', 'staff.resigned', '$2a$12$G6e4EaUmdIgS.pDzEm063ex3AlTeiwqNmEwOzfdgk06LnpIogrejC', 'Hoàng Thị Xưa',    'xua.hoang@gmail.com',  '0901000008', 'Nhân viên cũ',       'Kế toán',  '1988-12-01', 'F', 'RESIGNED', 'R003', '2019-01-01 08:00:00', '2019-01-01 08:00:00');
+
+SELECT 'Staff: OK' AS test_result, COUNT(*) AS rows_inserted FROM `Staff`;
+
+-- =============================================================
+-- PHẦN 2: TÒA NHÀ & CĂN HỘ
+-- =============================================================
+
+-- -----------------------------------------------------
 -- 3. Building
--- ─────────────────────────────────────────────────────────────
+-- -----------------------------------------------------
 INSERT INTO `Building` (`ID`, `name`, `address`, `total_floors`, `total_apartments`, `manager_id`) VALUES
-                                                                                                       ('BLD001','Tòa A - Sun City',    '123 Lê Văn Lương, Hà Nội', 25, 200, 'ST002'),
-                                                                                                       ('BLD002','Tòa B - Moon Tower',  '456 Nguyễn Trãi, Hà Nội',  30, 240, 'ST003'),
-                                                                                                       ('BLD003','Tòa C - Star Heights','789 Hoàng Quốc Việt, Hà Nội',20,160, 'ST002');
+                                                                                                       ('BLD001', 'Tòa A - Sun City',     '123 Lê Văn Lương, Hà Nội',       25, 200, 'ST002'),
+                                                                                                       ('BLD002', 'Tòa B - Moon Tower',   '456 Nguyễn Trãi, Hà Nội',        30, 240, 'ST003'),
+                                                                                                       ('BLD003', 'Tòa C - Star Heights', '789 Hoàng Quốc Việt, Hà Nội',    20, 160, 'ST002');
 
--- ─────────────────────────────────────────────────────────────
--- 4. Apartment  (diện tích đa dạng để test đủ 3 khung)
--- ─────────────────────────────────────────────────────────────
-INSERT INTO `Apartment` (`ID`,`number`,`floor`,`area`,`building_id`,`status`,`rental_status`,`description`,`total_residents`,`total_vehicles`) VALUES
+SELECT 'Building: OK' AS test_result, COUNT(*) AS rows_inserted FROM `Building`;
+
+-- -----------------------------------------------------
+-- 4. Apartment
+-- -----------------------------------------------------
+INSERT INTO `Apartment` (`ID`, `number`, `floor`, `area`, `building_id`, `status`, `rental_status`, `description`, `total_residents`, `total_vehicles`) VALUES
 -- Tòa A
-('APT001','A101',1, 45.00,'BLD001','OCCUPIED',   'RENTED',        'Studio ≤50m²',            2,1),
-('APT002','A102',1, 65.50,'BLD001','OCCUPIED',   'OWNER_OCCUPIED','Căn 2PN 51–100m²',         2,1),
-('APT003','A201',2, 72.00,'BLD001','OCCUPIED',   'RENTED',        'Căn 2PN 51–100m²',         1,1),
-('APT004','A202',2,120.00,'BLD001','OCCUPIED',   'OWNER_OCCUPIED','Căn penthouse >100m²',      3,2),
-('APT005','A301',3, 90.00,'BLD001','MAINTENANCE','AVAILABLE',     'Đang sửa chữa',             0,0),
+('APT001', 'A101', 1,  65.50, 'BLD001', 'OCCUPIED',    'RENTED',         'Căn 2PN view công viên', 3, 2),
+('APT002', 'A102', 1,  72.00, 'BLD001', 'OCCUPIED',    'OWNER_OCCUPIED', 'Căn 3PN góc tầng 1',     2, 1),
+('APT003', 'A201', 2,  65.50, 'BLD001', 'OCCUPIED',    'RENTED',         'Căn 2PN tầng 2',         1, 1),
+('APT004', 'A202', 2,  90.00, 'BLD001', 'MAINTENANCE', 'AVAILABLE',      'Đang sửa chữa',          0, 0),
+('APT005', 'A301', 3, 120.00, 'BLD001', 'EMPTY',       'AVAILABLE',      'Căn penthouse tầng 3',   0, 0),
 -- Tòa B
-('APT006','B101',1, 48.00,'BLD002','OCCUPIED',   'RENTED',        'Studio ≤50m²',             2,1),
-('APT007','B201',2, 75.00,'BLD002','OCCUPIED',   'OWNER_OCCUPIED','Căn 3PN 51–100m²',          4,2),
-('APT008','B301',3,110.00,'BLD002','EMPTY',      'AVAILABLE',     'Căn >100m² đang trống',    0,0),
+('APT006', 'B101', 1,  55.00, 'BLD002', 'OCCUPIED',    'RENTED',         'Căn 2PN tòa B',          2, 1),
+('APT007', 'B201', 2,  75.00, 'BLD002', 'OCCUPIED',    'OWNER_OCCUPIED', 'Căn 3PN tòa B',          4, 2),
+('APT008', 'B301', 3,  60.00, 'BLD002', 'EMPTY',       'AVAILABLE',      'Căn đang trống',         0, 0),
 -- Tòa C
-('APT009','C101',1, 85.00,'BLD003','OCCUPIED',   'RENTED',        'Căn 3PN 51–100m²',          3,2),
-('APT010','C201',2, 50.00,'BLD003','EMPTY',      'AVAILABLE',     'Căn đúng ngưỡng 50m²',     0,0);
+('APT009', 'C101', 1,  85.00, 'BLD003', 'OCCUPIED',    'RENTED',         'Căn 3PN tòa C',          3, 2),
+('APT010', 'C201', 2,  50.00, 'BLD003', 'EMPTY',       'AVAILABLE',      NULL,                     0, 0);
 
--- ─────────────────────────────────────────────────────────────
+SELECT 'Apartment: OK' AS test_result, COUNT(*) AS rows_inserted FROM `Apartment`;
+
+-- =============================================================
+-- PHẦN 3: CƯ DÂN
+-- =============================================================
+
+-- -----------------------------------------------------
 -- 5. Residents
--- ─────────────────────────────────────────────────────────────
-INSERT INTO `Residents` (`ID`,`username`,`password`,`full_name`,`type`,`dob`,`gender`,
-                         `id_number`,`phone`,`email`,`status`,`apartment_id`,`verified_by`,`verified_at`,`created_at`) VALUES
-                                                                                                                           ('RES001','nguyen.a', '$2a$12$VsH3AMnufjF0RHi3VaJKI.8dA.OWNzQwRWT/9eYw9AC3EzhMf8lbS',
-                                                                                                                            'Nguyễn Văn A','OWNER', '1985-04-10','M','001085004010','0912000001','a.nguyen@gmail.com',
-                                                                                                                            'ACTIVE','APT001','ST002','2023-01-10 09:00:00','2023-01-08 10:00:00'),
-                                                                                                                           ('RES002','tran.b',   '$2a$12$VsH3AMnufjF0RHi3VaJKI.8dA.OWNzQwRWT/9eYw9AC3EzhMf8lbS',
-                                                                                                                            'Trần Thị B',  'TENANT','1990-08-25','F','001090008025','0912000002','b.tran@gmail.com',
-                                                                                                                            'ACTIVE','APT001','ST002','2023-01-10 09:30:00','2023-01-09 08:30:00'),
-                                                                                                                           ('RES003','pham.d',   '$2a$12$VsH3AMnufjF0RHi3VaJKI.8dA.OWNzQwRWT/9eYw9AC3EzhMf8lbS',
-                                                                                                                            'Phạm Văn D',  'OWNER', '1978-03-30','M','001078003030','0912000003','d.pham@gmail.com',
-                                                                                                                            'ACTIVE','APT002','ST002','2023-02-01 09:00:00','2023-01-29 11:00:00'),
-                                                                                                                           ('RES004','vo.e',     '$2a$12$VsH3AMnufjF0RHi3VaJKI.8dA.OWNzQwRWT/9eYw9AC3EzhMf8lbS',
-                                                                                                                            'Võ Thị E',    'TENANT','1995-11-15','F','001095011015','0912000004','e.vo@gmail.com',
-                                                                                                                            'ACTIVE','APT002','ST002','2023-02-01 09:30:00','2023-01-30 09:00:00'),
-                                                                                                                           ('RES005','hoang.f',  '$2a$12$VsH3AMnufjF0RHi3VaJKI.8dA.OWNzQwRWT/9eYw9AC3EzhMf8lbS',
-                                                                                                                            'Hoàng Văn F', 'TENANT','1988-07-07','M','001088007007','0912000005','f.hoang@gmail.com',
-                                                                                                                            'ACTIVE','APT003','ST002','2023-03-15 09:00:00','2023-03-13 15:00:00'),
-                                                                                                                           ('RES006','le.g',     '$2a$12$VsH3AMnufjF0RHi3VaJKI.8dA.OWNzQwRWT/9eYw9AC3EzhMf8lbS',
-                                                                                                                            'Lê Văn G',    'OWNER', '1975-05-10','M','001075005010','0912000006','g.le@gmail.com',
-                                                                                                                            'ACTIVE','APT004','ST002','2023-04-01 09:00:00','2023-03-29 10:00:00'),
-                                                                                                                           ('RES007','dang.h',   '$2a$12$VsH3AMnufjF0RHi3VaJKI.8dA.OWNzQwRWT/9eYw9AC3EzhMf8lbS',
-                                                                                                                            'Đặng Thị H',  'OWNER', '1982-05-20','F','001082005020','0912000007','h.dang@gmail.com',
-                                                                                                                            'ACTIVE','APT006','ST003','2023-04-01 09:00:00','2023-03-29 10:00:00'),
-                                                                                                                           ('RES008','bui.i',    '$2a$12$VsH3AMnufjF0RHi3VaJKI.8dA.OWNzQwRWT/9eYw9AC3EzhMf8lbS',
-                                                                                                                            'Bùi Văn I',   'OWNER', '1975-09-12','M','001075009012','0912000008','i.bui@gmail.com',
-                                                                                                                            'ACTIVE','APT007','ST003','2022-12-01 09:00:00','2022-11-28 09:00:00'),
-                                                                                                                           ('RES009','ngo.j',    '$2a$12$VsH3AMnufjF0RHi3VaJKI.8dA.OWNzQwRWT/9eYw9AC3EzhMf8lbS',
-                                                                                                                            'Ngô Thị J',   'TENANT','1998-02-28','F','001098002028','0912000009','j.ngo@gmail.com',
-                                                                                                                            'ACTIVE','APT007','ST003','2022-12-01 09:30:00','2022-11-29 10:30:00'),
-                                                                                                                           ('RES010','ly.k',     '$2a$12$VsH3AMnufjF0RHi3VaJKI.8dA.OWNzQwRWT/9eYw9AC3EzhMf8lbS',
-                                                                                                                            'Lý Văn K',    'OWNER', '1980-06-15','M','001080006015','0912000010','k.ly@gmail.com',
-                                                                                                                            'ACTIVE','APT009','ST002','2023-05-01 09:00:00','2023-04-28 14:00:00'),
--- PENDING + INACTIVE
-                                                                                                                           ('RES011','pending.user','$2a$12$VsH3AMnufjF0RHi3VaJKI.8dA.OWNzQwRWT/9eYw9AC3EzhMf8lbS',
-                                                                                                                            'Trương Thị Mới','TENANT','1999-03-03','F','001099003003','0912000011','new.truong@gmail.com',
-                                                                                                                            'PENDING',NULL,NULL,NULL,'2024-04-10 08:00:00'),
-                                                                                                                           ('RES012','old.resident','$2a$12$VsH3AMnufjF0RHi3VaJKI.8dA.OWNzQwRWT/9eYw9AC3EzhMf8lbS',
-                                                                                                                            'Vương Văn Cũ','TENANT','1970-10-10','M','001070010010','0912000012','old.vuong@gmail.com',
-                                                                                                                            'INACTIVE',NULL,'ST002','2021-01-01 09:00:00','2020-12-28 11:00:00');
+-- -----------------------------------------------------
+INSERT INTO `Residents` (`ID`, `username`, `password`, `full_name`, `type`, `dob`, `gender`, `id_number`, `phone`, `email`, `status`, `apartment_id`, `verified_by`, `verified_at`, `created_at`) VALUES
+-- Cư dân đã ACTIVE trong APT001
+('RES001', 'nguyen.a',     '$2a$12$VsH3AMnufjF0RHi3VaJKI.8dA.OWNzQwRWT/9eYw9AC3EzhMf8lbS', 'Nguyễn Văn A',      'OWNER',  '1985-04-10', 'M', '001085004010', '0912000001', 'a.nguyen@gmail.com',   'ACTIVE',   'APT001', 'ST002', '2023-01-10 09:00:00', '2023-01-08 10:00:00'),
+('RES002', 'tran.b',       '$2a$12$VsH3AMnufjF0RHi3VaJKI.8dA.OWNzQwRWT/9eYw9AC3EzhMf8lbS', 'Trần Thị B',        'TENANT', '1990-08-25', 'F', '001090008025', '0912000002', 'b.tran@gmail.com',     'ACTIVE',   'APT001', 'ST002', '2023-01-10 09:30:00', '2023-01-09 08:30:00'),
+('RES003', 'le.c',         '$2a$12$VsH3AMnufjF0RHi3VaJKI.8dA.OWNzQwRWT/9eYw9AC3EzhMf8lbS', 'Lê Văn C (Khách)',  'GUEST',  '2000-12-01', 'M', NULL,           '0912000003', NULL,                   'ACTIVE',   'APT001', 'ST002', '2023-06-01 10:00:00', '2023-05-30 14:00:00'),
+-- Cư dân APT002
+('RES004', 'pham.d',       '$2a$12$VsH3AMnufjF0RHi3VaJKI.8dA.OWNzQwRWT/9eYw9AC3EzhMf8lbS', 'Phạm Văn D',        'OWNER',  '1978-03-30', 'M', '001078003030', '0912000004', 'd.pham@gmail.com',     'ACTIVE',   'APT002', 'ST002', '2023-02-01 09:00:00', '2023-01-29 11:00:00'),
+('RES005', 'vo.e',         '$2a$12$VsH3AMnufjF0RHi3VaJKI.8dA.OWNzQwRWT/9eYw9AC3EzhMf8lbS', 'Võ Thị E',          'TENANT', '1995-11-15', 'F', '001095011015', '0912000005', 'e.vo@gmail.com',       'ACTIVE',   'APT002', 'ST002', '2023-02-01 09:30:00', '2023-01-30 09:00:00'),
+-- Cư dân APT003
+('RES006', 'hoang.f',      '$2a$12$VsH3AMnufjF0RHi3VaJKI.8dA.OWNzQwRWT/9eYw9AC3EzhMf8lbS', 'Hoàng Văn F',       'TENANT', '1988-07-07', 'M', '001088007007', '0912000006', 'f.hoang@gmail.com',    'ACTIVE',   'APT003', 'ST002', '2023-03-15 09:00:00', '2023-03-13 15:00:00'),
+-- Cư dân APT006 (Tòa B)
+('RES007', 'dang.g',       '$2a$12$VsH3AMnufjF0RHi3VaJKI.8dA.OWNzQwRWT/9eYw9AC3EzhMf8lbS', 'Đặng Thị G',        'OWNER',  '1982-05-20', 'F', '001082005020', '0912000007', 'g.dang@gmail.com',     'ACTIVE',   'APT006', 'ST003', '2023-04-01 09:00:00', '2023-03-29 10:00:00'),
+('RES008', 'bui.h',        '$2a$12$VsH3AMnufjF0RHi3VaJKI.8dA.OWNzQwRWT/9eYw9AC3EzhMf8lbS', 'Bùi Văn H',         'TENANT', '1993-01-25', 'M', '001093001025', '0912000008', 'h.bui@gmail.com',      'ACTIVE',   'APT006', 'ST003', '2023-04-01 09:30:00', '2023-03-30 08:00:00'),
+-- Cư dân APT007 (Tòa B)
+('RES009', 'do.i',         '$2a$12$VsH3AMnufjF0RHi3VaJKI.8dA.OWNzQwRWT/9eYw9AC3EzhMf8lbS', 'Đỗ Văn I',          'OWNER',  '1975-09-12', 'M', '001075009012', '0912000009', 'i.do@gmail.com',       'ACTIVE',   'APT007', 'ST003', '2022-12-01 09:00:00', '2022-11-28 09:00:00'),
+('RES010', 'ngo.j',        '$2a$12$VsH3AMnufjF0RHi3VaJKI.8dA.OWNzQwRWT/9eYw9AC3EzhMf8lbS', 'Ngô Thị J',         'TENANT', '1998-02-28', 'F', '001098002028', '0912000010', 'j.ngo@gmail.com',      'ACTIVE',   'APT007', 'ST003', '2022-12-01 09:30:00', '2022-11-29 10:30:00'),
+-- Cư dân APT009 (Tòa C)
+('RES011', 'ly.k',         '$2a$12$VsH3AMnufjF0RHi3VaJKI.8dA.OWNzQwRWT/9eYw9AC3EzhMf8lbS', 'Lý Văn K',          'OWNER',  '1980-06-15', 'M', '001080006015', '0912000011', 'k.ly@gmail.com',       'ACTIVE',   'APT009', 'ST002', '2023-05-01 09:00:00', '2023-04-28 14:00:00'),
+-- Cư dân đang PENDING (chờ duyệt)
+('RES012', 'pending.user', '$2a$12$VsH3AMnufjF0RHi3VaJKI.8dA.OWNzQwRWT/9eYw9AC3EzhMf8lbS', 'Trương Thị Mới',    'TENANT', '1999-03-03', 'F', '001099003003', '0912000012', 'new.truong@gmail.com', 'PENDING',  NULL,     NULL,    NULL,                  '2024-04-10 08:00:00'),
+-- Cư dân INACTIVE (đã rời tòa)
+('RES013', 'old.resident', '$2a$12$VsH3AMnufjF0RHi3VaJKI.8dA.OWNzQwRWT/9eYw9AC3EzhMf8lbS', 'Vương Văn Cũ',      'TENANT', '1970-10-10', 'M', '001070010010', '0912000013', 'old.vuong@gmail.com',  'INACTIVE', NULL,     'ST002', '2021-01-01 09:00:00', '2020-12-28 11:00:00');
 
--- ─────────────────────────────────────────────────────────────
+SELECT 'Residents: OK' AS test_result, COUNT(*) AS rows_inserted FROM `Residents`;
+
+-- -----------------------------------------------------
 -- 6. access_cards
--- ─────────────────────────────────────────────────────────────
-INSERT INTO `access_cards` (`ID`,`card_number`,`resident_id`,`issued_by`,`issued_at`,`expired_at`,`status`) VALUES
-                                                                                                                ('AC001','CARD-2025-0001','RES001','ST007','2025-01-01 10:00:00','2027-01-01 23:59:59','ACTIVE'),
-                                                                                                                ('AC002','CARD-2025-0002','RES002','ST007','2025-01-01 10:15:00','2027-01-01 23:59:59','ACTIVE'),
-                                                                                                                ('AC003','CARD-2025-0003','RES003','ST007','2025-02-01 10:00:00','2027-02-01 23:59:59','ACTIVE'),
-                                                                                                                ('AC004','CARD-2025-0004','RES005','ST007','2025-03-15 10:00:00','2027-03-15 23:59:59','ACTIVE'),
-                                                                                                                ('AC005','CARD-2025-0005','RES007','ST007','2025-04-01 10:00:00','2027-04-01 23:59:59','ACTIVE'),
-                                                                                                                ('AC006','CARD-2025-0006','RES008','ST007','2025-01-01 10:00:00','2027-01-01 23:59:59','ACTIVE'),
-                                                                                                                ('AC007','CARD-2025-0007','RES010','ST007','2025-05-01 10:00:00','2027-05-01 23:59:59','ACTIVE'),
-                                                                                                                ('AC008','CARD-2024-OLD1','RES001','ST007','2023-01-01 10:00:00','2025-01-01 23:59:59','BLOCKED');
+-- -----------------------------------------------------
+INSERT INTO `access_cards` (`ID`, `card_number`, `resident_id`, `issued_by`, `issued_at`, `expired_at`, `status`) VALUES
+                                                                                                                      ('AC001', 'CARD-2024-0001', 'RES001', 'ST007', '2023-01-10 10:00:00', '2025-01-10 23:59:59', 'ACTIVE'),
+                                                                                                                      ('AC002', 'CARD-2024-0002', 'RES002', 'ST007', '2023-01-10 10:15:00', '2025-01-10 23:59:59', 'ACTIVE'),
+                                                                                                                      ('AC003', 'CARD-2024-0003', 'RES004', 'ST007', '2023-02-01 10:00:00', '2025-02-01 23:59:59', 'ACTIVE'),
+                                                                                                                      ('AC004', 'CARD-2024-0004', 'RES005', 'ST007', '2023-02-01 10:15:00', '2025-02-01 23:59:59', 'ACTIVE'),
+                                                                                                                      ('AC005', 'CARD-2024-0005', 'RES006', 'ST007', '2023-03-15 10:00:00', '2025-03-15 23:59:59', 'ACTIVE'),
+                                                                                                                      ('AC006', 'CARD-2024-0006', 'RES007', 'ST007', '2023-04-01 10:00:00', '2025-04-01 23:59:59', 'ACTIVE'),
+                                                                                                                      ('AC007', 'CARD-2024-0007', 'RES009', 'ST007', '2022-12-01 10:00:00', '2024-12-01 23:59:59', 'BLOCKED'), -- hết hạn / bị khóa
+                                                                                                                      ('AC008', 'CARD-2024-0008', 'RES011', 'ST007', '2023-05-01 10:00:00', '2025-05-01 23:59:59', 'ACTIVE'),
+                                                                                                                      ('AC009', 'CARD-2024-0009', 'RES001', 'ST007', '2023-06-01 11:00:00', '2025-06-01 23:59:59', 'LOST'),   -- mất thẻ
+                                                                                                                      ('AC010', 'CARD-2024-0010', 'RES010', 'ST007', '2022-12-01 10:30:00', '2025-12-01 23:59:59', 'ACTIVE');
 
--- ─────────────────────────────────────────────────────────────
+SELECT 'access_cards: OK' AS test_result, COUNT(*) AS rows_inserted FROM `access_cards`;
+
+-- -----------------------------------------------------
 -- 7. Vehicle
--- ─────────────────────────────────────────────────────────────
-INSERT INTO `Vehicle` (`ID`,`type`,`license_plate`,`brand`,`model`,`color`,
-                       `resident_id`,`apartment_id`,`duration_type`,`registered_at`,`expired_at`,
-                       `pending_status`,`approved_by`,`approved_at`,`status`) VALUES
-                                                                                  ('VH001','MOTORBIKE',   '29B1-12345','Honda',  'Wave Alpha','Đen',  'RES001','APT001','MONTHLY', '2025-05-01 00:00:00','2026-04-30 23:59:59','APPROVED','ST002','2025-05-01 09:00:00','ACTIVE'),
-                                                                                  ('VH002','MOTORBIKE',   '29B2-22222','Yamaha', 'Exciter',   'Đỏ',  'RES003','APT002','MONTHLY', '2025-05-01 00:00:00','2026-04-30 23:59:59','APPROVED','ST002','2025-05-01 09:00:00','ACTIVE'),
-                                                                                  ('VH003','CAR',         '29A-11111', 'Toyota', 'Fortuner',  'Trắng','RES003','APT002','YEARLY',  '2025-05-01 00:00:00','2026-04-30 23:59:59','APPROVED','ST002','2025-05-01 09:15:00','ACTIVE'),
-                                                                                  ('VH004','ELECTRIC_BIKE','29X2-99887','VinFast','Feliz S',  'Xanh', 'RES005','APT003','MONTHLY', '2025-05-01 00:00:00','2026-04-30 23:59:59','APPROVED','ST002','2025-05-01 10:00:00','ACTIVE'),
-                                                                                  ('VH005','CAR',         '29A-44444', 'Mazda',  'CX-5',      'Đen', 'RES006','APT004','YEARLY',  '2025-05-01 00:00:00','2026-04-30 23:59:59','APPROVED','ST002','2025-05-01 09:00:00','ACTIVE'),
-                                                                                  ('VH006','MOTORBIKE',   '29A-55555', 'Honda',  'SH',        'Bạc', 'RES006','APT004','MONTHLY', '2025-05-01 00:00:00','2026-04-30 23:59:59','APPROVED','ST002','2025-05-01 09:00:00','ACTIVE'),
-                                                                                  ('VH007','CAR',         '51A-66666', 'Honda',  'CR-V',      'Xám', 'RES007','APT006','YEARLY',  '2025-05-01 00:00:00','2026-04-30 23:59:59','APPROVED','ST003','2025-05-01 09:00:00','ACTIVE'),
-                                                                                  ('VH008','MOTORBIKE',   '29D4-77777','Suzuki', 'GSX',       'Đen', 'RES008','APT007','MONTHLY', '2025-05-01 00:00:00','2026-04-30 23:59:59','APPROVED','ST003','2025-05-01 09:00:00','ACTIVE'),
-                                                                                  ('VH009','CAR',         '29D5-88888','Mazda',  'CX-3',      'Trắng','RES008','APT007','YEARLY', '2025-05-01 00:00:00','2026-04-30 23:59:59','APPROVED','ST003','2025-05-01 09:15:00','ACTIVE'),
-                                                                                  ('VH010','BICYCLE',     NULL,        'Giant',  'ATX 810',   'Xanh','RES010','APT009','MONTHLY', '2025-05-01 00:00:00','2026-04-30 23:59:59','APPROVED','ST002','2025-05-01 10:00:00','ACTIVE'),
-                                                                                  ('VH011','CAR',         '43A-99999', 'VinFast','VF 8',      'Trắng','RES010','APT009','YEARLY', '2025-05-01 00:00:00','2026-04-30 23:59:59','APPROVED','ST002','2025-05-01 10:15:00','ACTIVE'),
-                                                                                  ('VH012','MOTORBIKE',   '29Z9-00001','Honda',  'Vision',    'Vàng','RES009','APT007','MONTHLY', NULL,NULL,'PENDING',NULL,NULL,'ACTIVE');
+-- -----------------------------------------------------
+INSERT INTO `Vehicle` (`ID`, `type`, `license_plate`, `brand`, `model`, `color`, `resident_id`, `apartment_id`, `duration_type`, `registered_at`, `expired_at`, `pending_status`, `approved_by`, `approved_at`, `status`) VALUES
+-- APT001 - Nguyễn Văn A (OWNER): 1 xe máy + 1 ô tô
+('VH001', 'MOTORBIKE',    '29B1-12345', 'Honda',   'Wave Alpha', 'Đen',   'RES001', 'APT001', 'MONTHLY',   '2024-01-01 00:00:00', '2024-12-31 23:59:59', 'APPROVED', 'ST002', '2024-01-01 09:00:00', 'ACTIVE'),
+('VH002', 'CAR',          '29A-11111',  'Toyota',  'Fortuner',   'Trắng', 'RES001', 'APT001', 'YEARLY',    '2024-01-01 00:00:00', '2024-12-31 23:59:59', 'APPROVED', 'ST002', '2024-01-01 09:15:00', 'ACTIVE'),
+-- APT001 - Trần Thị B (TENANT): 1 xe điện
+('VH003', 'ELECTRIC_BIKE','29X2-99887', 'VinFast', 'Feliz S',    'Xanh',  'RES002', 'APT001', 'MONTHLY',   '2024-01-15 00:00:00', '2024-12-31 23:59:59', 'APPROVED', 'ST002', '2024-01-15 10:00:00', 'ACTIVE'),
+-- APT002 - Phạm Văn D: 1 xe máy
+('VH004', 'MOTORBIKE',    '30B2-22222', 'Yamaha',  'Exciter',    'Đỏ',    'RES004', 'APT002', 'QUARTERLY', '2024-01-01 00:00:00', '2024-03-31 23:59:59', 'APPROVED', 'ST002', '2024-01-01 09:00:00', 'ACTIVE'),
+-- APT003 - Hoàng Văn F: 1 xe máy
+('VH005', 'MOTORBIKE',    '29C3-33333', 'Honda',   'SH',         'Bạc',   'RES006', 'APT003', 'MONTHLY',   '2024-02-01 00:00:00', '2024-12-31 23:59:59', 'APPROVED', 'ST002', '2024-02-01 10:00:00', 'ACTIVE'),
+-- APT006 - Tòa B: 1 ô tô
+('VH006', 'CAR',          '51A-44444',  'Honda',   'CR-V',       'Xám',   'RES007', 'APT006', 'YEARLY',    '2024-01-01 00:00:00', '2024-12-31 23:59:59', 'APPROVED', 'ST003', '2024-01-01 09:00:00', 'ACTIVE'),
+-- APT007 - Đỗ Văn I: 1 xe máy + 1 ô tô
+('VH007', 'MOTORBIKE',    '29D4-55555', 'Suzuki',  'GSX',        'Đen',   'RES009', 'APT007', 'MONTHLY',   '2024-01-01 00:00:00', '2024-12-31 23:59:59', 'APPROVED', 'ST003', '2024-01-01 09:00:00', 'ACTIVE'),
+('VH008', 'CAR',          '29D5-66666', 'Mazda',   'CX-5',       'Đỏ',    'RES009', 'APT007', 'YEARLY',    '2024-01-01 00:00:00', '2024-12-31 23:59:59', 'APPROVED', 'ST003', '2024-01-01 09:15:00', 'ACTIVE'),
+-- APT009 - Tòa C: 1 xe đạp + 1 ô tô
+('VH009', 'BICYCLE',      NULL,         'Giant',   'ATX 810',    'Xanh',  'RES011', 'APT009', 'MONTHLY',   '2024-03-01 00:00:00', '2024-12-31 23:59:59', 'APPROVED', 'ST002', '2024-03-01 10:00:00', 'ACTIVE'),
+('VH010', 'CAR',          '43A-77777',  'VinFast', 'VF 8',       'Trắng', 'RES011', 'APT009', 'YEARLY',    '2024-03-01 00:00:00', '2025-02-28 23:59:59', 'APPROVED', 'ST002', '2024-03-01 10:15:00', 'ACTIVE'),
+-- Xe PENDING — chờ duyệt
+('VH011', 'MOTORBIKE',    '29Z9-88888', 'Honda',   'Vision',     'Vàng',  'RES008', 'APT006', 'MONTHLY',   NULL,                  NULL,                  'PENDING',  NULL,    NULL,                  'ACTIVE'),
+-- Xe REJECTED — biển số vi phạm
+('VH012', 'MOTORBIKE',    '00X0-00000', 'Unknown', 'Unknown',    'Đen',   'RES010', 'APT007', 'MONTHLY',   NULL,                  NULL,                  'REJECTED', 'ST003', '2024-02-01 09:00:00', 'INACTIVE');
+
+UPDATE `Vehicle` SET `reject_reason` = 'Biển số không hợp lệ, yêu cầu cung cấp lại' WHERE `ID` = 'VH012';
+
+SELECT 'Vehicle: OK' AS test_result, COUNT(*) AS rows_inserted FROM `Vehicle`;
 
 -- =============================================================
--- 8. FeeTemplate — Khung phí theo diện tích, QĐ 33/2025/QĐ-UBND
---    Hiệu lực: 01/05/2025
---
---    Phí quản lý vận hành (PER_M2) — 3 khung diện tích:
---      ≤ 50 m²      : 8.500 đ/m²  (trong khung 1.200–16.500)
---      51 – 100 m²  : 7.000 đ/m²  (mức phổ biến nhất)
---      > 100 m²     : 5.500 đ/m²  (khuyến khích căn lớn)
---
---    Phí vệ sinh khu vực chung (PER_APT, FIXED) — không phân khung
---
---    Phí gửi xe (PARKING, FIXED) — không phân khung, theo loại xe:
---      Xe máy        : 100.000 đ/xe/tháng
---      Ô tô          : 1.200.000 đ/xe/tháng
---      Xe điện/máy điện: 100.000 đ/xe/tháng
---      Xe đạp        : 50.000 đ/xe/tháng
---
--- Cột min_area/max_area chỉ điền với phí PER_M2.
--- Phí PARKING và PER_APT để NULL cả hai cột.
+-- PHẦN 4: PHÍ DỊCH VỤ & HÓA ĐƠN
 -- =============================================================
 
--- ── TÒA A (BLD001) ──────────────────────────────────────────
+-- -----------------------------------------------------
+-- 8. FeeTemplate
+-- -----------------------------------------------------
+INSERT INTO `FeeTemplate` (`ID`, `building_id`, `name`, `type`, `amount`, `unit`, `min_area`, `max_area`, `effective_from`, `effective_to`, `status`, `created_by`) VALUES
+-- Tòa A
+('FT001', 'BLD001', 'Phí quản lý chung',          'SERVICE',    10000.00, 'PER_M2',  NULL, NULL, '2024-01-01', NULL,         'ACTIVE',   'ST002'),
+('FT002', 'BLD001', 'Phí gửi xe máy',              'PARKING',   200000.00, 'FIXED',   NULL, NULL, '2024-01-01', NULL,         'ACTIVE',   'ST002'),
+('FT003', 'BLD001', 'Phí gửi ô tô',               'PARKING',  1200000.00, 'FIXED',   NULL, NULL, '2024-01-01', NULL,         'ACTIVE',   'ST002'),
+('FT004', 'BLD001', 'Phí vệ sinh chung',           'SERVICE',    50000.00, 'PER_APT', NULL, NULL, '2024-01-01', NULL,         'ACTIVE',   'ST002'),
+('FT005', 'BLD001', 'Phí quản lý cũ (đã hết HH)', 'SERVICE',     8000.00, 'PER_M2',  NULL, NULL, '2023-01-01', '2023-12-31', 'INACTIVE', 'ST002'),
+-- Tòa B
+('FT006', 'BLD002', 'Phí quản lý chung',           'SERVICE',   12000.00, 'PER_M2',  NULL, NULL, '2024-01-01', NULL,         'ACTIVE',   'ST003'),
+('FT007', 'BLD002', 'Phí gửi xe máy',              'PARKING',   250000.00, 'FIXED',   NULL, NULL, '2024-01-01', NULL,         'ACTIVE',   'ST003'),
+('FT008', 'BLD002', 'Phí gửi ô tô',               'PARKING',  1500000.00, 'FIXED',   NULL, NULL, '2024-01-01', NULL,         'ACTIVE',   'ST003'),
+-- Tòa C
+('FT009', 'BLD003', 'Phí quản lý chung',           'SERVICE',   11000.00, 'PER_M2',  NULL, NULL, '2024-01-01', NULL,         'ACTIVE',   'ST002'),
+('FT010', 'BLD003', 'Phí gửi xe đạp/xe điện',     'PARKING',    80000.00, 'FIXED',   NULL, NULL, '2024-01-01', NULL,         'ACTIVE',   'ST002');
+
+SELECT 'FeeTemplate: OK' AS test_result, COUNT(*) AS rows_inserted FROM `FeeTemplate`;
+
+UPDATE `FeeTemplate`
+SET    `status` = 'INACTIVE',
+       `effective_to` = '2025-04-30'
+WHERE  `ID` IN ('FT001', 'FT006', 'FT009');
+
 INSERT INTO `FeeTemplate`
-(`ID`,`building_id`,`name`,`type`,`amount`,`unit`,`min_area`,`max_area`,`effective_from`,`effective_to`,`status`,`created_by`)
+(`ID`, `building_id`, `name`, `type`, `amount`, `unit`,
+ `min_area`, `max_area`, `effective_from`, `effective_to`, `status`, `created_by`)
 VALUES
--- Phí quản lý vận hành — 3 khung
-('FT001','BLD001','Phí QLVH ≤50m²',                'SERVICE', 8500.00,'PER_M2', NULL,  50.00,'2025-05-01',NULL,'ACTIVE','ST002'),
-('FT002','BLD001','Phí QLVH 51–100m²',             'SERVICE', 7000.00,'PER_M2',50.01,100.00,'2025-05-01',NULL,'ACTIVE','ST002'),
-('FT003','BLD001','Phí QLVH >100m²',               'SERVICE', 5500.00,'PER_M2',100.01, NULL,'2025-05-01',NULL,'ACTIVE','ST002'),
--- Phí vệ sinh (1 căn 1 mức, không phân khung)
-('FT004','BLD001','Phí vệ sinh khu vực chung',      'SERVICE',50000.00,'PER_APT',NULL,  NULL,'2025-05-01',NULL,'ACTIVE','ST002'),
--- Phí gửi xe
-('FT005','BLD001','Phí gửi xe máy',                'PARKING',100000.00,'FIXED', NULL,  NULL,'2025-05-01',NULL,'ACTIVE','ST002'),
-('FT006','BLD001','Phí gửi ô tô',                  'PARKING',1200000.00,'FIXED',NULL,  NULL,'2025-05-01',NULL,'ACTIVE','ST002'),
-('FT007','BLD001','Phí gửi xe điện/xe máy điện',   'PARKING',100000.00,'FIXED', NULL,  NULL,'2025-05-01',NULL,'ACTIVE','ST002'),
-('FT008','BLD001','Phí gửi xe đạp',                'PARKING', 50000.00,'FIXED', NULL,  NULL,'2025-05-01',NULL,'ACTIVE','ST002');
+-- Khung nhỏ: < 60 m²
+('FT011', 'BLD001',
+ 'Phí QLVH Tòa A — căn nhỏ (dưới 60 m²)',
+ 'SERVICE', 8000.00, 'PER_M2',
+ NULL, 60.00, '2025-05-01', NULL, 'ACTIVE', 'ST002'),
 
--- ── TÒA B (BLD002) ──────────────────────────────────────────
+-- Khung trung: 60 – 90 m²
+('FT012', 'BLD001',
+ 'Phí QLVH Tòa A — căn trung (60–90 m²)',
+ 'SERVICE', 10000.00, 'PER_M2',
+ 60.00, 90.00, '2025-05-01', NULL, 'ACTIVE', 'ST002'),
+
+-- Khung lớn: > 90 m²
+('FT013', 'BLD001',
+ 'Phí QLVH Tòa A — căn lớn (trên 90 m²)',
+ 'SERVICE', 12000.00, 'PER_M2',
+ 90.00, NULL, '2025-05-01', NULL, 'ACTIVE', 'ST002');
+
 INSERT INTO `FeeTemplate`
-(`ID`,`building_id`,`name`,`type`,`amount`,`unit`,`min_area`,`max_area`,`effective_from`,`effective_to`,`status`,`created_by`)
+(`ID`, `building_id`, `name`, `type`, `amount`, `unit`,
+ `min_area`, `max_area`, `effective_from`, `effective_to`, `status`, `created_by`)
 VALUES
-    ('FT009','BLD002','Phí QLVH ≤50m²',                'SERVICE', 8500.00,'PER_M2', NULL,  50.00,'2025-05-01',NULL,'ACTIVE','ST003'),
-    ('FT010','BLD002','Phí QLVH 51–100m²',             'SERVICE', 7000.00,'PER_M2',50.01,100.00,'2025-05-01',NULL,'ACTIVE','ST003'),
-    ('FT011','BLD002','Phí QLVH >100m²',               'SERVICE', 5500.00,'PER_M2',100.01, NULL,'2025-05-01',NULL,'ACTIVE','ST003'),
-    ('FT012','BLD002','Phí vệ sinh khu vực chung',      'SERVICE',50000.00,'PER_APT',NULL,  NULL,'2025-05-01',NULL,'ACTIVE','ST003'),
-    ('FT013','BLD002','Phí gửi xe máy',                'PARKING',100000.00,'FIXED', NULL,  NULL,'2025-05-01',NULL,'ACTIVE','ST003'),
-    ('FT014','BLD002','Phí gửi ô tô',                  'PARKING',1200000.00,'FIXED',NULL,  NULL,'2025-05-01',NULL,'ACTIVE','ST003'),
-    ('FT015','BLD002','Phí gửi xe điện/xe máy điện',   'PARKING',100000.00,'FIXED', NULL,  NULL,'2025-05-01',NULL,'ACTIVE','ST003'),
-    ('FT016','BLD002','Phí gửi xe đạp',                'PARKING', 50000.00,'FIXED', NULL,  NULL,'2025-05-01',NULL,'ACTIVE','ST003');
+-- Khung nhỏ: < 60 m²
+('FT014', 'BLD002',
+ 'Phí QLVH Tòa B — căn nhỏ (dưới 60 m²)',
+ 'SERVICE', 10000.00, 'PER_M2',
+ NULL, 60.00, '2025-05-01', NULL, 'ACTIVE', 'ST003'),
 
--- ── TÒA C (BLD003) ──────────────────────────────────────────
+-- Khung trung: 60 – 90 m²
+('FT015', 'BLD002',
+ 'Phí QLVH Tòa B — căn trung (60–90 m²)',
+ 'SERVICE', 12000.00, 'PER_M2',
+ 60.00, 90.00, '2025-05-01', NULL, 'ACTIVE', 'ST003'),
+
+-- Khung lớn: > 90 m²
+('FT016', 'BLD002',
+ 'Phí QLVH Tòa B — căn lớn (trên 90 m²)',
+ 'SERVICE', 14000.00, 'PER_M2',
+ 90.00, NULL, '2025-05-01', NULL, 'ACTIVE', 'ST003');
+
 INSERT INTO `FeeTemplate`
-(`ID`,`building_id`,`name`,`type`,`amount`,`unit`,`min_area`,`max_area`,`effective_from`,`effective_to`,`status`,`created_by`)
+(`ID`, `building_id`, `name`, `type`, `amount`, `unit`,
+ `min_area`, `max_area`, `effective_from`, `effective_to`, `status`, `created_by`)
 VALUES
-    ('FT017','BLD003','Phí QLVH ≤50m²',                'SERVICE', 8500.00,'PER_M2', NULL,  50.00,'2025-05-01',NULL,'ACTIVE','ST002'),
-    ('FT018','BLD003','Phí QLVH 51–100m²',             'SERVICE', 7000.00,'PER_M2',50.01,100.00,'2025-05-01',NULL,'ACTIVE','ST002'),
-    ('FT019','BLD003','Phí QLVH >100m²',               'SERVICE', 5500.00,'PER_M2',100.01, NULL,'2025-05-01',NULL,'ACTIVE','ST002'),
-    ('FT020','BLD003','Phí vệ sinh khu vực chung',      'SERVICE',50000.00,'PER_APT',NULL,  NULL,'2025-05-01',NULL,'ACTIVE','ST002'),
-    ('FT021','BLD003','Phí gửi xe máy',                'PARKING',100000.00,'FIXED', NULL,  NULL,'2025-05-01',NULL,'ACTIVE','ST002'),
-    ('FT022','BLD003','Phí gửi ô tô',                  'PARKING',1200000.00,'FIXED',NULL,  NULL,'2025-05-01',NULL,'ACTIVE','ST002'),
-    ('FT023','BLD003','Phí gửi xe điện/xe máy điện',   'PARKING',100000.00,'FIXED', NULL,  NULL,'2025-05-01',NULL,'ACTIVE','ST002'),
-    ('FT024','BLD003','Phí gửi xe đạp',                'PARKING', 50000.00,'FIXED', NULL,  NULL,'2025-05-01',NULL,'ACTIVE','ST002');
+-- Khung nhỏ: < 60 m²
+('FT017', 'BLD003',
+ 'Phí QLVH Tòa C — căn nhỏ (dưới 60 m²)',
+ 'SERVICE', 9000.00, 'PER_M2',
+ NULL, 60.00, '2025-05-01', NULL, 'ACTIVE', 'ST002'),
 
--- =============================================================
--- 9. Invoice — Tháng 5–6/2025 (sau khi nghị định có hiệu lực)
+-- Khung trung: 60 – 90 m²
+('FT018', 'BLD003',
+ 'Phí QLVH Tòa C — căn trung (60–90 m²)',
+ 'SERVICE', 11000.00, 'PER_M2',
+ 60.00, 90.00, '2025-05-01', NULL, 'ACTIVE', 'ST002'),
+
+-- Khung lớn: > 90 m²
+('FT019', 'BLD003',
+ 'Phí QLVH Tòa C — căn lớn (trên 90 m²)',
+ 'SERVICE', 13000.00, 'PER_M2',
+ 90.00, NULL, '2025-05-01', NULL, 'ACTIVE', 'ST002');
+
+-- -----------------------------------------------------
+-- 9. Invoice — Hóa đơn
 --
--- Kiểm tra đúng logic phân khung:
---   APT001 (45m²  ≤50)  → 8.500 × 45  = 382.500  + vs + 50.000  = 432.500  + 100.000xe máy = 532.500
---   APT002 (65.5m² 51–100)→7.000 × 65.5= 458.500  + 50.000      = 508.500  + 100.000 + 1.200.000 = 1.808.500
---   APT003 (72m²  51–100)→7.000 × 72  = 504.000  + 50.000      = 554.000  + 100.000xe điện = 654.000
---   APT004 (120m² >100) → 5.500 × 120 = 660.000  + 50.000      = 710.000  + 1.200.000 + 100.000 = 2.010.000
---   APT006 (48m²  ≤50)  → 8.500 × 48  = 408.000  + 50.000      = 458.000  + 1.200.000 = 1.658.000
---   APT007 (75m²  51–100)→7.000 × 75  = 525.000  + 50.000      = 575.000  + 100.000 + 1.200.000 = 1.875.000
---   APT009 (85m²  51–100)→7.000 × 85  = 595.000  + 50.000      = 645.000  + 50.000 + 1.200.000 = 1.895.000
--- =============================================================
-INSERT INTO `Invoice` (`ID`,`apartment_id`,`month`,`year`,`total_amount`,`status`,`issued_at`,`due_date`,`paid_at`,`created_by`) VALUES
--- Tháng 5/2025
-('INV202505001','APT001',5,2025,  532500.00,'PAID',   '2025-05-01 08:00:00','2025-05-15','2025-05-10 14:00:00','ST004'),
-('INV202505002','APT002',5,2025,1808500.00,'PAID',   '2025-05-01 08:00:00','2025-05-15','2025-05-12 09:00:00','ST004'),
-('INV202505003','APT003',5,2025,  654000.00,'PAID',   '2025-05-01 08:00:00','2025-05-15','2025-05-08 11:00:00','ST004'),
-('INV202505004','APT004',5,2025,2010000.00,'PAID',   '2025-05-01 08:00:00','2025-05-15','2025-05-14 10:00:00','ST004'),
-('INV202505006','APT006',5,2025,1658000.00,'PAID',   '2025-05-01 08:00:00','2025-05-15','2025-05-13 16:00:00','ST004'),
-('INV202505007','APT007',5,2025,1875000.00,'PAID',   '2025-05-01 08:00:00','2025-05-15','2025-05-09 10:00:00','ST004'),
-('INV202505009','APT009',5,2025,1895000.00,'PAID',   '2025-05-01 08:00:00','2025-05-15','2025-05-11 15:00:00','ST004'),
--- Tháng 6/2025 — mix trạng thái
-('INV202506001','APT001',6,2025,  532500.00,'PAID',   '2025-06-01 08:00:00','2025-06-15','2025-06-13 10:00:00','ST004'),
-('INV202506002','APT002',6,2025,1808500.00,'UNPAID',  '2025-06-01 08:00:00','2025-06-15', NULL,                'ST004'),
-('INV202506003','APT003',6,2025,  654000.00,'OVERDUE','2025-06-01 08:00:00','2025-06-15', NULL,                'ST004'),
-('INV202506006','APT006',6,2025,1658000.00,'UNPAID',  '2025-06-01 08:00:00','2025-06-15', NULL,                'ST004');
+-- Kiểm tra tính toán tổng tiền (tổng invoice_fee_detail):
+--   APT001 (65.5m², 1 xe máy FT002 + 1 xe điện FT002 + 1 ô tô FT003):
+--       10000×65.5 + 50000 + 200000 + 200000 + 1200000 = 2,305,000 ✓
+--
+--   APT002 (72m², 1 xe máy FT002):              [FIX 3]
+--       10000×72 + 50000 + 200000              = 970,000
+--
+--   APT003 (65.5m², 1 xe máy FT002):            [FIX 4]
+--       10000×65.5 + 50000 + 200000            = 905,000
+--
+--   APT006 (55m², 1 ô tô FT008):                [FIX 5]
+--       12000×55 + 1500000                     = 2,160,000
+--
+--   APT007 (75m², 1 xe máy FT007 + 1 ô tô FT008):
+--       12000×75 + 250000 + 1500000            = 2,650,000 ✓
+--
+--   APT009 (85m², 1 xe đạp FT010 + 1 ô tô NULL):
+--       11000×85 + 80000 + 1170000             = 2,185,000 ✓
+-- -----------------------------------------------------
+INSERT INTO `Invoice` (`ID`, `apartment_id`, `month`, `year`, `total_amount`, `status`, `issued_at`, `due_date`, `paid_at`, `created_by`) VALUES
+-- Tháng 3/2024
+('INV-2024-03-001', 'APT001', 3, 2024, 2305000.00, 'PAID',    '2024-03-01 08:00:00', '2024-03-15', '2024-03-10 14:30:00', 'ST004'),
+('INV-2024-03-002', 'APT002', 3, 2024,  970000.00, 'PAID',    '2024-03-01 08:00:00', '2024-03-15', '2024-03-12 09:15:00', 'ST004'), -- FIX [3]
+('INV-2024-03-003', 'APT003', 3, 2024,  905000.00, 'PAID',    '2024-03-01 08:00:00', '2024-03-15', '2024-03-08 11:00:00', 'ST004'), -- FIX [4]
+('INV-2024-03-006', 'APT006', 3, 2024, 2160000.00, 'PAID',    '2024-03-01 08:00:00', '2024-03-15', '2024-03-14 16:00:00', 'ST004'), -- FIX [5]
+('INV-2024-03-007', 'APT007', 3, 2024, 2650000.00, 'PAID',    '2024-03-01 08:00:00', '2024-03-15', '2024-03-09 10:00:00', 'ST004'),
+('INV-2024-03-009', 'APT009', 3, 2024, 2185000.00, 'PAID',    '2024-03-01 08:00:00', '2024-03-15', '2024-03-11 15:00:00', 'ST004'),
+-- Tháng 4/2024 - Mix trạng thái
+('INV-2024-04-001', 'APT001', 4, 2024, 2305000.00, 'PAID',    '2024-04-01 08:00:00', '2024-04-15', '2024-04-13 10:00:00', 'ST004'),
+('INV-2024-04-002', 'APT002', 4, 2024,  970000.00, 'UNPAID',  '2024-04-01 08:00:00', '2024-04-15', NULL,                  'ST004'), -- FIX [3]
+('INV-2024-04-003', 'APT003', 4, 2024,  905000.00, 'OVERDUE', '2024-04-01 08:00:00', '2024-04-15', NULL,                  'ST004'), -- FIX [4]
+('INV-2024-04-006', 'APT006', 4, 2024, 2160000.00, 'UNPAID',  '2024-04-01 08:00:00', '2024-04-15', NULL,                  'ST004'); -- FIX [5]
 
--- ─────────────────────────────────────────────────────────────
--- 10. invoice_fee_detail (snapshot tại thời điểm phát hành)
--- ─────────────────────────────────────────────────────────────
-INSERT INTO `invoice_fee_detail`
-(`ID`,`invoice_id`,`fee_template_id`,`fee_name`,`fee_type`,`unit_amount`,`quantity`,`amount`)
+SELECT 'Invoice: OK' AS test_result, COUNT(*) AS rows_inserted FROM `Invoice`;
+
+-- -----------------------------------------------------
+-- 10. invoice_fee_detail
+--
+-- Quy tắc: amount = unit_amount × quantity (bắt buộc nhất quán)
+-- FIX [2]:
+--   IFD008 (APT002 xe máy): 200,000 × 1 = 200,000  (cũ: 300,000)
+--   IFD011 (APT003 xe máy): 200,000 × 1 = 200,000  (cũ: 150,000)
+--   IFD027 (APT002 xe máy, tháng 4): 200,000 × 1 = 200,000 (cũ: 300,000)
+--   IFD030 (APT003 xe máy, tháng 4): 200,000 × 1 = 200,000 (cũ: 150,000)
+-- -----------------------------------------------------
+INSERT INTO `invoice_fee_detail` (`ID`, `invoice_id`, `fee_template_id`, `fee_name`, `fee_type`, `unit_amount`, `quantity`, `amount`) VALUES
+
+-- INV-2024-03-001 (APT001, 65.5m², 1 xe máy + 1 xe điện + 1 ô tô)
+('IFD001', 'INV-2024-03-001', 'FT001', 'Phí quản lý chung', 'SERVICE',  10000.00, 65.50,  655000.00),
+('IFD002', 'INV-2024-03-001', 'FT004', 'Phí vệ sinh chung', 'SERVICE',  50000.00,  1.00,   50000.00),
+('IFD003', 'INV-2024-03-001', 'FT002', 'Phí gửi xe máy',    'PARKING', 200000.00,  1.00,  200000.00),
+('IFD004', 'INV-2024-03-001', 'FT003', 'Phí gửi ô tô',      'PARKING',1200000.00, 1.00, 1200000.00),
+('IFD005', 'INV-2024-03-001', 'FT002', 'Phí gửi xe điện',   'PARKING', 200000.00,  1.00,  200000.00),
+
+-- INV-2024-03-002 (APT002, 72m², 1 xe máy)
+('IFD006', 'INV-2024-03-002', 'FT001', 'Phí quản lý chung', 'SERVICE',  10000.00, 72.00,  720000.00),
+('IFD007', 'INV-2024-03-002', 'FT004', 'Phí vệ sinh chung', 'SERVICE',  50000.00,  1.00,   50000.00),
+('IFD008', 'INV-2024-03-002', 'FT002', 'Phí gửi xe máy',    'PARKING', 200000.00,  1.00,  200000.00), -- FIX [2]
+
+-- INV-2024-03-003 (APT003, 65.5m², 1 xe máy)
+('IFD009', 'INV-2024-03-003', 'FT001', 'Phí quản lý chung', 'SERVICE',  10000.00, 65.50,  655000.00),
+('IFD010', 'INV-2024-03-003', 'FT004', 'Phí vệ sinh chung', 'SERVICE',  50000.00,  1.00,   50000.00),
+('IFD011', 'INV-2024-03-003', 'FT002', 'Phí gửi xe máy',    'PARKING', 200000.00,  1.00,  200000.00), -- FIX [2]
+
+-- INV-2024-03-006 (APT006, 55m², 1 ô tô — VH011 còn PENDING nên không tính)
+('IFD012', 'INV-2024-03-006', 'FT006', 'Phí quản lý chung', 'SERVICE',  12000.00, 55.00,  660000.00),
+('IFD013', 'INV-2024-03-006', 'FT008', 'Phí gửi ô tô',      'PARKING',1500000.00, 1.00, 1500000.00),
+
+-- INV-2024-03-007 (APT007, 75m², 1 xe máy + 1 ô tô)
+('IFD014', 'INV-2024-03-007', 'FT006', 'Phí quản lý chung', 'SERVICE',  12000.00, 75.00,  900000.00),
+('IFD015', 'INV-2024-03-007', 'FT007', 'Phí gửi xe máy',    'PARKING',  250000.00, 1.00,  250000.00),
+('IFD016', 'INV-2024-03-007', 'FT008', 'Phí gửi ô tô',      'PARKING',1500000.00, 1.00, 1500000.00),
+
+-- INV-2024-03-009 (APT009, 85m², 1 xe đạp + 1 ô tô VinFast — không có template car cho Tòa C)
+('IFD017', 'INV-2024-03-009', 'FT009', 'Phí quản lý chung',    'SERVICE', 11000.00, 85.00,  935000.00),
+('IFD018', 'INV-2024-03-009', 'FT010', 'Phí gửi xe đạp/điện',  'PARKING',  80000.00,  1.00,   80000.00),
+('IFD019', 'INV-2024-03-009', NULL,    'Phí gửi ô tô VinFast',  'PARKING',1170000.00, 1.00, 1170000.00), -- test edge case: fee_template_id NULL
+
+-- INV-2024-04-001 (APT001 tháng 4 — cùng cấu trúc tháng 3)
+('IFD020', 'INV-2024-04-001', 'FT001', 'Phí quản lý chung', 'SERVICE',  10000.00, 65.50,  655000.00),
+('IFD021', 'INV-2024-04-001', 'FT004', 'Phí vệ sinh chung', 'SERVICE',  50000.00,  1.00,   50000.00),
+('IFD022', 'INV-2024-04-001', 'FT002', 'Phí gửi xe máy',    'PARKING', 200000.00,  1.00,  200000.00),
+('IFD023', 'INV-2024-04-001', 'FT003', 'Phí gửi ô tô',      'PARKING',1200000.00, 1.00, 1200000.00),
+('IFD024', 'INV-2024-04-001', 'FT002', 'Phí gửi xe điện',   'PARKING', 200000.00,  1.00,  200000.00),
+
+-- INV-2024-04-002 (APT002 — UNPAID)
+('IFD025', 'INV-2024-04-002', 'FT001', 'Phí quản lý chung', 'SERVICE',  10000.00, 72.00,  720000.00),
+('IFD026', 'INV-2024-04-002', 'FT004', 'Phí vệ sinh chung', 'SERVICE',  50000.00,  1.00,   50000.00),
+('IFD027', 'INV-2024-04-002', 'FT002', 'Phí gửi xe máy',    'PARKING', 200000.00,  1.00,  200000.00), -- FIX [2]
+
+-- INV-2024-04-003 (APT003 — OVERDUE)
+('IFD028', 'INV-2024-04-003', 'FT001', 'Phí quản lý chung', 'SERVICE',  10000.00, 65.50,  655000.00),
+('IFD029', 'INV-2024-04-003', 'FT004', 'Phí vệ sinh chung', 'SERVICE',  50000.00,  1.00,   50000.00),
+('IFD030', 'INV-2024-04-003', 'FT002', 'Phí gửi xe máy',    'PARKING', 200000.00,  1.00,  200000.00), -- FIX [2]
+
+-- INV-2024-04-006 (APT006 — UNPAID)
+('IFD031', 'INV-2024-04-006', 'FT006', 'Phí quản lý chung', 'SERVICE',  12000.00, 55.00,  660000.00),
+('IFD032', 'INV-2024-04-006', 'FT008', 'Phí gửi ô tô',      'PARKING',1500000.00, 1.00, 1500000.00);
+
+SELECT 'invoice_fee_detail: OK' AS test_result, COUNT(*) AS rows_inserted FROM `invoice_fee_detail`;
+
+INSERT INTO `Invoice` (`ID`,`apartment_id`,`month`,`year`,`total_amount`,`status`,`issued_at`,`due_date`,`paid_at`,`created_by`)
+VALUES ('INV-2025-05-006','APT006',5,2025,2050000.00,'UNPAID','2025-05-01 08:00:00','2025-05-15',NULL,'ST004');
+
+INSERT INTO `invoice_fee_detail` (`ID`,`invoice_id`,`fee_template_id`,`fee_name`,`fee_type`,`unit_amount`,`quantity`,`amount`)
 VALUES
--- INV202505001: APT001 45m² ≤50 → FT001 + FT004 + FT005(xe máy)
-('IFD001','INV202505001','FT001','Phí QLVH ≤50m²',             'SERVICE', 8500.00, 45.00,  382500.00),
-('IFD002','INV202505001','FT004','Phí vệ sinh khu vực chung',   'SERVICE',50000.00,  1.00,   50000.00),
-('IFD003','INV202505001','FT005','Phí gửi xe máy',             'PARKING',100000.00, 1.00,  100000.00),
+    ('IFD033','INV-2025-05-006','FT014','Phí QLVH Tòa B — căn nhỏ (dưới 60 m²)','SERVICE',10000.00,55.00,550000.00),
+    ('IFD034','INV-2025-05-006','FT008','Phí gửi ô tô','PARKING',1500000.00,1.00,1500000.00);
 
--- INV202505002: APT002 65.5m² → FT002 + FT004 + FT005 + FT006(ô tô)
-('IFD004','INV202505002','FT002','Phí QLVH 51–100m²',          'SERVICE', 7000.00, 65.50,  458500.00),
-('IFD005','INV202505002','FT004','Phí vệ sinh khu vực chung',   'SERVICE',50000.00,  1.00,   50000.00),
-('IFD006','INV202505002','FT005','Phí gửi xe máy',             'PARKING',100000.00, 1.00,  100000.00),
-('IFD007','INV202505002','FT006','Phí gửi ô tô',               'PARKING',1200000.00,1.00, 1200000.00),
+-- APT007 (75m²) → FT015 (khung trung BLD002, 12.000 đ/m²)
+--   Tổng: 12000×75 + 250000(xe máy FT007) + 1500000(ô tô FT008) = 2.650.000
+INSERT INTO `Invoice` (`ID`,`apartment_id`,`month`,`year`,`total_amount`,`status`,`issued_at`,`due_date`,`paid_at`,`created_by`)
+VALUES ('INV-2025-05-007','APT007',5,2025,2650000.00,'UNPAID','2025-05-01 08:00:00','2025-05-15',NULL,'ST004');
 
--- INV202505003: APT003 72m² → FT002 + FT004 + FT007(xe điện)
-('IFD008','INV202505003','FT002','Phí QLVH 51–100m²',          'SERVICE', 7000.00, 72.00,  504000.00),
-('IFD009','INV202505003','FT004','Phí vệ sinh khu vực chung',   'SERVICE',50000.00,  1.00,   50000.00),
-('IFD010','INV202505003','FT007','Phí gửi xe điện/xe máy điện','PARKING',100000.00, 1.00,  100000.00),
+INSERT INTO `invoice_fee_detail` (`ID`,`invoice_id`,`fee_template_id`,`fee_name`,`fee_type`,`unit_amount`,`quantity`,`amount`)
+VALUES
+    ('IFD035','INV-2025-05-007','FT015','Phí QLVH Tòa B — căn trung (60–90 m²)','SERVICE',12000.00,75.00,900000.00),
+    ('IFD036','INV-2025-05-007','FT007','Phí gửi xe máy','PARKING',250000.00,1.00,250000.00),
+    ('IFD037','INV-2025-05-007','FT008','Phí gửi ô tô','PARKING',1500000.00,1.00,1500000.00);
 
--- INV202505004: APT004 120m² → FT003 + FT004 + FT006(ô tô) + FT005(xe máy)
-('IFD011','INV202505004','FT003','Phí QLVH >100m²',            'SERVICE', 5500.00,120.00,  660000.00),
-('IFD012','INV202505004','FT004','Phí vệ sinh khu vực chung',   'SERVICE',50000.00,  1.00,   50000.00),
-('IFD013','INV202505004','FT006','Phí gửi ô tô',               'PARKING',1200000.00,1.00, 1200000.00),
-('IFD014','INV202505004','FT005','Phí gửi xe máy',             'PARKING',100000.00, 1.00,  100000.00),
+-- APT001 (65.5m²) → FT012 (khung trung BLD001, 10.000 đ/m²)
+--   Tổng: 10000×65.5 + 50000(vệ sinh FT004) + 200000(xe máy FT002) + 1200000(ô tô FT003) + 200000(xe điện FT002) = 2.305.000
+INSERT INTO `Invoice` (`ID`,`apartment_id`,`month`,`year`,`total_amount`,`status`,`issued_at`,`due_date`,`paid_at`,`created_by`)
+VALUES ('INV-2025-05-001','APT001',5,2025,2305000.00,'UNPAID','2025-05-01 08:00:00','2025-05-15',NULL,'ST004');
 
--- INV202505006: APT006 48m² → FT009 + FT012 + FT014(ô tô)
-('IFD015','INV202505006','FT009','Phí QLVH ≤50m²',             'SERVICE', 8500.00, 48.00,  408000.00),
-('IFD016','INV202505006','FT012','Phí vệ sinh khu vực chung',   'SERVICE',50000.00,  1.00,   50000.00),
-('IFD017','INV202505006','FT014','Phí gửi ô tô',               'PARKING',1200000.00,1.00, 1200000.00),
+INSERT INTO `invoice_fee_detail` (`ID`,`invoice_id`,`fee_template_id`,`fee_name`,`fee_type`,`unit_amount`,`quantity`,`amount`)
+VALUES
+    ('IFD038','INV-2025-05-001','FT012','Phí QLVH Tòa A — căn trung (60–90 m²)','SERVICE',10000.00,65.50,655000.00),
+    ('IFD039','INV-2025-05-001','FT004','Phí vệ sinh chung','SERVICE',50000.00,1.00,50000.00),
+    ('IFD040','INV-2025-05-001','FT002','Phí gửi xe máy','PARKING',200000.00,1.00,200000.00),
+    ('IFD041','INV-2025-05-001','FT003','Phí gửi ô tô','PARKING',1200000.00,1.00,1200000.00),
+    ('IFD042','INV-2025-05-001','FT002','Phí gửi xe điện','PARKING',200000.00,1.00,200000.00);
 
--- INV202505007: APT007 75m² → FT010 + FT012 + FT013(xe máy) + FT014(ô tô)
-('IFD018','INV202505007','FT010','Phí QLVH 51–100m²',          'SERVICE', 7000.00, 75.00,  525000.00),
-('IFD019','INV202505007','FT012','Phí vệ sinh khu vực chung',   'SERVICE',50000.00,  1.00,   50000.00),
-('IFD020','INV202505007','FT013','Phí gửi xe máy',             'PARKING',100000.00, 1.00,  100000.00),
-('IFD021','INV202505007','FT014','Phí gửi ô tô',               'PARKING',1200000.00,1.00, 1200000.00),
-
--- INV202505009: APT009 85m² → FT018 + FT020 + FT024(xe đạp) + FT022(ô tô)
-('IFD022','INV202505009','FT018','Phí QLVH 51–100m²',          'SERVICE', 7000.00, 85.00,  595000.00),
-('IFD023','INV202505009','FT020','Phí vệ sinh khu vực chung',   'SERVICE',50000.00,  1.00,   50000.00),
-('IFD024','INV202505009','FT024','Phí gửi xe đạp',             'PARKING', 50000.00, 1.00,   50000.00),
-('IFD025','INV202505009','FT022','Phí gửi ô tô',               'PARKING',1200000.00,1.00, 1200000.00),
-
--- INV202506001: APT001 tháng 6 (cùng cấu trúc tháng 5)
-('IFD026','INV202506001','FT001','Phí QLVH ≤50m²',             'SERVICE', 8500.00, 45.00,  382500.00),
-('IFD027','INV202506001','FT004','Phí vệ sinh khu vực chung',   'SERVICE',50000.00,  1.00,   50000.00),
-('IFD028','INV202506001','FT005','Phí gửi xe máy',             'PARKING',100000.00, 1.00,  100000.00),
-
--- INV202506002: APT002 tháng 6 UNPAID
-('IFD029','INV202506002','FT002','Phí QLVH 51–100m²',          'SERVICE', 7000.00, 65.50,  458500.00),
-('IFD030','INV202506002','FT004','Phí vệ sinh khu vực chung',   'SERVICE',50000.00,  1.00,   50000.00),
-('IFD031','INV202506002','FT005','Phí gửi xe máy',             'PARKING',100000.00, 1.00,  100000.00),
-('IFD032','INV202506002','FT006','Phí gửi ô tô',               'PARKING',1200000.00,1.00, 1200000.00),
-
--- INV202506003: APT003 tháng 6 OVERDUE
-('IFD033','INV202506003','FT002','Phí QLVH 51–100m²',          'SERVICE', 7000.00, 72.00,  504000.00),
-('IFD034','INV202506003','FT004','Phí vệ sinh khu vực chung',   'SERVICE',50000.00,  1.00,   50000.00),
-('IFD035','INV202506003','FT007','Phí gửi xe điện/xe máy điện','PARKING',100000.00, 1.00,  100000.00),
-
--- INV202506006: APT006 tháng 6 UNPAID
-('IFD036','INV202506006','FT009','Phí QLVH ≤50m²',             'SERVICE', 8500.00, 48.00,  408000.00),
-('IFD037','INV202506006','FT012','Phí vệ sinh khu vực chung',   'SERVICE',50000.00,  1.00,   50000.00),
-('IFD038','INV202506006','FT014','Phí gửi ô tô',               'PARKING',1200000.00,1.00, 1200000.00);
-
--- ─────────────────────────────────────────────────────────────
+-- -----------------------------------------------------
 -- 11. Payments
--- ─────────────────────────────────────────────────────────────
-INSERT INTO `Payments` (`ID`,`invoice_id`,`amount`,`paid_at`,`method`,`momo_trans_id`,`momo_order_id`,`note`,`paid_by`) VALUES
-                                                                                                                            ('PAY-001','INV202505001', 532500.00,'2025-05-10 14:00:00','MOMO',   'MOMO-TXN-20250510-001','APT001-MAY25','Thanh toán qua MoMo',   'RES001'),
-                                                                                                                            ('PAY-002','INV202505002',1808500.00,'2025-05-12 09:00:00','BANKING',NULL,NULL,'Chuyển khoản VCB','RES003'),
-                                                                                                                            ('PAY-003','INV202505003', 654000.00,'2025-05-08 11:00:00','CASH',   NULL,NULL,'Nộp tại BQL','RES005'),
-                                                                                                                            ('PAY-004','INV202505004',2010000.00,'2025-05-14 10:00:00','MOMO',   'MOMO-TXN-20250514-004','APT004-MAY25','Thanh toán qua MoMo','RES006'),
-                                                                                                                            ('PAY-005','INV202505006',1658000.00,'2025-05-13 16:00:00','ZALOPAY',NULL,NULL,'ZaloPay','RES007'),
-                                                                                                                            ('PAY-006','INV202505007',1875000.00,'2025-05-09 10:00:00','BANKING',NULL,NULL,'Techcombank','RES008'),
-                                                                                                                            ('PAY-007','INV202505009',1895000.00,'2025-05-11 15:00:00','MOMO',   'MOMO-TXN-20250511-007','APT009-MAY25','Thanh toán qua MoMo','RES010'),
-                                                                                                                            ('PAY-008','INV202506001', 532500.00,'2025-06-13 10:00:00','MOMO',   'MOMO-TXN-20250613-008','APT001-JUN25','Thanh toán qua MoMo','RES001');
+-- FIX [6,7,8]: đồng bộ số tiền thanh toán với total_amount hóa đơn đã sửa
+--   PAY-UUID-002: 1,070,000 → 970,000  (INV-2024-03-002 APT002)
+--   PAY-UUID-003: 855,000   → 905,000  (INV-2024-03-003 APT003)
+--   PAY-UUID-004: 1,410,000 → 2,160,000 (INV-2024-03-006 APT006)
+-- -----------------------------------------------------
+INSERT INTO `Payments` (`ID`, `invoice_id`, `amount`, `paid_at`, `method`, `momo_trans_id`, `momo_order_id`, `note`, `paid_by`) VALUES
+                                                                                                                                    ('PAY-UUID-001', 'INV-2024-03-001', 2305000.00, '2024-03-10 14:30:00', 'MOMO',    'MOMO-TXN-20240310-001', 'APT001-MAR-2024', 'Thanh toán qua MoMo',    'RES001'),
+                                                                                                                                    ('PAY-UUID-002', 'INV-2024-03-002',  970000.00, '2024-03-12 09:15:00', 'BANKING', NULL,                    NULL,              'Chuyển khoản VCB',        'RES004'), -- FIX [6]
+                                                                                                                                    ('PAY-UUID-003', 'INV-2024-03-003',  905000.00, '2024-03-08 11:00:00', 'CASH',    NULL,                    NULL,              'Nộp trực tiếp tại BQL',   'RES006'), -- FIX [7]
+                                                                                                                                    ('PAY-UUID-004', 'INV-2024-03-006', 2160000.00, '2024-03-14 16:00:00', 'ZALOPAY', NULL,                    NULL,              'Thanh toán qua ZaloPay',  'RES007'), -- FIX [8]
+                                                                                                                                    ('PAY-UUID-005', 'INV-2024-03-007', 2650000.00, '2024-03-09 10:00:00', 'BANKING', NULL,                    NULL,              'Chuyển khoản Techcombank','RES009'),
+                                                                                                                                    ('PAY-UUID-006', 'INV-2024-03-009', 2185000.00, '2024-03-11 15:00:00', 'MOMO',    'MOMO-TXN-20240311-006', 'APT009-MAR-2024', 'Thanh toán qua MoMo',    'RES011'),
+                                                                                                                                    ('PAY-UUID-007', 'INV-2024-04-001', 2305000.00, '2024-04-13 10:00:00', 'MOMO',    'MOMO-TXN-20240413-007', 'APT001-APR-2024', 'Thanh toán qua MoMo',    'RES001');
 
--- ─────────────────────────────────────────────────────────────
+SELECT 'Payments: OK' AS test_result, COUNT(*) AS rows_inserted FROM `Payments`;
+
+-- =============================================================
+-- PHẦN 5: VẬN HÀNH
+-- =============================================================
+
+-- -----------------------------------------------------
 -- 12. Notification
--- ─────────────────────────────────────────────────────────────
-INSERT INTO `Notification` (`ID`,`title`,`content`,`type`,`resident_id`,`apartment_id`,`building_id`,`is_read`,`created_by`) VALUES
-                                                                                                                                 ('NTF001','Áp dụng khung phí mới từ 01/05/2025',
-                                                                                                                                  'Theo QĐ 33/2025/QĐ-UBND của UBND TP. Hà Nội, phí quản lý vận hành được điều chỉnh theo diện tích căn hộ từ 01/05/2025. Vui lòng xem chi tiết trong mục Thông tin căn hộ.',
-                                                                                                                                  'INFO',NULL,NULL,'BLD001',0,'ST002'),
-                                                                                                                                 ('NTF002','Bảo trì thang máy tháng 6',
-                                                                                                                                  'Thang máy tòa B sẽ bảo trì ngày 20/06/2025 từ 8h-12h. Cư dân vui lòng sắp xếp lịch trình.',
-                                                                                                                                  'MAINTENANCE',NULL,NULL,'BLD002',0,'ST003'),
-                                                                                                                                 ('NTF003','Nhắc nhở: Hóa đơn T6/2025 quá hạn',
-                                                                                                                                  'Căn hộ A201 chưa thanh toán hóa đơn tháng 6/2025. Vui lòng thanh toán để tránh phí phạt.',
-                                                                                                                                  'PAYMENT','RES005','APT003',NULL,0,'ST004'),
-                                                                                                                                 ('NTF004','SỰ CỐ: Mất nước tầng 1–3',
-                                                                                                                                  'Đường ống tầng 1-3 đang sự cố. Kỹ thuật đang xử lý, dự kiến xong lúc 18h.',
-                                                                                                                                  'URGENT',NULL,NULL,'BLD001',0,'ST002'),
-                                                                                                                                 ('NTF005','Xe đăng ký đã được duyệt',
-                                                                                                                                  'Phương tiện biển số 29A-11111 (Toyota Fortuner) đã được duyệt.',
-                                                                                                                                  'INFO','RES003','APT002',NULL,1,'ST002'),
-                                                                                                                                 ('NTF006','Tài khoản xác minh thành công',
-                                                                                                                                  'Tài khoản cư dân của bạn đã được Ban quản lý kích hoạt.',
-                                                                                                                                  'INFO','RES005','APT003',NULL,1,'ST002'),
-                                                                                                                                 ('NTF007','Yêu cầu xác minh danh tính',
-                                                                                                                                  'Tài khoản đang chờ xác minh, vui lòng mang CCCD gốc đến quầy lễ tân.',
-                                                                                                                                  'INFO','RES011',NULL,NULL,0,'ST007');
+-- FIX [9]: NTF003 nội dung đề "A203" → "A201" (khớp APT003)
+-- -----------------------------------------------------
+INSERT INTO `Notification` (`ID`, `title`, `content`, `type`, `resident_id`, `apartment_id`, `building_id`, `is_read`, `created_by`) VALUES
+                                                                                                                                         ('NTF001', 'Lịch bảo trì thang máy tháng 4',
+                                                                                                                                          'Ban quản lý thông báo: Thang máy tòa A sẽ bảo trì vào ngày 20/04/2024 từ 8h-12h. Xin quý cư dân thông cảm.',
+                                                                                                                                          'MAINTENANCE', NULL, NULL, 'BLD001', 0, 'ST002'),
 
--- ─────────────────────────────────────────────────────────────
+                                                                                                                                         ('NTF002', 'Thông báo tổng vệ sinh tòa nhà',
+                                                                                                                                          'Tòa B sẽ tổng vệ sinh vào 25/04/2024. Đề nghị cư dân giữ xe đúng chỗ.',
+                                                                                                                                          'INFO', NULL, NULL, 'BLD002', 0, 'ST003'),
+
+                                                                                                                                         ('NTF003', 'Nhắc nhở: Hóa đơn tháng 4 quá hạn',
+                                                                                                                                          'Căn hộ A201 chưa thanh toán hóa đơn tháng 4/2024. Vui lòng thanh toán trước 30/04/2024 để tránh phát sinh phí phạt.',
+                                                                                                                                          'PAYMENT', 'RES006', 'APT003', NULL, 0, 'ST004'), -- FIX [9]: A203 → A201
+
+                                                                                                                                         ('NTF004', 'SỰ CỐ: Mất nước tầng 1-5',
+                                                                                                                                          'Hiện tại đường ống cấp nước tầng 1-5 đang gặp sự cố. Đội kỹ thuật đang xử lý. Dự kiến khắc phục xong lúc 18h hôm nay.',
+                                                                                                                                          'URGENT', NULL, NULL, 'BLD001', 1, 'ST002'),
+
+                                                                                                                                         ('NTF005', 'Tài khoản của bạn đã được xác minh',
+                                                                                                                                          'Chào Hoàng Văn F, tài khoản cư dân của bạn đã được Ban quản lý xác minh thành công. Bạn có thể đăng nhập và sử dụng các dịch vụ.',
+                                                                                                                                          'INFO', 'RES006', 'APT003', NULL, 1, 'ST002'),
+
+                                                                                                                                         ('NTF006', 'Xe đăng ký đã được duyệt',
+                                                                                                                                          'Phương tiện biển số 29A-11111 (Toyota Fortuner) của căn hộ A101 đã được duyệt đăng ký gửi xe.',
+                                                                                                                                          'INFO', 'RES001', 'APT001', NULL, 1, 'ST002'),
+
+                                                                                                                                         ('NTF007', 'Cảnh báo: Thẻ từ sắp hết hạn',
+                                                                                                                                          'Thẻ từ CARD-2024-0007 của căn hộ B201 sẽ hết hạn vào 01/12/2024. Vui lòng liên hệ BQL để gia hạn.',
+                                                                                                                                          'WARNING', 'RES009', 'APT007', NULL, 0, 'ST007'),
+
+                                                                                                                                         ('NTF008', 'Yêu cầu xác minh danh tính',
+                                                                                                                                          'Chào Trương Thị Mới, tài khoản của bạn đang chờ xác minh. Vui lòng liên hệ Ban quản lý tại quầy lễ tân với CCCD gốc.',
+                                                                                                                                          'INFO', 'RES012', NULL, NULL, 0, 'ST007');
+
+SELECT 'Notification: OK' AS test_result, COUNT(*) AS rows_inserted FROM `Notification`;
+
+-- -----------------------------------------------------
 -- 13. service_request
--- ─────────────────────────────────────────────────────────────
-INSERT INTO `service_request`
-(`ID`,`title`,`description`,`category`,`status`,`priority`,`resident_id`,`apartment_id`,`assigned_to`,
- `note`,`completion_image`,`resident_confirmed`,`confirmed_at`,`reject_reason`)
-VALUES
-    ('SR001','Vòi nước bếp bị rỉ','Vòi bếp rỉ liên tục từ tối qua.',
-     'WATER','DONE','HIGH','RES001','APT001','ST006',
-     'Đã thay ron đệm, áp lực nước bình thường.',
-     'https://storage.apt.vn/sr/SR001_done.jpg',1,'2025-05-20 15:00:00',NULL),
+-- -----------------------------------------------------
+INSERT INTO `service_request` (`ID`, `title`, `description`, `category`, `status`, `priority`, `resident_id`, `apartment_id`, `assigned_to`, `note`, `completion_image`, `resident_confirmed`, `confirmed_at`, `reject_reason`) VALUES
+                                                                                                                                                                                                                                    ('SR001', 'Vòi nước bồn rửa bát bị rỉ',
+                                                                                                                                                                                                                                     'Vòi nước tại bếp căn hộ A101 bị rỉ liên tục từ tối qua, gây lãng phí nước.',
+                                                                                                                                                                                                                                     'WATER', 'DONE', 'HIGH', 'RES001', 'APT001', 'ST006',
+                                                                                                                                                                                                                                     'Đã thay ron đệm, kiểm tra áp lực nước bình thường.',
+                                                                                                                                                                                                                                     'https://storage.apt.vn/sr/SR001_done.jpg', 1, '2024-03-20 15:00:00', NULL),
 
-    ('SR002','Đèn hành lang tầng 1 hỏng','3 bóng liền kề đều hỏng.',
-     'ELECTRIC','DONE','MEDIUM','RES003','APT002','ST005',
-     'Đã thay 3 bóng LED 9W.',
-     'https://storage.apt.vn/sr/SR002_done.jpg',0,NULL,NULL),
+                                                                                                                                                                                                                                    ('SR002', 'Bóng đèn hành lang tầng 1 bị hỏng',
+                                                                                                                                                                                                                                     'Hành lang tầng 1 tòa A bị tối, 3 bóng đèn liền kề đều hỏng.',
+                                                                                                                                                                                                                                     'ELECTRIC', 'DONE', 'MEDIUM', 'RES004', 'APT002', 'ST005',
+                                                                                                                                                                                                                                     'Đã thay 3 bóng LED 9W. Hoàn thành lúc 14:30.',
+                                                                                                                                                                                                                                     'https://storage.apt.vn/sr/SR002_done.jpg', 0, NULL, NULL),
 
-    ('SR003','Điều hòa không lạnh','Có tiếng kêu lạ, không ra hơi lạnh.',
-     'HVAC','IN_PROGRESS','HIGH','RES005','APT003','ST005',
-     'Thiếu gas, đang đặt mua.',NULL,0,NULL,NULL),
+                                                                                                                                                                                                                                    ('SR003', 'Điều hòa không làm lạnh',
+                                                                                                                                                                                                                                     'Điều hòa phòng ngủ căn hộ A201 bật lên nhưng không ra hơi lạnh, có tiếng kêu lạ.',
+                                                                                                                                                                                                                                     'HVAC', 'IN_PROGRESS', 'HIGH', 'RES006', 'APT003', 'ST005',
+                                                                                                                                                                                                                                     'Đã kiểm tra ban đầu: thiếu gas. Đặt mua gas, sẽ xử lý ngày mai.', NULL, 0, NULL, NULL),
 
-    ('SR004','Internet chậm buổi tối','Từ 20h-23h rất chậm.',
-     'INTERNET','PENDING','MEDIUM','RES002','APT001',NULL,NULL,NULL,0,NULL,NULL),
+                                                                                                                                                                                                                                    ('SR004', 'Internet bị chậm vào buổi tối',
+                                                                                                                                                                                                                                     'Từ 20h-23h mạng internet căn A101 rất chậm, ảnh hưởng làm việc từ xa.',
+                                                                                                                                                                                                                                     'INTERNET', 'PENDING', 'MEDIUM', 'RES002', 'APT001', NULL, NULL, NULL, 0, NULL, NULL),
 
-    ('SR005','Trần thấm nước','Trần phòng khách thấm sau mưa lớn.',
-     'STRUCTURE','PENDING','HIGH','RES007','APT006',NULL,NULL,NULL,0,NULL,NULL),
+                                                                                                                                                                                                                                    ('SR005', 'Trần nhà bị thấm nước',
+                                                                                                                                                                                                                                     'Trần phòng khách căn hộ B101 bị thấm nước từ tầng trên, xuất hiện sau mưa lớn hôm qua.',
+                                                                                                                                                                                                                                     'STRUCTURE', 'PENDING', 'HIGH', 'RES007', 'APT006', NULL, NULL, NULL, 0, NULL, NULL),
 
-    ('SR006','Lắp đặt máy giặt','Cần hỗ trợ lắp máy giặt mới.',
-     'OTHER','REJECTED','LOW','RES009','APT007','ST005',
-     'Ngoài phạm vi BQL.',NULL,0,NULL,
-     'Lắp đặt thiết bị cá nhân không thuộc phạm vi dịch vụ BQL.'),
+                                                                                                                                                                                                                                    ('SR006', 'Hỗ trợ lắp đặt máy giặt',
+                                                                                                                                                                                                                                     'Cần kỹ thuật viên hỗ trợ lắp đặt máy giặt mới mua.',
+                                                                                                                                                                                                                                     'OTHER', 'REJECTED', 'LOW', 'RES008', 'APT006', 'ST005',
+                                                                                                                                                                                                                                     'Việc lắp đặt thiết bị cá nhân không nằm trong phạm vi dịch vụ BQL cung cấp.',
+                                                                                                                                                                                                                                     NULL, 0, NULL, 'Yêu cầu lắp đặt thiết bị cá nhân không thuộc phạm vi dịch vụ của Ban quản lý. Vui lòng liên hệ đơn vị cung cấp máy giặt.'),
 
-    ('SR007','Khóa phòng tắm kẹt','Không mở được từ trong ra.',
-     'STRUCTURE','IN_PROGRESS','HIGH','RES008','APT007','ST005',
-     'Đang đặt mua khóa thay thế.',NULL,0,NULL,NULL),
+                                                                                                                                                                                                                                    ('SR007', 'Khoá cửa phòng tắm bị hỏng',
+                                                                                                                                                                                                                                     'Khoá cửa phòng tắm căn B201 bị kẹt, không mở được từ trong ra.',
+                                                                                                                                                                                                                                     'STRUCTURE', 'IN_PROGRESS', 'HIGH', 'RES009', 'APT007', 'ST005',
+                                                                                                                                                                                                                                     'Đang tháo khóa, cần đặt mua khóa thay thế cùng loại.', NULL, 0, NULL, NULL),
 
-    ('SR008','Thoát sàn nhà tắm nghẹt','Nước đọng, mùi hôi.',
-     'WATER','PENDING','MEDIUM','RES010','APT009',NULL,NULL,NULL,0,NULL,NULL);
+                                                                                                                                                                                                                                    ('SR008', 'Ống thoát sàn nhà tắm bị nghẹt',
+                                                                                                                                                                                                                                     'Nước đọng trong nhà tắm không thoát được, mùi hôi bốc lên.',
+                                                                                                                                                                                                                                     'WATER', 'PENDING', 'MEDIUM', 'RES011', 'APT009', NULL, NULL, NULL, 0, NULL, NULL);
+
+SELECT 'service_request: OK' AS test_result, COUNT(*) AS rows_inserted FROM `service_request`;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
--- ─────────────────────────────────────────────────────────────
--- VERIFY
--- ─────────────────────────────────────────────────────────────
-SELECT 'Role' AS tbl, COUNT(*) AS n FROM Role
-UNION ALL SELECT 'Staff',       COUNT(*) FROM Staff
-UNION ALL SELECT 'Building',    COUNT(*) FROM Building
-UNION ALL SELECT 'Apartment',   COUNT(*) FROM Apartment
-UNION ALL SELECT 'Residents',   COUNT(*) FROM Residents
-UNION ALL SELECT 'FeeTemplate', COUNT(*) FROM FeeTemplate
-UNION ALL SELECT 'Invoice',     COUNT(*) FROM Invoice
-UNION ALL SELECT 'FeeDetail',   COUNT(*) FROM invoice_fee_detail
-UNION ALL SELECT 'Payments',    COUNT(*) FROM Payments;
+-- =============================================================
+-- KIỂM TRA NHANH TÍNH NHẤT QUÁN SAU KHI INSERT
+-- =============================================================
+
+-- Kiểm tra: tổng detail == total_amount của từng hóa đơn
+SELECT
+    i.ID                                          AS invoice_id,
+    i.total_amount                                AS invoice_total,
+    SUM(d.amount)                                 AS detail_sum,
+    IF(i.total_amount = SUM(d.amount), 'OK', 'MISMATCH') AS check_result
+FROM `Invoice` i
+         JOIN `invoice_fee_detail` d ON d.invoice_id = i.ID
+GROUP BY i.ID, i.total_amount
+ORDER BY i.ID;
+
+-- Kiểm tra: amount thanh toán == total_amount hóa đơn tương ứng
+SELECT
+    p.ID                                           AS payment_id,
+    p.invoice_id,
+    p.amount                                       AS paid_amount,
+    i.total_amount                                 AS invoice_total,
+    IF(p.amount = i.total_amount, 'OK', 'MISMATCH') AS check_result
+FROM `Payments` p
+         JOIN `Invoice` i ON i.ID = p.invoice_id
+ORDER BY p.ID;
+
+

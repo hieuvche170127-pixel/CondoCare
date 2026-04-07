@@ -77,6 +77,13 @@
                         <i class="fas fa-money-bill-wave me-1"></i>Mẫu phí dịch vụ
                     </button>
                 </li>
+                <!-- [FIX #7] Thêm tab Tòa nhà — trước đây ADMIN/MANAGER không có UI để tạo/sửa tòa nhà
+                     dù API /api/buildings POST/PUT đã tồn tại đầy đủ -->
+                <li class="nav-item" id="tabBldNav">
+                    <button class="nav-link" id="tabBldBtn" onclick="switchTab('bld')">
+                        <i class="fas fa-building me-1"></i>Tòa nhà
+                    </button>
+                </li>
             </ul>
 
             <!-- ═══════════════════════ TAB: APARTMENT ═══════════════════════ -->
@@ -223,7 +230,101 @@
                 </div>
             </div><!-- /tabFee -->
 
+            <!-- ═══════════════════════ TAB: TOÀ NHÀ ═══════════════════════ -->
+            <!-- [FIX #7] Tab mới — trước đây API buildings đã có nhưng không có UI -->
+            <div id="tabBld" class="d-none">
+                <!-- Filter + Add button -->
+                <div class="card mb-3">
+                    <div class="card-body py-2">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-5">
+                                <input type="text" class="form-control form-control-sm" id="bldSearch"
+                                       placeholder="Tìm tên, địa chỉ tòa nhà...">
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-sm btn-outline-primary w-100" onclick="BldMgmt.loadList()">
+                                    <i class="fas fa-search me-1"></i>Tìm
+                                </button>
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-sm btn-outline-secondary w-100" onclick="BldMgmt.resetFilter()">
+                                    <i class="fas fa-undo me-1"></i>Reset
+                                </button>
+                            </div>
+                            <div class="col-md-3 text-end" id="bldAddBtnWrap">
+                                <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#bldModal">
+                                    <i class="fas fa-plus me-1"></i>Thêm tòa nhà
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="bldAlertContainer"></div>
+                <!-- Table -->
+                <div class="card">
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                <tr>
+                                    <th>Mã</th>
+                                    <th>Tên tòa nhà</th>
+                                    <th>Địa chỉ</th>
+                                    <th class="text-center">Số tầng</th>
+                                    <th class="text-center">Tổng căn hộ</th>
+                                    <th class="text-end">Hành động</th>
+                                </tr>
+                                </thead>
+                                <tbody id="bldTableBody">
+                                <tr><td colspan="6" class="text-center py-4 text-muted">Đang tải...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div><!-- /tabBld -->
+
         </main>
+    </div>
+</div>
+
+<!-- ═══ MODAL: TẠO / SỬA TÒA NHÀ ═══ -->
+<div class="modal fade" id="bldModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bldModalTitle"><i class="fas fa-building me-2"></i>Thêm tòa nhà</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="bldFormAlert"></div>
+                <input type="hidden" id="bldFormId">
+                <div class="mb-3">
+                    <label class="form-label">Tên tòa nhà <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="bldFormName" placeholder="VD: Tòa A">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Địa chỉ <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="bldFormAddress" placeholder="Số nhà, đường, quận...">
+                </div>
+                <div class="row g-3">
+                    <div class="col-6">
+                        <label class="form-label">Số tầng</label>
+                        <input type="number" class="form-control" id="bldFormFloors" min="1" placeholder="VD: 20">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Tổng số căn hộ</label>
+                        <input type="number" class="form-control" id="bldFormApts" min="1" placeholder="VD: 120">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" id="bldFormSubmit" onclick="BldMgmt.submitForm()">
+                    <i class="fas fa-save me-1"></i>Lưu
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -471,10 +572,135 @@
     function switchTab(tab) {
         document.getElementById('tabApt').classList.toggle('d-none', tab !== 'apt');
         document.getElementById('tabFee').classList.toggle('d-none', tab !== 'fee');
+        // [FIX #7] Thêm tab Buildings
+        document.getElementById('tabBld').classList.toggle('d-none', tab !== 'bld');
         document.getElementById('tabAptBtn').classList.toggle('active', tab === 'apt');
         document.getElementById('tabFeeBtn').classList.toggle('active', tab === 'fee');
+        document.getElementById('tabBldBtn').classList.toggle('active', tab === 'bld');
         if (tab === 'fee') loadFeeTemplates();
+        if (tab === 'bld') BldMgmt.loadList();
     }
+
+    /* ════════════════════════════════════════════════════════════════
+       BUILDINGS MANAGEMENT — [FIX #7]
+       ADMIN/MANAGER có thể tạo và sửa tòa nhà từ UI.
+    ════════════════════════════════════════════════════════════════ */
+    const BldMgmt = {
+        _editId: null,
+
+        async loadList() {
+            showLoading();
+            try {
+                const search = document.getElementById('bldSearch')?.value?.trim();
+                const res  = await apiRequest(`${API}/buildings`);
+                let   list = await res.json();
+                if (search) {
+                    const q = search.toLowerCase();
+                    list = list.filter(b =>
+                        b.name?.toLowerCase().includes(q) ||
+                        b.address?.toLowerCase().includes(q)
+                    );
+                }
+                this.renderTable(list);
+            } catch (e) {
+                this.showAlert('Không thể tải danh sách tòa nhà: ' + e.message, 'danger');
+            } finally { hideLoading(); }
+        },
+
+        renderTable(list) {
+            const tbody = document.getElementById('bldTableBody');
+            if (!list.length) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted">
+                    <i class="fas fa-building fa-2x d-block mb-2 opacity-25"></i>Không có tòa nhà</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = list.map(b => `
+                <tr>
+                    <td><span class="fw-bold text-primary">${escHtml(b.id)}</span></td>
+                    <td class="fw-semibold">${escHtml(b.name)}</td>
+                    <td class="text-muted small">${escHtml(b.address || '—')}</td>
+                    <td class="text-center">${b.totalFloors ?? '—'}</td>
+                    <td class="text-center">${b.totalApartments ?? '—'}</td>
+                    <td class="text-end">
+                        ${!isReadOnly() ? `
+                        <button class="btn btn-sm btn-outline-primary" title="Sửa"
+                            onclick="BldMgmt.openEdit('${b.id}','${escHtml(b.name)}','${escHtml(b.address||'')}',${b.totalFloors||''},${b.totalApartments||''})">
+                            <i class="fas fa-edit"></i>
+                        </button>` : ''}
+                    </td>
+                </tr>`).join('');
+        },
+
+        resetFilter() {
+            const el = document.getElementById('bldSearch');
+            if (el) el.value = '';
+            this.loadList();
+        },
+
+        openEdit(id, name, address, floors, apts) {
+            this._editId = id;
+            document.getElementById('bldModalTitle').innerHTML = '<i class="fas fa-edit me-2"></i>Sửa tòa nhà';
+            document.getElementById('bldFormId').value      = id;
+            document.getElementById('bldFormName').value    = name;
+            document.getElementById('bldFormAddress').value = address;
+            document.getElementById('bldFormFloors').value  = floors;
+            document.getElementById('bldFormApts').value    = apts;
+            document.getElementById('bldFormAlert').innerHTML = '';
+            new bootstrap.Modal(document.getElementById('bldModal')).show();
+        },
+
+        async submitForm() {
+            const id   = document.getElementById('bldFormId').value.trim();
+            const body = {
+                name:            document.getElementById('bldFormName').value.trim(),
+                address:         document.getElementById('bldFormAddress').value.trim(),
+                totalFloors:     document.getElementById('bldFormFloors').value || null,
+                totalApartments: document.getElementById('bldFormApts').value   || null,
+            };
+            if (!body.name || !body.address) {
+                this.showFormAlert('Tên tòa nhà và địa chỉ không được để trống.', 'warning');
+                return;
+            }
+            const btn = document.getElementById('bldFormSubmit');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang lưu...';
+            try {
+                const url    = id ? `${API}/buildings/${id}` : `${API}/buildings`;
+                const method = id ? 'PUT' : 'POST';
+                const res    = await apiRequest(url, { method, body: JSON.stringify(body) });
+                if (res.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById('bldModal'))?.hide();
+                    this.showAlert(id ? 'Cập nhật tòa nhà thành công!' : 'Thêm tòa nhà thành công!', 'success');
+                    document.getElementById('bldFormId').value = '';
+                    document.getElementById('bldModalTitle').innerHTML = '<i class="fas fa-building me-2"></i>Thêm tòa nhà';
+                    this._editId = null;
+                    this.loadList();
+                    await loadBuildings(); // Reload building dropdowns toàn trang
+                    await loadStats();
+                } else {
+                    this.showFormAlert(await res.text(), 'danger');
+                }
+            } catch (e) {
+                this.showFormAlert('Lỗi: ' + e.message, 'danger');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save me-1"></i>Lưu';
+            }
+        },
+
+        showAlert(msg, type = 'success') {
+            const c = document.getElementById('bldAlertContainer');
+            if (!c) return;
+            c.innerHTML = `<div class="alert alert-${type} alert-dismissible fade show">
+                ${msg}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
+        },
+        showFormAlert(msg, type = 'danger') {
+            const c = document.getElementById('bldFormAlert');
+            if (!c) return;
+            c.innerHTML = `<div class="alert alert-${type} alert-dismissible fade show p-2 small">
+                ${msg}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
+        },
+    };
 
     /* ════════════════════════════════════════════════════════════════
        STATS
@@ -915,33 +1141,57 @@
     /* ── Mở modal sửa mẫu phí ── */
     async function openEditFee(id) {
         _editFeeId = id;
+        document.getElementById('feeModalTitle').innerHTML =
+            '<i class="fas fa-edit text-primary me-2"></i>Sửa mẫu phí';
+        document.getElementById('feeAlert').innerHTML = '';
         try {
-            // Lấy data từ bảng đang render (không cần gọi thêm API)
-            const btn = document.querySelector(`button[onclick="openEditFee('${id}')"]`);
-            const row = btn?.closest('tr');
-            if (!row) { openCreateFee(); return; }
-
-            document.getElementById('feeModalTitle').innerHTML =
-                '<i class="fas fa-edit text-primary me-2"></i>Sửa mẫu phí';
-            document.getElementById('feeAlert').innerHTML = '';
-            // Refetch để lấy đầy đủ data
+            // Luôn refetch từ API — không dùng querySelector DOM (dễ fail, gây reset form)
             const buildingId = document.getElementById('feeBuildingFilter').value;
+            if (!buildingId) { alert('Vui lòng chọn tòa nhà trước khi sửa mẫu phí.'); return; }
             const res  = await apiRequest(`${API}/fee-templates?buildingId=${buildingId}`);
+            if (!res || !res.ok) { alert('Không thể tải dữ liệu mẫu phí.'); return; }
             const list = await res.json();
             const f    = list.find(x => x.id === id);
-            if (!f) return;
+            if (!f) { alert('Không tìm thấy mẫu phí. Hãy tải lại danh sách.'); return; }
+
+            // 1. Điền các field cơ bản
             document.getElementById('feeFormBuilding').value = f.buildingId || '';
             document.getElementById('feeFormName').value     = f.name;
             document.getElementById('feeFormType').value     = f.type;
             document.getElementById('feeFormUnit').value     = f.unit;
             document.getElementById('feeFormAmount').value   = f.amount;
             document.getElementById('feeFormEffFrom').value  = f.effectiveFrom || '';
-            document.getElementById('feeFormEffTo').value    = f.effectiveTo || '';
-            document.getElementById('feeFormMinArea').value  = f.minArea != null ? f.minArea : '';
-            document.getElementById('feeFormMaxArea').value  = f.maxArea != null ? f.maxArea : '';
-            onFeeTypeChange(); onFeeUnitChange();
+            document.getElementById('feeFormEffTo').value    = f.effectiveTo   || '';
+            // 2. Cập nhật visibility UI (elevator group, area range group, hint)
+            //    mà KHÔNG overwrite unit/amount đã điền ở trên
+            _updateFeeFormUI(f.type, f.unit);
+            // 3. Gán minArea/maxArea SAU _updateFeeFormUI để không bị xóa
+            document.getElementById('feeFormMinArea').value = f.minArea != null ? f.minArea : '';
+            document.getElementById('feeFormMaxArea').value = f.maxArea != null ? f.maxArea : '';
+
             new bootstrap.Modal('#feeModal').show();
-        } catch(e) { alert('Lỗi: ' + e.message); }
+        } catch(e) { alert('Lỗi khi mở form sửa phí: ' + e.message); }
+    }
+
+    /**
+     * Chỉ cập nhật visibility/hint cho fee form — KHÔNG có side effect ghi đè giá trị.
+     * Dùng khi edit (thay cho onFeeTypeChange+onFeeUnitChange để tránh override unit/amount).
+     */
+    function _updateFeeFormUI(type, unit) {
+        const showElevator = type === 'SERVICE' && unit === 'PER_M2';
+        document.getElementById('elevatorGroup').style.display  = showElevator ? '' : 'none';
+        document.getElementById('areaRangeGroup').style.display = unit === 'PER_M2' ? '' : 'none';
+        const hint = document.getElementById('feeRangeHint');
+        if (type === 'SERVICE' && unit === 'PER_M2') {
+            const hasElevator = document.getElementById('feeFormHasElevator').checked;
+            hint.innerHTML = hasElevator
+                ? '<i class="fas fa-info-circle text-info"></i> QĐ 33/2025: <strong>1.200 – 16.500</strong> đ/m²/tháng (có thang máy)'
+                : '<i class="fas fa-info-circle text-info"></i> QĐ 33/2025: <strong>700 – 5.000</strong> đ/m²/tháng (không thang máy)';
+        } else if (type === 'SERVICE' && unit === 'PER_APT') {
+            hint.innerHTML = '<small class="text-muted">Tính cố định theo mỗi căn hộ</small>';
+        } else {
+            hint.innerHTML = '';
+        }
     }
 
     /* ── Lưu mẫu phí ── */

@@ -113,16 +113,18 @@
                 return;
             }
 
-            /* ── Lấy thêm chi tiết phí từ ApartmentService ── */
-            let aptDetail = null;
-            if (data.id) {
-                try {
-                    const r2 = await apiRequest(`${API_BASE_URL}/apartments/${data.id}`);
-                    if (r2 && r2.ok) aptDetail = await r2.json();
-                } catch(_) {}
-            }
+            /* ── Phí dịch vụ đã nằm trong data từ /api/resident/apartment ── */
+            // activeFees + totalEstimatedMonthly được trả về trực tiếp,
+            // không cần gọi thêm /api/apartments/{id} (staff-only endpoint).
 
-            renderPage(data, aptDetail);
+            /* ── Lấy danh sách xe của cư dân từ VehicleService ── */
+            let vehicles = [];
+            try {
+                const rv = await apiRequest(`${API_BASE_URL}/resident/vehicles`);
+                if (rv && rv.ok) vehicles = await rv.json();
+            } catch(_) {}
+
+            renderPage(data, data, vehicles);
 
         } catch(e) {
             showResidentAlert('alertContainer', 'Không thể tải thông tin căn hộ: ' + e.message);
@@ -132,7 +134,7 @@
     /* ════════════════════════════════════════════════════════
        RENDER TOÀN BỘ TRANG
     ════════════════════════════════════════════════════════ */
-    function renderPage(data, detail) {
+    function renderPage(data, detail, vehicles = []) {
         const statusBadge = {
             OCCUPIED:    '<span class="badge bg-success">Đang ở</span>',
             MAINTENANCE: '<span class="badge bg-warning text-dark">Đang bảo trì</span>',
@@ -148,13 +150,19 @@
             const feeRows = fees.map(f => {
                 const tagCls  = f.type === 'PARKING' ? 'fee-type-pkg' : 'fee-type-svc';
                 const tagText = f.type === 'PARKING' ? 'Gửi xe' : 'Dịch vụ';
-                let metaText = '';
-                if (f.unit === 'PER_M2')
-                    metaText = `${fmtVND(f.amount)} × ${data.area} m²`;
-                else if (f.unit === 'PER_APT')
-                    metaText = `${fmtVND(f.amount)} / căn`;
-                else
-                    metaText = `Cố định`;
+
+                // Dùng metaDetail từ server nếu có (đã tính đúng số xe / diện tích)
+                let metaText = f.metaDetail || '';
+                if (!metaText) {
+                    if (f.unit === 'PER_M2')
+                        metaText = `${fmtVND(f.amount)} × ${data.area} m²`;
+                    else if (f.unit === 'PER_APT')
+                        metaText = `${fmtVND(f.amount)} / căn`;
+                    else if (f.vehicleCount)
+                        metaText = `${fmtVND(f.amount)} × ${f.vehicleCount} xe`;
+                    else
+                        metaText = `Cố định`;
+                }
 
                 return `
                 <div class="fee-row">
@@ -237,7 +245,7 @@
         }
 
         /* ── Xe của cư dân ── */
-        const vehicles = data.vehicles || [];
+        // vehicles đã được truyền từ loadApartment() qua tham số riêng
         let vehicleRows = '';
         if (vehicles.length) {
             const typeLabel = { MOTORBIKE:'Xe máy', CAR:'Ô tô', BICYCLE:'Xe đạp',

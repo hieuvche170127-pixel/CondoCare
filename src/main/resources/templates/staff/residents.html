@@ -9,18 +9,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
     <style>
-        /* Pending row highlight */
         .row-pending { background: #fffbeb !important; }
-        .pending-badge {
-            animation: pulse-badge 1.5s infinite;
-        }
-        @keyframes pulse-badge {
-            0%, 100% { opacity: 1; }
-            50%       { opacity: .6; }
-        }
-        /* Tab pills for filter */
+        .pending-badge { animation: pulse-badge 1.5s infinite; }
+        @keyframes pulse-badge { 0%, 100% { opacity: 1; } 50% { opacity: .6; } }
         .status-tabs .nav-link { border-radius: 20px; font-size: .8rem; padding: .3rem .9rem; }
-        /* Access card info box */
         .card-info-box {
             background: linear-gradient(135deg,#e0f2fe,#f0f9ff);
             border: 1px solid #bae6fd;
@@ -34,23 +26,18 @@
 
 <div class="container-fluid">
     <div class="row">
-        <!-- Sidebar -->
+        <!--
+            [FIX] Sidebar đổi từ hardcoded sang dynamic pattern (giống staff/list.html).
+            renderStaffSidebar('resident') trong script bên dưới sẽ tự render menu
+            theo role và xử lý redirect nếu không có quyền.
+        -->
         <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse" id="sidebarNav">
             <div class="position-sticky pt-3">
                 <div class="text-center mb-4">
                     <h5 class="text-white fw-bold"><i class="fas fa-building me-1"></i> CondoCare</h5>
                     <small class="text-white-50" id="sidebarUser"></small>
                 </div>
-                <ul class="nav flex-column">
-                    <li class="nav-item"><a class="nav-link" href="/dashboard"><i class="fas fa-tachometer-alt me-2"></i>Tổng quan</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/dashboard/buildings"><i class="fas fa-building me-2"></i>Tòa nhà</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/dashboard/apartments"><i class="fas fa-home me-2"></i>Căn hộ & Phí</a></li>
-                    <li class="nav-item"><a class="nav-link active" href="/dashboard/resident"><i class="fas fa-users me-2"></i>Quản lý cư dân</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/dashboard/staff"><i class="fas fa-users-cog me-2"></i>Quản lý nhân viên</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/dashboard/invoices"><i class="fas fa-receipt me-2"></i>Hóa đơn</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/dashboard/service-requests"><i class="fas fa-tools me-2"></i>Yêu cầu hỗ trợ</a></li>
-                    <li class="nav-item mt-4"><a class="nav-link text-danger-emphasis" href="#" id="logoutBtn"><i class="fas fa-sign-out-alt me-2"></i>Đăng xuất</a></li>
-                </ul>
+                <ul class="nav flex-column"></ul>
             </div>
         </nav>
 
@@ -126,8 +113,6 @@
                         <li class="nav-item"><button class="nav-link btn btn-sm" data-status="ACTIVE" onclick="setStatusTab(this,'ACTIVE')">✅ Hoạt động</button></li>
                         <li class="nav-item"><button class="nav-link btn btn-sm" data-status="INACTIVE" onclick="setStatusTab(this,'INACTIVE')">🔴 Không HĐ</button></li>
                     </ul>
-
-                    <!-- Search inline -->
                     <div class="d-flex gap-2">
                         <input type="text" id="rSearchInput" class="form-control form-control-sm"
                                style="width:220px" placeholder="🔍 Tên, username, email, CCCD...">
@@ -167,7 +152,7 @@
     </div>
 </div>
 
-<!-- ═══════ MODAL TẠO CƯ DÂN (MANAGER TẠO) ═══════ -->
+<!-- ═══════ MODAL TẠO CƯ DÂN ═══════ -->
 <div class="modal fade" id="rCreateModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -184,10 +169,22 @@
                             <input type="text" id="rFormUsername" class="form-control" required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Mật khẩu <span class="text-danger">*</span></label>
+                            <label class="form-label fw-semibold">Mật khẩu</label>
                             <div class="input-group">
-                                <input type="password" id="rFormPassword" class="form-control" required>
-                                <button class="btn btn-outline-secondary" type="button" onclick="togglePwd('rFormPassword',this)"><i class="fas fa-eye"></i></button>
+                                <input type="password" id="rFormPassword" class="form-control"
+                                       placeholder="Để trống để tự sinh ngẫu nhiên">
+                                <button class="btn btn-outline-secondary" type="button"
+                                        onclick="togglePwd('rFormPassword',this)" title="Hiện/Ẩn">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn btn-outline-primary" type="button"
+                                        onclick="genResidentPassword()" title="Tự sinh mật khẩu">
+                                    <i class="fas fa-random"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle text-info me-1"></i>
+                                Để trống → hệ thống tự sinh và <strong>gửi email</strong> cho cư dân.
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -228,8 +225,15 @@
                             <input type="text" id="rFormIdNumber" class="form-control" maxlength="12" placeholder="12 chữ số">
                         </div>
                         <div class="col-md-12">
-                            <label class="form-label fw-semibold">Căn hộ <small class="text-muted">(ID, VD: APT001)</small></label>
-                            <input type="text" id="rFormApartment" class="form-control" placeholder="Để trống nếu chưa phân căn hộ">
+                            <label class="form-label fw-semibold">Căn hộ <small class="text-muted">(chỉ hiện căn hộ còn trống)</small></label>
+                            <select id="rFormApartment" class="form-select">
+                                <option value="">— Để trống nếu chưa phân căn hộ —</option>
+                                <!-- Tự động load từ API -->
+                            </select>
+                            <div class="form-text text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Danh sách căn hộ trạng thái <strong>EMPTY</strong> hoặc <strong>AVAILABLE</strong>
+                            </div>
                         </div>
                         <div class="col-12">
                             <div class="form-check">
@@ -349,7 +353,6 @@
                         </div>
                     </div>
 
-                    <!-- Tab thẻ từ ra vào -->
                     <div class="tab-pane fade" id="tabCard">
                         <div id="cardInfoContainer">
                             <div class="text-center py-4 text-muted"><i class="fas fa-spinner fa-spin"></i> Đang tải...</div>
@@ -407,24 +410,27 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="/js/common.js"></script>
-<script src="/js/staff-management.js"></script>
+<script src="/js/resident-management.js"></script>
 <script>
-    // Auth check
-    (function() {
-        if (!isLoggedIn()) { window.location.href = '/login'; return; }
+    /*
+     * [FIX] Thay toàn bộ auth check + hardcoded sidebar bằng renderStaffSidebar().
+     * Hàm này tự:
+     *   - Kiểm tra login và userType === 'staff' (redirect /login nếu không hợp lệ)
+     *   - Kiểm tra role có được vào trang 'resident' không (redirect nếu bị cấm)
+     *   - Render menu sidebar đúng theo role
+     *   - Set tên user trên sidebar
+     *   - Bind logout button
+     */
+    renderStaffSidebar('resident');
+
+    // Ẩn nút "Thêm cư dân" nếu role không phải ADMIN/MANAGER
+    (function () {
         const info = getUserInfo();
-        if (!info || info.userType !== 'staff') { window.location.href = '/login'; return; }
-        const nameEl = document.getElementById('sidebarUser');
-        if (nameEl) nameEl.textContent = info.fullName || info.username || '';
-        // Ẩn nút tạo nếu role STAFF
-        if (info.role === 'STAFF') {
+        const role = (info?.role || '').toUpperCase();
+        if (!['ADMIN', 'MANAGER'].includes(role)) {
             document.getElementById('btnAddResident')?.remove();
         }
     })();
-
-    document.getElementById('logoutBtn').addEventListener('click', e => {
-        e.preventDefault(); if (confirm('Đăng xuất?')) logout();
-    });
 
     function togglePwd(id, btn) {
         const el = document.getElementById(id);
@@ -442,7 +448,6 @@
     }
 
     // Override loadList để thêm status filter
-    const _origLoadList = ResidentMgmt.loadList.bind(ResidentMgmt);
     ResidentMgmt.loadList = async function(page = 0) {
         this.currentPage = page;
         showLoading();
@@ -459,7 +464,6 @@
             this.renderTable(data.content || []);
             this.renderInfo(data);
 
-            // Update pending badge
             const pendingCount = data.pendingCount || 0;
             const badge = document.getElementById('pendingBadge');
             if (badge) {
@@ -467,7 +471,7 @@
                 badge.style.display = pendingCount > 0 ? '' : 'none';
             }
 
-            renderPagination(data, 'rPaginationContainer', `ResidentMgmt.loadList`);
+            renderPaginationR(data, 'rPaginationContainer', `ResidentMgmt.loadList`);
         } catch(e) {
             showMgmtAlert('rAlertContainer', 'Không thể tải danh sách: ' + e.message, 'danger');
         } finally { hideLoading(); }
@@ -608,13 +612,10 @@
     function genCardNumber() {
         const now = new Date();
         const rand = Math.floor(Math.random() * 9000) + 1000;
-        document.getElementById('newCardNumber').value =
-            `CARD-${now.getFullYear()}-${rand}`;
-        // Hạn mặc định 2 năm
+        document.getElementById('newCardNumber').value = `CARD-${now.getFullYear()}-${rand}`;
         const exp = new Date();
         exp.setFullYear(exp.getFullYear() + 2);
-        document.getElementById('newCardExpiry').value =
-            exp.toISOString().split('T')[0];
+        document.getElementById('newCardExpiry').value = exp.toISOString().split('T')[0];
     }
 
     async function issueCard() {
@@ -640,7 +641,7 @@
 
     async function loadCardInfo(residentId) {
         try {
-            const res  = await apiRequest(`${API_BASE_URL}/resident-management/${residentId}/cards`);
+            const res   = await apiRequest(`${API_BASE_URL}/resident-management/${residentId}/cards`);
             const cards = await res.json();
             const container = document.getElementById('cardInfoContainer');
             if (!cards || !cards.length) {
@@ -675,18 +676,14 @@
         } catch(e) {} finally { hideLoading(); }
     }
 
-    // Load card info khi mở tab thẻ từ
     document.querySelector('a[href="#tabCard"]')?.addEventListener('click', () => {
         if (ResidentMgmt.currentEditId) loadCardInfo(ResidentMgmt.currentEditId);
     });
 
-    // ── Sort fields (giữ giao diện tương thích) ────────────────
-    // Thêm hidden sort controls để staff-management.js hoạt động
     document.body.insertAdjacentHTML('beforeend', `
         <select id="rSortField" class="d-none"><option value="fullName">fullName</option></select>
         <select id="rSortDir" class="d-none"><option value="asc">asc</option></select>`);
 
-    // ── Reset mật khẩu từ nút ngoài bảng ────────────────────────
     async function confirmResetResidentPwd(id, name, email) {
         if (!email) {
             showMgmtAlert('rAlertContainer',
@@ -711,7 +708,6 @@
         } finally { hideLoading(); }
     }
 
-    // ── Reset mật khẩu từ nút trong tab Bảo mật của modal edit ──
     async function doResetResidentPassword() {
         const id    = ResidentMgmt.currentEditId;
         const email = document.getElementById('rEditEmail')?.value?.trim() || '';
@@ -756,12 +752,49 @@
         }
     }
 
-    // Hiện email hint và reset alert khi chuyển sang tab Bảo mật
     document.querySelector('a[href="#tabSecurity"]')?.addEventListener('click', () => {
         const email = document.getElementById('rEditEmail')?.value?.trim() || '';
         const hint  = document.getElementById('rResetPwdEmailHint');
         if (hint) hint.textContent = email ? `Email nhận: ${email}` : 'Chưa có email';
         document.getElementById('rResetPwdAlert').innerHTML = '';
+    });
+
+    // Tự sinh mật khẩu ngẫu nhiên 10 ký tự (giống staff)
+    function genResidentPassword() {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!';
+        let pwd = '';
+        for (let i = 0; i < 10; i++) pwd += chars[Math.floor(Math.random() * chars.length)];
+        const el = document.getElementById('rFormPassword');
+        el.value = pwd;
+        el.type = 'text';
+    }
+
+    // Load căn hộ EMPTY/AVAILABLE vào dropdown khi mở modal
+    async function loadEmptyApartments() {
+        const sel = document.getElementById('rFormApartment');
+        sel.innerHTML = '<option value="">— Để trống nếu chưa phân căn hộ —</option>';
+        try {
+            const res = await apiRequest(`${API_BASE_URL}/resident-management/apartment-list`);
+            if (!res.ok) return;
+            const apts = await res.json();
+            // Chỉ hiện căn hộ EMPTY hoặc AVAILABLE (còn chỗ)
+            apts
+              .filter(a => a.status === 'EMPTY' || a.status === 'AVAILABLE')
+              .forEach(a => {
+                const o = document.createElement('option');
+                o.value = a.id;
+                o.textContent = `${a.number} — ${a.buildingName} (${a.area} m²)`;
+                sel.appendChild(o);
+              });
+        } catch(e) { console.warn('Could not load apartments:', e.message); }
+    }
+
+    // Load căn hộ mỗi khi mở modal tạo cư dân
+    document.getElementById('rCreateModal').addEventListener('show.bs.modal', () => {
+        loadEmptyApartments();
+        // Reset password field về ẩn
+        const pwdEl = document.getElementById('rFormPassword');
+        if (pwdEl) { pwdEl.value = ''; pwdEl.type = 'password'; }
     });
 
     ResidentMgmt.init();

@@ -6,6 +6,9 @@ import com.swp391.condocare_swp.security.JwtTokenProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -42,6 +45,26 @@ public class SecurityConfig {
     // ── Role có quyền quản lý (admin + manager) ───────────────────────────────
     private static final String[] MGMT_ROLES = {"ADMIN", "MANAGER"};
 
+    /**
+     * [FIX Bug 7] CORS được cấu hình đúng thay vì disable().
+     * cors.disable() khiến tất cả Staff API không có CORS headers → browser block.
+     * Chỉ ResidentController hoạt động được do có @CrossOrigin riêng.
+     * Sau fix: tất cả /api/** đều nhận CORS headers, @CrossOrigin trên ResidentController có thể giữ hoặc xóa.
+     */
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.addAllowedOriginPattern("*");          // Thay bằng domain cụ thể khi deploy production
+        config.addAllowedMethod("*");
+        config.addAllowedHeader("*");
+        config.setAllowCredentials(false);            // false khi dùng allowedOriginPattern("*")
+        config.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
+    }
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -66,7 +89,7 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .cors(cors -> cors.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
 
                         // ── 1. CORS preflight ──────────────────────────────────────────

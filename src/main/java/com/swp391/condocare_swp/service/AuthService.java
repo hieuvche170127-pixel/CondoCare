@@ -129,6 +129,12 @@ public class AuthService {
         residentsRepository.save(resident);
         logger.info("New resident registered (PENDING): {} — {}", resident.getId(), resident.getUsername());
 
+        // [FIX #9] Gửi email xác nhận đã nhận đơn ngay sau khi đăng ký thành công
+        // Trước đây không có email nào → cư dân không biết đơn đã được hệ thống nhận
+        if (req.getEmail() != null && !req.getEmail().isBlank()) {
+            emailService.sendPendingRegistrationEmail(req.getEmail(), resident.getFullName(), resident.getUsername());
+        }
+
         return "Đăng ký thành công! Tài khoản đang chờ Ban quản lý xác minh. " +
                 "Bạn sẽ nhận được email thông báo khi được kích hoạt.";
     }

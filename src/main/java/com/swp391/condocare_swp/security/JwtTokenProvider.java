@@ -18,23 +18,23 @@ import java.util.Date;
  */
 @Component
 public class JwtTokenProvider {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(JwtTokenProvider.class);
-    
+
     /**
      * Secret key để mã hóa JWT (lấy từ application.properties)
      */
     @Value("${jwt.secret}")
     private String jwtSecret;
-    
+
     /**
      * Thời gian hết hạn của JWT (milliseconds)
      */
     @Value("${jwt.expiration}")
     private long jwtExpiration;
-    
+
     private SecretKey key;
-    
+
     /**
      * Khởi tạo Secret Key sau khi inject properties
      */
@@ -43,7 +43,7 @@ public class JwtTokenProvider {
         // Tạo SecretKey từ jwtSecret string
         this.key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
     }
-    
+
     /**
      * Tạo JWT token từ Authentication
      * @param authentication Spring Security Authentication
@@ -52,12 +52,12 @@ public class JwtTokenProvider {
     public String generateToken(Authentication authentication) {
         // Lấy username từ principal
         String username = authentication.getName();
-        
+
         // Thời gian hiện tại
         Date now = new Date();
         // Thời gian hết hạn
         Date expiryDate = new Date(now.getTime() + jwtExpiration);
-        
+
         // Tạo JWT token
         return Jwts.builder()
                 .subject(username)                    // Subject là username
@@ -66,7 +66,7 @@ public class JwtTokenProvider {
                 .signWith(key)                        // Ký với secret key
                 .compact();                           // Tạo chuỗi JWT
     }
-    
+
     /**
      * Tạo JWT token từ username (dùng cho reset password)
      * @param username Username
@@ -75,7 +75,7 @@ public class JwtTokenProvider {
     public String generateTokenFromUsername(String username) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpiration);
-        
+
         return Jwts.builder()
                 .subject(username)
                 .issuedAt(now)
@@ -83,7 +83,7 @@ public class JwtTokenProvider {
                 .signWith(key)
                 .compact();
     }
-    
+
     /**
      * Lấy username từ JWT token
      * @param token JWT token
@@ -96,10 +96,10 @@ public class JwtTokenProvider {
                 .build()
                 .parseSignedClaims(token)             // Parse token
                 .getPayload();                        // Lấy payload (claims)
-        
+
         return claims.getSubject();                   // Lấy subject (username)
     }
-    
+
     /**
      * Validate JWT token
      * @param token JWT token
@@ -109,9 +109,9 @@ public class JwtTokenProvider {
         try {
             // Parse và verify token
             Jwts.parser()
-                .verifyWith(key)
-                .build()
-                .parseSignedClaims(token);
+                    .verifyWith(key)
+                    .build()
+                    .parseSignedClaims(token);
             return true;
         } catch (MalformedJwtException ex) {
             logger.error("Invalid JWT token: {}", ex.getMessage());

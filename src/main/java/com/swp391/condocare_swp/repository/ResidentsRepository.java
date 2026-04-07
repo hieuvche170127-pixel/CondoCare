@@ -32,4 +32,7 @@ public interface ResidentsRepository
     Page<Residents> findByStatus(Residents.ResidentStatus status, Pageable pageable);
 
     Page<Residents> findByApartmentId(String apartmentId, Pageable pageable);
+
+    /** Dùng cho InvoiceScheduler — lấy tất cả cư dân ACTIVE trong căn hộ để gửi notification */
+    java.util.List<Residents> findByApartmentIdAndStatus(String apartmentId, Residents.ResidentStatus status);
 }

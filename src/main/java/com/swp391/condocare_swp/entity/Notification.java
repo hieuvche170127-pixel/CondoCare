@@ -46,8 +46,12 @@ public class Notification {
     @Column(name = "is_read", nullable = false)
     private Boolean isRead = false;
 
+    /**
+     * NULL = thông báo tự động từ hệ thống (scheduler).
+     * Có giá trị = staff đã gửi thủ công.
+     */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by", nullable = false)
+    @JoinColumn(name = "created_by", nullable = true)
     private Staff createdBy;
 
     @Column(name = "created_at", nullable = false, updatable = false)

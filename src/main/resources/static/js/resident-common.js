@@ -35,6 +35,7 @@ function renderResidentSidebar(activePage) {
         { key: 'invoices',      href: '/resident/invoices',        icon: 'fa-file-invoice-dollar', label: 'Hóa đơn' },
         { key: 'apartment',     href: '/resident/apartment',       icon: 'fa-building',         label: 'Thông tin căn hộ' },
         { key: 'requests',      href: '/resident/requests',        icon: 'fa-tools',            label: 'Yêu cầu hỗ trợ' },
+        { key: 'vehicles',      href: '/resident/vehicles',        icon: 'fa-motorcycle',       label: 'Phương tiện' },
         { key: 'profile',       href: '/profile',                  icon: 'fa-user-circle',      label: 'Thông tin cá nhân' },
     ];
 

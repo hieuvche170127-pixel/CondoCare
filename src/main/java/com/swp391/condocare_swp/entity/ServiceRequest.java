@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
 public class ServiceRequest {
 
     @Id
-    @Column(name = "ID", length = 20, nullable = false)
+    @Column(name = "ID", length = 15, nullable = false)
     private String id;
 
     /** Tiêu đề ngắn mô tả vấn đề */
@@ -69,7 +69,7 @@ public class ServiceRequest {
      * Lưu dạng Base64 Data URL: "data:image/jpeg;base64,/9j/..."
      * Dùng MEDIUMTEXT để chứa ảnh ~1MB.
      */
-    @Column(name = "completion_image", columnDefinition = "MEDIUMTEXT")
+    @Column(name = "completion_image", columnDefinition = "LONGTEXT")
     private String completionImage;
 
     /**
@@ -119,7 +119,8 @@ public class ServiceRequest {
         PENDING,     // Chờ xử lý
         IN_PROGRESS, // Đang xử lý
         DONE,        // Hoàn thành (staff đã upload ảnh)
-        REJECTED     // Từ chối
+        REJECTED,    // Từ chối (staff từ chối)
+        CANCELLED    // [FIX #11] Cư dân tự hủy khi còn PENDING
     }
 
     public enum Priority {
